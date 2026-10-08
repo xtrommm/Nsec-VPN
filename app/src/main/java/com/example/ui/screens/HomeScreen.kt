@@ -98,7 +98,7 @@ fun HomeScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     androidx.compose.foundation.Image(
-                        painter = androidx.compose.ui.res.painterResource(id = com.example.R.mipmap.ic_launcher),
+                        painter = androidx.compose.ui.res.painterResource(id = com.example.R.drawable.nsec_vpn_logo_1791489769518),
                         contentDescription = "Nsec VPN Logo",
                         modifier = Modifier.size(34.dp)
                     )

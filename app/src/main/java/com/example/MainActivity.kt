@@ -41,7 +41,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val serviceLocator = ServiceLocator.getInstance(this)
+        val serviceLocator = try {
+            (application as? AuraVpnApp)?.serviceLocator ?: ServiceLocator.getInstance(this)
+        } catch (_: Throwable) {
+            ServiceLocator.getInstance(this)
+        }
         val vpnRepo = serviceLocator.vpnRepository
         val tunnelManager = serviceLocator.tunnelManager
 

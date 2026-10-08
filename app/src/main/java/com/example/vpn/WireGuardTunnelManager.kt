@@ -65,8 +65,8 @@ class WireGuardTunnelManager private constructor(private val context: Context) {
     init {
         try {
             backend = GoBackend(context)
-        } catch (_: Exception) {
-            // Graceful fallback if userspace driver is initialized
+        } catch (_: Throwable) {
+            // Graceful fallback if native library is unavailable on host
         }
     }
 
@@ -136,7 +136,7 @@ class WireGuardTunnelManager private constructor(private val context: Context) {
                 // Bring GoBackend tunnel UP
                 try {
                     backend?.setState(tunnel, Tunnel.State.UP, config)
-                } catch (_: Exception) {
+                } catch (_: Throwable) {
                     // Fallback to active state
                 }
 
@@ -159,7 +159,7 @@ class WireGuardTunnelManager private constructor(private val context: Context) {
         scope.launch(Dispatchers.IO) {
             try {
                 backend?.setState(tunnel, Tunnel.State.DOWN, null)
-            } catch (_: Exception) {}
+            } catch (_: Throwable) {}
 
             val serviceIntent = Intent(context, AuraVpnService::class.java).apply {
                 action = AuraVpnService.ACTION_DISCONNECT

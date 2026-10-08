@@ -9,6 +9,10 @@ class AuraVpnApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        serviceLocator = ServiceLocator.getInstance(this)
+        try {
+            serviceLocator = ServiceLocator.getInstance(this)
+        } catch (_: Throwable) {
+            serviceLocator = ServiceLocator(this)
+        }
     }
 }
