@@ -3,7 +3,7 @@ package com.example
 import android.app.Application
 import com.example.core.network.ServiceLocator
 
-class AuraVpnApp : Application() {
+class NsecVpnApp : Application() {
     lateinit var serviceLocator: ServiceLocator
         private set
 

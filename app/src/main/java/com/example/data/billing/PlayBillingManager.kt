@@ -1,7 +1,7 @@
 package com.example.data.billing
 
 import android.content.Context
-import com.example.data.api.AuraVpnApi
+import com.example.data.api.NsecVpnApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,17 +18,17 @@ data class SubscriptionPlan(
 
 class PlayBillingManager(
     private val context: Context,
-    private val api: AuraVpnApi
+    private val api: NsecVpnApi
 ) {
     val plans = listOf(
         SubscriptionPlan(
-            productId = "auravpn_premium_monthly",
+            productId = "nsecvpn_premium_monthly",
             title = "Monthly VIP",
             priceFormatted = "$4.99 / month",
             billingPeriod = "Billed monthly"
         ),
         SubscriptionPlan(
-            productId = "auravpn_premium_yearly",
+            productId = "nsecvpn_premium_yearly",
             title = "Yearly VIP (Best Value)",
             priceFormatted = "$29.99 / year",
             billingPeriod = "Billed annually ($2.50/mo)",

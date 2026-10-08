@@ -42,7 +42,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         val serviceLocator = try {
-            (application as? AuraVpnApp)?.serviceLocator ?: ServiceLocator.getInstance(this)
+            (application as? NsecVpnApp)?.serviceLocator ?: ServiceLocator.getInstance(this)
         } catch (_: Throwable) {
             ServiceLocator.getInstance(this)
         }
@@ -50,7 +50,7 @@ class MainActivity : ComponentActivity() {
         val tunnelManager = serviceLocator.tunnelManager
 
         setContent {
-            AuraVpnTheme {
+            NsecVpnTheme {
                 val coroutineScope = rememberCoroutineScope()
 
                 // State flows

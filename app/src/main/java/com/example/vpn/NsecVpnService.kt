@@ -14,7 +14,7 @@ import androidx.core.app.ServiceCompat
 import com.example.MainActivity
 import com.example.R
 
-class AuraVpnService : VpnService() {
+class NsecVpnService : VpnService() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
@@ -56,7 +56,7 @@ class AuraVpnService : VpnService() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        val disconnectIntent = Intent(this, AuraVpnService::class.java).apply {
+        val disconnectIntent = Intent(this, NsecVpnService::class.java).apply {
             action = ACTION_DISCONNECT
         }
         val pendingDisconnect = PendingIntent.getService(
@@ -91,10 +91,10 @@ class AuraVpnService : VpnService() {
     }
 
     companion object {
-        const val ACTION_CONNECT = "com.example.auravpn.ACTION_CONNECT"
-        const val ACTION_DISCONNECT = "com.example.auravpn.ACTION_DISCONNECT"
+        const val ACTION_CONNECT = "com.example.nsecvpn.ACTION_CONNECT"
+        const val ACTION_DISCONNECT = "com.example.nsecvpn.ACTION_DISCONNECT"
         const val EXTRA_SERVER_NAME = "extra_server_name"
-        private const val CHANNEL_ID = "auravpn_status_channel"
+        private const val CHANNEL_ID = "nsecvpn_status_channel"
         private const val NOTIFICATION_ID = 1001
     }
 }

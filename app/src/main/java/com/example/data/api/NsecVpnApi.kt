@@ -86,7 +86,7 @@ data class AdsDto(
 data class LegalResponse(val success: Boolean, val data: LegalDocDto?)
 data class LegalDocDto(val type: String, val version: String, val contentMarkdown: String)
 
-interface AuraVpnApi {
+interface NsecVpnApi {
     @POST("auth/register-device")
     suspend fun registerDevice(@Body request: RegisterDeviceRequest): Response<RegisterDeviceResponse>
 

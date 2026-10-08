@@ -16,7 +16,7 @@ import java.net.Socket
 
 class VpnRepository(
     private val context: Context,
-    private val api: AuraVpnApi,
+    private val api: NsecVpnApi,
     private val keyStoreManager: KeyStoreManager
 ) {
     private val _servers = MutableStateFlow<List<Server>>(emptyList())

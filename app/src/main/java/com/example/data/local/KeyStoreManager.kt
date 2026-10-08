@@ -6,7 +6,7 @@ import com.wireguard.crypto.KeyPair
 import java.util.UUID
 
 class KeyStoreManager(context: Context) {
-    private val prefs: SharedPreferences = context.getSharedPreferences("auravpn_secure_vault", Context.MODE_PRIVATE)
+    private val prefs: SharedPreferences = context.getSharedPreferences("nsecvpn_secure_vault", Context.MODE_PRIVATE)
 
     /**
      * Retrieves or generates a persistent device UUID.

@@ -1,7 +1,7 @@
 package com.example.core.network
 
 import android.content.Context
-import com.example.data.api.AuraVpnApi
+import com.example.data.api.NsecVpnApi
 import com.example.data.local.KeyStoreManager
 import com.example.data.repository.VpnRepository
 import com.example.vpn.WireGuardTunnelManager
@@ -24,13 +24,13 @@ object NetworkModule {
             .build()
     }
 
-    val api: AuraVpnApi by lazy {
+    val api: NsecVpnApi by lazy {
         Retrofit.Builder()
             .baseUrl(BASE_URL)
             .client(okHttpClient)
             .addConverterFactory(MoshiConverterFactory.create())
             .build()
-            .create(AuraVpnApi::class.java)
+            .create(NsecVpnApi::class.java)
     }
 }
 

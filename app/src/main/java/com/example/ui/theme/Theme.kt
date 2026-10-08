@@ -51,7 +51,7 @@ private val LightColorScheme = lightColorScheme(
 )
 
 @Composable
-fun AuraVpnTheme(
+fun NsecVpnTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
@@ -69,5 +69,5 @@ fun MyApplicationTheme(
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    AuraVpnTheme(darkTheme = darkTheme, content = content)
+    NsecVpnTheme(darkTheme = darkTheme, content = content)
 }

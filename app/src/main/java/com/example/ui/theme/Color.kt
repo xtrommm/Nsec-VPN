@@ -2,7 +2,7 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// AuraVPN Cyber Palette
+// Nsec VPN Cyber Palette
 val ObsidianDark = Color(0xFF0B0F19)
 val ObsidianSurface = Color(0xFF131B2E)
 val ObsidianCard = Color(0xFF1B243B)

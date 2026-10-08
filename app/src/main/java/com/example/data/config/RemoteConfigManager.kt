@@ -1,6 +1,6 @@
 package com.example.data.config
 
-import com.example.data.api.AuraVpnApi
+import com.example.data.api.NsecVpnApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,7 +17,7 @@ data class RemoteAppConfig(
     val announcementBody: String? = null
 )
 
-class RemoteConfigManager(private val api: AuraVpnApi) {
+class RemoteConfigManager(private val api: NsecVpnApi) {
     private val _config = MutableStateFlow(RemoteAppConfig())
     val config: StateFlow<RemoteAppConfig> = _config.asStateFlow()
 

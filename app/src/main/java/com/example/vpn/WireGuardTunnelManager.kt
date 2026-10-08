@@ -123,9 +123,9 @@ class WireGuardTunnelManager private constructor(private val context: Context) {
                     .build()
 
                 // Launch tunnel service
-                val serviceIntent = Intent(context, AuraVpnService::class.java).apply {
-                    action = AuraVpnService.ACTION_CONNECT
-                    putExtra(AuraVpnService.EXTRA_SERVER_NAME, server.name)
+                val serviceIntent = Intent(context, NsecVpnService::class.java).apply {
+                    action = NsecVpnService.ACTION_CONNECT
+                    putExtra(NsecVpnService.EXTRA_SERVER_NAME, server.name)
                 }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     context.startForegroundService(serviceIntent)
@@ -161,8 +161,8 @@ class WireGuardTunnelManager private constructor(private val context: Context) {
                 backend?.setState(tunnel, Tunnel.State.DOWN, null)
             } catch (_: Throwable) {}
 
-            val serviceIntent = Intent(context, AuraVpnService::class.java).apply {
-                action = AuraVpnService.ACTION_DISCONNECT
+            val serviceIntent = Intent(context, NsecVpnService::class.java).apply {
+                action = NsecVpnService.ACTION_DISCONNECT
             }
             context.startService(serviceIntent)
 
