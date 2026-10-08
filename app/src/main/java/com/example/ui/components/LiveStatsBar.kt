@@ -1,6 +1,7 @@
 package com.example.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -13,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -29,15 +31,17 @@ fun LiveStatsBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .shadow(elevation = 2.dp, shape = RoundedCornerShape(16.dp), spotColor = Color.Black.copy(alpha = 0.05f))
             .clip(RoundedCornerShape(16.dp))
-            .background(ObsidianCard)
+            .background(LightSurface)
+            .border(1.dp, LightCardBorder, RoundedCornerShape(16.dp))
             .padding(vertical = 14.dp, horizontal = 12.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
         StatItem(
             icon = Icons.Default.Timer,
-            iconTint = CyberCyan,
+            iconTint = PrimaryBlue,
             label = "DURATION",
             value = stats.formattedDuration
         )
@@ -46,12 +50,12 @@ fun LiveStatsBar(
             modifier = Modifier
                 .width(1.dp)
                 .height(36.dp)
-                .background(ObsidianCardHighlight)
+                .background(LightCardBorder)
         )
 
         StatItem(
             icon = Icons.Default.ArrowDownward,
-            iconTint = NeonEmerald,
+            iconTint = EmeraldGreen,
             label = "DOWNLOAD",
             value = String.format("%.1f Mb/s", stats.downloadSpeedMbps)
         )
@@ -60,12 +64,12 @@ fun LiveStatsBar(
             modifier = Modifier
                 .width(1.dp)
                 .height(36.dp)
-                .background(ObsidianCardHighlight)
+                .background(LightCardBorder)
         )
 
         StatItem(
             icon = Icons.Default.ArrowUpward,
-            iconTint = ElectricBlue,
+            iconTint = AccentIndigo,
             label = "UPLOAD",
             value = String.format("%.1f Mb/s", stats.uploadSpeedMbps)
         )

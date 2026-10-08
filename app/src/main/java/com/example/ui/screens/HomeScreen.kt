@@ -51,7 +51,7 @@ fun HomeScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(ObsidianDark)
+            .background(LightBackground)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -63,13 +63,13 @@ fun HomeScreen(
                     .fillMaxWidth()
                     .padding(bottom = 12.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(ElectricBlue.copy(alpha = 0.15f))
-                    .border(1.dp, ElectricBlue.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                    .background(PrimaryBlueContainer)
+                    .border(1.dp, PrimaryBlue.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
                     .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(announcementTitle, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = CyberCyan)
+                    Text(announcementTitle, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue)
                     if (!announcementBody.isNullOrEmpty()) {
                         Text(announcementBody, fontSize = 11.sp, color = TextPrimary)
                     }
@@ -92,9 +92,10 @@ fun HomeScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-                        .size(38.dp)
+                        .size(40.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(ObsidianCard),
+                        .background(LightSurface)
+                        .border(1.dp, LightCardBorder, RoundedCornerShape(10.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     androidx.compose.foundation.Image(
@@ -114,7 +115,8 @@ fun HomeScreen(
                     Text(
                         text = "WireGuard • nsecvpn.com",
                         fontSize = 11.sp,
-                        color = CyberCyan
+                        fontWeight = FontWeight.Medium,
+                        color = PrimaryBlue
                     )
                 }
             }
@@ -122,10 +124,10 @@ fun HomeScreen(
             // User Tier Badge
             Surface(
                 shape = RoundedCornerShape(20.dp),
-                color = if (userTier == "FREE") ObsidianCard else AmberWarning.copy(alpha = 0.2f),
+                color = if (userTier == "FREE") LightCardHighlight else AmberContainer,
                 border = BorderStroke(
                     1.dp,
-                    if (userTier == "FREE") ObsidianCardHighlight else AmberWarning
+                    if (userTier == "FREE") LightCardBorder else AmberWarning.copy(alpha = 0.6f)
                 ),
                 modifier = Modifier.clickable { onUpgradeClicked() }
             ) {
@@ -157,8 +159,8 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
-                .background(ObsidianSurface)
-                .border(1.dp, ObsidianCardHighlight, RoundedCornerShape(16.dp))
+                .background(LightSurface)
+                .border(1.dp, LightCardBorder, RoundedCornerShape(16.dp))
                 .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -166,7 +168,7 @@ fun HomeScreen(
                 modifier = Modifier
                     .size(10.dp)
                     .clip(CircleShape)
-                    .background(if (isConnected) NeonEmerald else CrimsonError)
+                    .background(if (isConnected) EmeraldGreen else CrimsonError)
             )
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
@@ -174,7 +176,7 @@ fun HomeScreen(
                     text = if (isConnected) "VIRTUAL IP (PROTECTED)" else "PUBLIC IP (EXPOSED)",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (isConnected) NeonEmerald else CrimsonError,
+                    color = if (isConnected) EmeraldGreen else CrimsonError,
                     letterSpacing = 0.8.sp
                 )
                 Text(
@@ -223,7 +225,7 @@ fun HomeScreen(
                     text = "CHANGE",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    color = CyberCyan,
+                    color = PrimaryBlue,
                     modifier = Modifier
                         .clickable { onNavigateToServers() }
                         .padding(4.dp)
@@ -237,8 +239,8 @@ fun HomeScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(14.dp))
-                        .background(ObsidianCard)
-                        .border(1.dp, ObsidianCardHighlight, RoundedCornerShape(14.dp))
+                        .background(LightSurface)
+                        .border(1.dp, LightCardBorder, RoundedCornerShape(14.dp))
                         .clickable { onNavigateToServers() }
                         .padding(14.dp)
                         .testTag("selected_server_card"),

@@ -27,6 +27,8 @@ import androidx.compose.ui.unit.sp
 import com.example.data.model.DnsProvider
 import com.example.ui.theme.*
 
+import androidx.compose.foundation.border
+
 @Composable
 fun SettingsScreen(
     killSwitchEnabled: Boolean,
@@ -49,7 +51,7 @@ fun SettingsScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(ObsidianDark)
+            .background(LightBackground)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
@@ -98,7 +100,7 @@ fun SettingsScreen(
                         text = "MANAGE",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = CyberCyan,
+                        color = PrimaryBlue,
                         modifier = Modifier.clickable { onOpenSplitTunnelApps() }
                     )
                 }
@@ -168,7 +170,7 @@ fun SettingsScreen(
     if (showDnsDialog) {
         AlertDialog(
             onDismissRequest = { showDnsDialog = false },
-            containerColor = ObsidianSurface,
+            containerColor = LightSurface,
             title = { Text("Select Encrypted DNS", color = TextPrimary, fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -189,7 +191,7 @@ fun SettingsScreen(
                                     onSelectDns(provider)
                                     showDnsDialog = false
                                 },
-                                colors = RadioButtonDefaults.colors(selectedColor = CyberCyan)
+                                colors = RadioButtonDefaults.colors(selectedColor = PrimaryBlue)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Column {
@@ -202,7 +204,7 @@ fun SettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showDnsDialog = false }) {
-                    Text("Close", color = CyberCyan)
+                    Text("Close", color = PrimaryBlue)
                 }
             }
         )
@@ -212,7 +214,7 @@ fun SettingsScreen(
     if (showKillSwitchDialog) {
         AlertDialog(
             onDismissRequest = { showKillSwitchDialog = false },
-            containerColor = ObsidianSurface,
+            containerColor = LightSurface,
             title = { Text("Enable Android System Kill Switch", color = TextPrimary, fontWeight = FontWeight.Bold) },
             text = {
                 Text(
@@ -231,7 +233,7 @@ fun SettingsScreen(
                             context.startActivity(Intent(Settings.ACTION_VPN_SETTINGS))
                         } catch (_: Exception) {}
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = ElectricBlue)
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
                 ) {
                     Text("Open VPN Settings")
                 }
@@ -270,11 +272,12 @@ private fun SettingsToggleItem(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(ObsidianCard)
+            .background(LightSurface)
+            .border(1.dp, LightCardBorder, RoundedCornerShape(12.dp))
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, contentDescription = null, tint = CyberCyan, modifier = Modifier.size(22.dp))
+        Icon(icon, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(22.dp))
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
@@ -289,8 +292,8 @@ private fun SettingsToggleItem(
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White,
-                checkedTrackColor = ElectricBlue,
-                uncheckedTrackColor = ObsidianCardHighlight
+                checkedTrackColor = PrimaryBlue,
+                uncheckedTrackColor = LightCardBorderHighlight
             )
         )
     }
@@ -308,12 +311,13 @@ private fun SettingsClickableItem(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(ObsidianCard)
+            .background(LightSurface)
+            .border(1.dp, LightCardBorder, RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, contentDescription = null, tint = CyberCyan, modifier = Modifier.size(22.dp))
+        Icon(icon, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(22.dp))
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)

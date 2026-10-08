@@ -125,8 +125,8 @@ class MainActivity : ComponentActivity() {
                     bottomBar = {
                         if (activeSubScreen == null) {
                             NavigationBar(
-                                containerColor = ObsidianSurface,
-                                tonalElevation = 8.dp
+                                containerColor = LightSurface,
+                                tonalElevation = 6.dp
                             ) {
                                 listOf(Screen.Home, Screen.Servers, Screen.SpeedTest, Screen.Settings).forEach { screen ->
                                     val isSelected = currentTab == screen
@@ -147,11 +147,11 @@ class MainActivity : ComponentActivity() {
                                             )
                                         },
                                         colors = NavigationBarItemDefaults.colors(
-                                            selectedIconColor = CyberCyan,
-                                            selectedTextColor = CyberCyan,
+                                            selectedIconColor = PrimaryBlue,
+                                            selectedTextColor = PrimaryBlue,
                                             unselectedIconColor = TextSecondary,
                                             unselectedTextColor = TextSecondary,
-                                            indicatorColor = ObsidianCardHighlight
+                                            indicatorColor = PrimaryBlueContainer
                                         ),
                                         modifier = Modifier.testTag("nav_${screen.route}")
                                     )
@@ -160,7 +160,7 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     contentWindowInsets = WindowInsets.safeDrawing,
-                    containerColor = ObsidianDark
+                    containerColor = LightBackground
                 ) { innerPadding ->
                     Box(modifier = Modifier.padding(innerPadding)) {
                         when (activeSubScreen) {
@@ -241,7 +241,7 @@ class MainActivity : ComponentActivity() {
                 if (showVipModal) {
                     AlertDialog(
                         onDismissRequest = { showVipModal = false },
-                        containerColor = ObsidianSurface,
+                        containerColor = LightSurface,
                         title = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.Star, contentDescription = null, tint = AmberWarning)
@@ -261,8 +261,8 @@ class MainActivity : ComponentActivity() {
                                 // Yearly Plan Card
                                 Surface(
                                     shape = RoundedCornerShape(12.dp),
-                                    color = ObsidianCard,
-                                    border = BorderStroke(1.dp, CyberCyan),
+                                    color = PrimaryBlueContainer,
+                                    border = BorderStroke(1.5.dp, PrimaryBlue),
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable {
@@ -284,21 +284,21 @@ class MainActivity : ComponentActivity() {
                                                     "50% OFF",
                                                     fontSize = 9.sp,
                                                     fontWeight = FontWeight.Bold,
-                                                    color = NeonEmerald,
-                                                    modifier = Modifier.background(NeonEmerald.copy(alpha = 0.15f), RoundedCornerShape(4.dp)).padding(horizontal = 4.dp, vertical = 2.dp)
+                                                    color = EmeraldGreen,
+                                                    modifier = Modifier.background(EmeraldContainer, RoundedCornerShape(4.dp)).padding(horizontal = 4.dp, vertical = 2.dp)
                                                 )
                                             }
                                             Text("$29.99 / year ($2.50/mo)", fontSize = 11.sp, color = TextSecondary)
                                         }
-                                        Icon(Icons.Default.Star, contentDescription = null, tint = CyberCyan, modifier = Modifier.size(20.dp))
+                                        Icon(Icons.Default.Star, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(20.dp))
                                     }
                                 }
 
                                 // Monthly Plan Card
                                 Surface(
                                     shape = RoundedCornerShape(12.dp),
-                                    color = ObsidianCard,
-                                    border = BorderStroke(1.dp, ObsidianCardHighlight),
+                                    color = LightSurface,
+                                    border = BorderStroke(1.dp, LightCardBorder),
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable {
@@ -322,7 +322,8 @@ class MainActivity : ComponentActivity() {
                                 // Rewarded Video Free Pass
                                 Surface(
                                     shape = RoundedCornerShape(12.dp),
-                                    color = ObsidianCardHighlight,
+                                    color = LightCardHighlight,
+                                    border = BorderStroke(1.dp, LightCardBorder),
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable {
@@ -332,7 +333,7 @@ class MainActivity : ComponentActivity() {
                                         }
                                 ) {
                                     Column(modifier = Modifier.padding(12.dp)) {
-                                        Text("Watch Rewarded Ad for 30m Free VIP", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = CyberCyan)
+                                        Text("Watch Rewarded Ad for 30m Free VIP", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue)
                                         Text("Instantly unlocks all high-speed servers for 30 minutes without credit card.", fontSize = 10.sp, color = TextTertiary)
                                     }
                                 }
@@ -350,10 +351,10 @@ class MainActivity : ComponentActivity() {
                 if (showPromoDialog) {
                     AlertDialog(
                         onDismissRequest = { showPromoDialog = false },
-                        containerColor = ObsidianSurface,
+                        containerColor = LightSurface,
                         title = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.CardGiftcard, contentDescription = null, tint = CyberCyan)
+                                Icon(Icons.Default.CardGiftcard, contentDescription = null, tint = PrimaryBlue)
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text("Redeem Promo Code", color = TextPrimary, fontWeight = FontWeight.Bold)
                             }
@@ -368,8 +369,10 @@ class MainActivity : ComponentActivity() {
                                     singleLine = true,
                                     shape = RoundedCornerShape(10.dp),
                                     colors = OutlinedTextFieldDefaults.colors(
-                                        focusedContainerColor = ObsidianCard,
-                                        unfocusedContainerColor = ObsidianCard,
+                                        focusedContainerColor = LightSurface,
+                                        unfocusedContainerColor = LightSurface,
+                                        focusedBorderColor = PrimaryBlue,
+                                        unfocusedBorderColor = LightCardBorder,
                                         focusedTextColor = TextPrimary,
                                         unfocusedTextColor = TextPrimary
                                     ),
@@ -386,7 +389,7 @@ class MainActivity : ComponentActivity() {
                                         Toast.makeText(this@MainActivity, "Code redeemed: 7 Days VIP Unlocked!", Toast.LENGTH_SHORT).show()
                                     }
                                 },
-                                colors = ButtonDefaults.buttonColors(containerColor = ElectricBlue)
+                                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
                             ) {
                                 Text("Redeem")
                             }

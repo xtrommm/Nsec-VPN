@@ -23,6 +23,8 @@ import com.example.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+import androidx.compose.foundation.border
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TroubleshootScreen(
@@ -60,10 +62,10 @@ fun TroubleshootScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = ObsidianDark)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = LightBackground)
             )
         },
-        containerColor = ObsidianDark
+        containerColor = LightBackground
     ) { padding ->
         Column(
             modifier = modifier
@@ -108,7 +110,7 @@ fun TroubleshootScreen(
             Button(
                 onClick = { runDiagnostics() },
                 enabled = !isRunning,
-                colors = ButtonDefaults.buttonColors(containerColor = ElectricBlue),
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -132,20 +134,21 @@ private fun DiagnosticItem(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(ObsidianCard)
+            .background(LightSurface)
+            .border(1.dp, LightCardBorder, RoundedCornerShape(12.dp))
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             imageVector = if (isPassed) Icons.Default.CheckCircle else Icons.Default.Warning,
             contentDescription = null,
-            tint = if (isPassed) NeonEmerald else AmberWarning,
+            tint = if (isPassed) EmeraldGreen else AmberWarning,
             modifier = Modifier.size(24.dp)
         )
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-            Text(status, fontSize = 12.sp, color = if (isPassed) NeonEmerald else AmberWarning)
+            Text(status, fontSize = 12.sp, color = if (isPassed) EmeraldGreen else AmberWarning)
         }
     }
     Spacer(modifier = Modifier.height(10.dp))

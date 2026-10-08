@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.*
 
+import androidx.compose.foundation.border
+
 data class AppItem(val appName: String, val packageName: String)
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -63,10 +65,10 @@ fun SplitTunnelScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = ObsidianDark)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = LightBackground)
             )
         },
-        containerColor = ObsidianDark
+        containerColor = LightBackground
     ) { padding ->
         Column(
             modifier = modifier
@@ -88,7 +90,8 @@ fun SplitTunnelScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
-                            .background(ObsidianCard)
+                            .background(LightSurface)
+                            .border(1.dp, LightCardBorder, RoundedCornerShape(12.dp))
                             .padding(14.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -101,8 +104,8 @@ fun SplitTunnelScreen(
                             onCheckedChange = { onTogglePackage(app.packageName) },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
-                                checkedTrackColor = ElectricBlue,
-                                uncheckedTrackColor = ObsidianCardHighlight
+                                checkedTrackColor = PrimaryBlue,
+                                uncheckedTrackColor = LightCardBorderHighlight
                             )
                         )
                     }

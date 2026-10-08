@@ -1,61 +1,54 @@
 package com.example.ui.theme
 
-import android.os.Build
+import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 
-private val DarkColorScheme = darkColorScheme(
-    primary = CyberCyan,
-    onPrimary = ObsidianDark,
-    primaryContainer = ObsidianCardHighlight,
-    onPrimaryContainer = CyberCyan,
-    secondary = ElectricBlue,
-    onSecondary = Color.White,
-    secondaryContainer = ObsidianCard,
-    onSecondaryContainer = Color.White,
-    tertiary = NeonEmerald,
-    onTertiary = ObsidianDark,
-    background = ObsidianDark,
-    onBackground = TextPrimary,
-    surface = ObsidianSurface,
-    onSurface = TextPrimary,
-    surfaceVariant = ObsidianCard,
-    onSurfaceVariant = TextSecondary,
-    error = CrimsonError,
-    onError = Color.White
-)
-
-private val LightColorScheme = lightColorScheme(
-    primary = ElectricBlue,
+private val ProLightColorScheme = lightColorScheme(
+    primary = PrimaryBlue,
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFDBEAFE),
-    onPrimaryContainer = ElectricBlue,
-    secondary = Color(0xFF0284C7),
+    primaryContainer = PrimaryBlueContainer,
+    onPrimaryContainer = PrimaryBlue,
+    secondary = AccentIndigo,
     onSecondary = Color.White,
-    secondaryContainer = LightCard,
-    onSecondaryContainer = LightTextPrimary,
-    tertiary = Color(0xFF059669),
+    secondaryContainer = LightCardHighlight,
+    onSecondaryContainer = TextPrimary,
+    tertiary = EmeraldGreen,
     onTertiary = Color.White,
     background = LightBackground,
-    onBackground = LightTextPrimary,
+    onBackground = TextPrimary,
     surface = LightSurface,
-    onSurface = LightTextPrimary,
-    surfaceVariant = LightCard,
-    onSurfaceVariant = LightTextSecondary,
+    onSurface = TextPrimary,
+    surfaceVariant = LightCardHighlight,
+    onSurfaceVariant = TextSecondary,
     error = CrimsonError,
     onError = Color.White
 )
 
 @Composable
 fun NsecVpnTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
+    val colorScheme = ProLightColorScheme
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as? Activity)?.window
+            if (window != null) {
+                val insetsController = WindowCompat.getInsetsController(window, view)
+                insetsController.isAppearanceLightStatusBars = true
+                insetsController.isAppearanceLightNavigationBars = true
+            }
+        }
+    }
+
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
@@ -65,9 +58,10 @@ fun NsecVpnTheme(
 
 @Composable
 fun MyApplicationTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = false,
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     NsecVpnTheme(darkTheme = darkTheme, content = content)
 }
+

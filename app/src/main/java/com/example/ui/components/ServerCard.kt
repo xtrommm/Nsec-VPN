@@ -31,15 +31,15 @@ fun ServerCard(
     onToggleFavorite: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    val borderColor = if (isSelected) CyberCyan else ObsidianCardHighlight
-    val backgroundColor = if (isSelected) ObsidianCardHighlight else ObsidianCard
+    val borderColor = if (isSelected) PrimaryBlue else LightCardBorder
+    val backgroundColor = if (isSelected) PrimaryBlueContainer else LightSurface
 
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .background(backgroundColor)
-            .border(1.dp, borderColor, RoundedCornerShape(14.dp))
+            .border(if (isSelected) 1.5.dp else 1.dp, borderColor, RoundedCornerShape(14.dp))
             .clickable(onClick = onSelect)
             .padding(14.dp)
             .testTag("server_item_${server.id}"),
@@ -67,10 +67,10 @@ fun ServerCard(
                         text = "FASTEST",
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
-                        color = NeonEmerald,
+                        color = EmeraldGreen,
                         modifier = Modifier
-                            .background(NeonEmerald.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
-                            .padding(horizontal = 4.dp, vertical = 2.dp)
+                            .background(EmeraldContainer, RoundedCornerShape(4.dp))
+                            .padding(horizontal = 5.dp, vertical = 2.dp)
                     )
                 }
                 if (server.isPremiumOnly) {
@@ -81,8 +81,8 @@ fun ServerCard(
                         fontWeight = FontWeight.Bold,
                         color = AmberWarning,
                         modifier = Modifier
-                            .background(AmberWarning.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
-                            .padding(horizontal = 4.dp, vertical = 2.dp)
+                            .background(AmberContainer, RoundedCornerShape(4.dp))
+                            .padding(horizontal = 5.dp, vertical = 2.dp)
                     )
                 }
             }
@@ -103,7 +103,7 @@ fun ServerCard(
         ) {
             val ping = server.pingMs ?: 45L
             val pingColor = when {
-                ping < 50 -> NeonEmerald
+                ping < 50 -> EmeraldGreen
                 ping < 90 -> AmberWarning
                 else -> CrimsonError
             }

@@ -3,6 +3,7 @@ package com.example.ui.components
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -53,11 +54,11 @@ fun ConnectButton(
 
     val buttonColor by animateColorAsState(
         targetValue = when (vpnState) {
-            is VpnState.Connected -> NeonEmerald
+            is VpnState.Connected -> EmeraldGreen
             is VpnState.Connecting -> AmberWarning
             is VpnState.Disconnecting -> CrimsonError
             is VpnState.Error -> CrimsonError
-            is VpnState.Disconnected -> ElectricBlue
+            is VpnState.Disconnected -> PrimaryBlue
         },
         animationSpec = tween(500),
         label = "buttonColor"
@@ -110,16 +111,22 @@ fun ConnectButton(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .size(150.dp)
-                    .shadow(elevation = 16.dp, shape = CircleShape, spotColor = buttonColor)
+                    .shadow(
+                        elevation = 14.dp,
+                        shape = CircleShape,
+                        spotColor = buttonColor.copy(alpha = 0.35f),
+                        ambientColor = Color.Black.copy(alpha = 0.08f)
+                    )
                     .clip(CircleShape)
                     .background(
                         Brush.verticalGradient(
                             listOf(
-                                ObsidianCardHighlight,
-                                ObsidianSurface
+                                Color.White,
+                                Color(0xFFF8FAFC)
                             )
                         )
                     )
+                    .border(2.dp, buttonColor.copy(alpha = 0.25f), CircleShape)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,

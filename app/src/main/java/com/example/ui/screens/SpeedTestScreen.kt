@@ -31,6 +31,8 @@ import kotlinx.coroutines.launch
 import kotlin.math.cos
 import kotlin.math.sin
 
+import androidx.compose.foundation.border
+
 @Composable
 fun SpeedTestScreen(
     currentServer: Server?,
@@ -85,7 +87,7 @@ fun SpeedTestScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(ObsidianDark)
+            .background(LightBackground)
             .padding(horizontal = 20.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -117,7 +119,7 @@ fun SpeedTestScreen(
 
                 // Background Track (240 degrees from 150 to 390)
                 drawArc(
-                    color = ObsidianCardHighlight,
+                    color = LightCardBorder,
                     startAngle = 150f,
                     sweepAngle = 240f,
                     useCenter = false,
@@ -132,7 +134,7 @@ fun SpeedTestScreen(
 
                 drawArc(
                     brush = Brush.sweepGradient(
-                        listOf(CyberCyan, NeonEmerald)
+                        listOf(PrimaryBlue, EmeraldGreen)
                     ),
                     startAngle = 150f,
                     sweepAngle = activeSweep,
@@ -155,7 +157,7 @@ fun SpeedTestScreen(
                     text = "Mbps",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = CyberCyan
+                    color = PrimaryBlue
                 )
             }
         }
@@ -167,14 +169,15 @@ fun SpeedTestScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
-                .background(ObsidianCard)
+                .background(LightSurface)
+                .border(1.dp, LightCardBorder, RoundedCornerShape(16.dp))
                 .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceAround
         ) {
             MetricColumn(label = "PING", value = pingMs?.let { "${it} ms" } ?: "--")
-            Box(modifier = Modifier.width(1.dp).height(30.dp).background(ObsidianCardHighlight))
+            Box(modifier = Modifier.width(1.dp).height(30.dp).background(LightCardBorder))
             MetricColumn(label = "JITTER", value = jitterMs?.let { "${it} ms" } ?: "--")
-            Box(modifier = Modifier.width(1.dp).height(30.dp).background(ObsidianCardHighlight))
+            Box(modifier = Modifier.width(1.dp).height(30.dp).background(LightCardBorder))
             MetricColumn(label = "PEAK", value = if (peakDownloadMbps > 0) String.format("%.1f M", peakDownloadMbps) else "--")
         }
 
@@ -183,7 +186,7 @@ fun SpeedTestScreen(
         Button(
             onClick = { runSpeedTest() },
             enabled = !isTesting,
-            colors = ButtonDefaults.buttonColors(containerColor = ElectricBlue),
+            colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
             shape = RoundedCornerShape(14.dp),
             modifier = Modifier
                 .fillMaxWidth()

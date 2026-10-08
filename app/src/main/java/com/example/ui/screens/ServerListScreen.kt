@@ -62,7 +62,7 @@ fun ServerListScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(ObsidianDark)
+            .background(LightBackground)
             .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
         // Screen Header
@@ -81,7 +81,7 @@ fun ServerListScreen(
                 Icon(
                     imageVector = Icons.Default.Refresh,
                     contentDescription = "Refresh Latencies",
-                    tint = CyberCyan
+                    tint = PrimaryBlue
                 )
             }
         }
@@ -99,10 +99,10 @@ fun ServerListScreen(
             singleLine = true,
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = ObsidianSurface,
-                unfocusedContainerColor = ObsidianSurface,
-                focusedBorderColor = CyberCyan,
-                unfocusedBorderColor = ObsidianCardHighlight,
+                focusedContainerColor = LightSurface,
+                unfocusedContainerColor = LightSurface,
+                focusedBorderColor = PrimaryBlue,
+                unfocusedBorderColor = LightCardBorder,
                 focusedTextColor = TextPrimary,
                 unfocusedTextColor = TextPrimary
             ),
@@ -118,8 +118,8 @@ fun ServerListScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(14.dp))
-                .background(ObsidianCard)
-                .border(1.dp, CyberCyan.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
+                .background(PrimaryBlueContainer)
+                .border(1.dp, PrimaryBlue.copy(alpha = 0.35f), RoundedCornerShape(14.dp))
                 .clickable { onAutoSelectBest() }
                 .padding(14.dp)
                 .testTag("auto_select_best_server_card"),
@@ -129,13 +129,13 @@ fun ServerListScreen(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(CyberCyan.copy(alpha = 0.15f)),
+                    .background(PrimaryBlue.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Bolt,
                     contentDescription = null,
-                    tint = CyberCyan,
+                    tint = PrimaryBlue,
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -167,8 +167,13 @@ fun ServerListScreen(
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (isSelected) ElectricBlue else ObsidianSurface)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (isSelected) PrimaryBlue else LightSurface)
+                        .border(
+                            1.dp,
+                            if (isSelected) PrimaryBlue else LightCardBorder,
+                            RoundedCornerShape(10.dp)
+                        )
                         .clickable { selectedTab = index }
                         .padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center

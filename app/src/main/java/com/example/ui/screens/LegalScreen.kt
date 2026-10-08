@@ -18,6 +18,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.*
 
+import androidx.compose.foundation.border
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LegalScreen(
@@ -33,10 +35,10 @@ fun LegalScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = ObsidianDark)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = LightBackground)
             )
         },
-        containerColor = ObsidianDark
+        containerColor = LightBackground
     ) { padding ->
         Column(
             modifier = modifier
@@ -49,11 +51,12 @@ fun LegalScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(ObsidianCard)
+                    .background(EmeraldContainer)
+                    .border(1.dp, EmeraldGreen.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
                     .padding(14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.Shield, contentDescription = null, tint = NeonEmerald, modifier = Modifier.size(28.dp))
+                Icon(Icons.Default.Shield, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(28.dp))
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
                     text = "Strict No-Logging Guarantee: Nsec VPN (nsecvpn.com) never logs, stores, or shares your personal network traffic.",
@@ -79,7 +82,7 @@ fun LegalScreen(
 @Composable
 private fun PolicySection(title: String, content: String) {
     Column(modifier = Modifier.padding(bottom = 16.dp)) {
-        Text(title, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = CyberCyan)
+        Text(title, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue)
         Spacer(modifier = Modifier.height(6.dp))
         Text(content, fontSize = 13.sp, color = TextSecondary, lineHeight = 19.sp)
     }

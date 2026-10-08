@@ -28,8 +28,8 @@ fun AdBannerView(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(ObsidianCard)
-            .border(1.dp, ObsidianCardHighlight, RoundedCornerShape(12.dp))
+            .background(LightSurface)
+            .border(1.dp, LightCardBorder, RoundedCornerShape(12.dp))
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
@@ -41,7 +41,7 @@ fun AdBannerView(
                 fontWeight = FontWeight.Bold,
                 color = TextSecondary,
                 modifier = Modifier
-                    .background(ObsidianCardHighlight, RoundedCornerShape(4.dp))
+                    .background(LightCardHighlight, RoundedCornerShape(4.dp))
                     .padding(horizontal = 5.dp, vertical = 2.dp)
             )
 
@@ -66,7 +66,7 @@ fun AdBannerView(
             text = "Remove Ads",
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
-            color = CyberCyan,
+            color = PrimaryBlue,
             modifier = Modifier
                 .clickable { onRemoveAdsClicked() }
                 .padding(4.dp)
