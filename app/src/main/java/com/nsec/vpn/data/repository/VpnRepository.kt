@@ -37,15 +37,38 @@ class VpnRepository(
     private val _excludedPackages = MutableStateFlow<Set<String>>(emptySet())
     val excludedPackages: StateFlow<Set<String>> = _excludedPackages.asStateFlow()
 
+    private val _autoConnectEnabled = MutableStateFlow(false)
+    val autoConnectEnabled: StateFlow<Boolean> = _autoConnectEnabled.asStateFlow()
+
     private val _userTier = MutableStateFlow("FREE")
     val userTier: StateFlow<String> = _userTier.asStateFlow()
 
     init {
         _servers.value = getFallbackServers()
-        _selectedServer.value = _servers.value.firstOrNull { it.isRecommended } ?: _servers.value.firstOrNull()
+
+        val savedServerId = keyStoreManager.getSelectedServerId()
+        _selectedServer.value = _servers.value.firstOrNull { it.id == savedServerId }
+            ?: _servers.value.firstOrNull { it.isRecommended }
+            ?: _servers.value.firstOrNull()
+
+        val savedDnsName = keyStoreManager.getSelectedDns()
+        if (savedDnsName != null) {
+            _selectedDns.value = DnsProvider.entries.find { it.name == savedDnsName } ?: DnsProvider.CLOUDFLARE
+        }
+
+        _killSwitchEnabled.value = keyStoreManager.isKillSwitchEnabled()
+        _splitTunnelingEnabled.value = keyStoreManager.isSplitTunnelingEnabled()
+        _excludedPackages.value = keyStoreManager.getExcludedPackages()
+        _autoConnectEnabled.value = keyStoreManager.isAutoConnectEnabled()
+
+        val rewardedExpiry = keyStoreManager.getRewardedPassExpiry()
+        if (rewardedExpiry > System.currentTimeMillis()) {
+            _userTier.value = "REWARDED_PASS"
+        }
     }
 
     suspend fun refreshServers() = withContext(Dispatchers.IO) {
+        checkRewardedPassExpiry()
         try {
             val token = keyStoreManager.getAccessToken() ?: authenticateDevice()
             val response = api.getServers("Bearer $token")
@@ -135,6 +158,7 @@ class VpnRepository(
 
     fun selectServer(server: Server) {
         _selectedServer.value = server
+        keyStoreManager.saveSelectedServerId(server.id)
     }
 
     fun selectBestServer() {
@@ -142,7 +166,7 @@ class VpnRepository(
             .filter { !it.isPremiumOnly || _userTier.value != "FREE" }
             .minByOrNull { (it.pingMs ?: 999L) + (it.currentLoad * 2) }
         if (best != null) {
-            _selectedServer.value = best
+            selectServer(best)
         }
     }
 
@@ -155,14 +179,22 @@ class VpnRepository(
 
     fun setDns(dns: DnsProvider) {
         _selectedDns.value = dns
+        keyStoreManager.saveSelectedDns(dns.name)
     }
 
     fun setKillSwitch(enabled: Boolean) {
         _killSwitchEnabled.value = enabled
+        keyStoreManager.saveKillSwitchEnabled(enabled)
     }
 
     fun setSplitTunneling(enabled: Boolean) {
         _splitTunnelingEnabled.value = enabled
+        keyStoreManager.saveSplitTunnelingEnabled(enabled)
+    }
+
+    fun setAutoConnect(enabled: Boolean) {
+        _autoConnectEnabled.value = enabled
+        keyStoreManager.saveAutoConnectEnabled(enabled)
     }
 
     fun togglePackageExclusion(packageName: String) {
@@ -173,10 +205,22 @@ class VpnRepository(
             current.add(packageName)
         }
         _excludedPackages.value = current
+        keyStoreManager.saveExcludedPackages(current)
     }
 
-    fun grantRewardedPass() {
+    fun grantRewardedPass(durationMinutes: Long = 30) {
+        val expiryMs = System.currentTimeMillis() + (durationMinutes * 60 * 1000L)
+        keyStoreManager.saveRewardedPassExpiry(expiryMs)
         _userTier.value = "REWARDED_PASS"
+    }
+
+    fun checkRewardedPassExpiry() {
+        if (_userTier.value == "REWARDED_PASS") {
+            val expiryMs = keyStoreManager.getRewardedPassExpiry()
+            if (expiryMs <= System.currentTimeMillis()) {
+                _userTier.value = "FREE"
+            }
+        }
     }
 
     private fun getFallbackServers(): List<Server> = listOf(

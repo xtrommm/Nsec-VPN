@@ -21,7 +21,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -60,6 +59,7 @@ class MainActivity : ComponentActivity() {
                 val selectedDns by vpnRepo.selectedDns.collectAsStateWithLifecycle()
                 val killSwitchEnabled by vpnRepo.killSwitchEnabled.collectAsStateWithLifecycle()
                 val splitTunnelingEnabled by vpnRepo.splitTunnelingEnabled.collectAsStateWithLifecycle()
+                val autoConnectEnabled by vpnRepo.autoConnectEnabled.collectAsStateWithLifecycle()
                 val excludedPackages by vpnRepo.excludedPackages.collectAsStateWithLifecycle()
 
                 var currentTab by remember { mutableStateOf<Screen>(Screen.Home) }
@@ -106,6 +106,13 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                         else -> {}
+                    }
+                }
+
+                LaunchedEffect(Unit) {
+                    vpnRepo.checkRewardedPassExpiry()
+                    if (autoConnectEnabled && vpnState is VpnState.Disconnected) {
+                        handleToggleVpn()
                     }
                 }
 
@@ -219,6 +226,8 @@ class MainActivity : ComponentActivity() {
                                             onSelectDns = { vpnRepo.setDns(it) },
                                             splitTunnelingEnabled = splitTunnelingEnabled,
                                             onToggleSplitTunneling = { vpnRepo.setSplitTunneling(it) },
+                                            autoConnectEnabled = autoConnectEnabled,
+                                            onToggleAutoConnect = { vpnRepo.setAutoConnect(it) },
                                             onOpenSplitTunnelApps = { activeSubScreen = "split_tunnel" },
                                             onOpenTroubleshooting = { activeSubScreen = "troubleshoot" },
                                             onOpenPrivacyPolicy = { activeSubScreen = "legal" },
