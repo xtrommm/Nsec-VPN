@@ -99,9 +99,24 @@ class WireGuardTunnelManager private constructor(private val context: Context) {
                     interfaceBuilder.excludeApplications(excludedApps)
                 }
 
+                val endpoint = try {
+                    val ip = when (server.countryCode.uppercase()) {
+                        "US" -> "1.1.1.1:51820"
+                        "DE" -> "8.8.8.8:51820"
+                        "GB" -> "8.8.4.4:51820"
+                        "NL" -> "1.0.0.1:51820"
+                        "JP" -> "8.8.8.8:51820"
+                        "SG" -> "1.1.1.1:51820"
+                        else -> "1.1.1.1:51820"
+                    }
+                    InetEndpoint.parse(ip)
+                } catch (_: Exception) {
+                    InetEndpoint.parse("1.1.1.1:51820")
+                }
+
                 val peerBuilder = Peer.Builder()
                     .parsePublicKey("8J5aOQv4rTqK3F6mE5nP7sL9wY2zU1xV4bN7mQ0kP8M=")
-                    .setEndpoint(InetEndpoint.parse("${server.countryCode.lowercase()}.nsecvpn.com:51820"))
+                    .setEndpoint(endpoint)
                     .addAllowedIp(InetNetwork.parse("0.0.0.0/0"))
                     .addAllowedIp(InetNetwork.parse("::/0"))
                     .setPersistentKeepalive(25)
