@@ -19,11 +19,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.nsec.vpn.R
 import com.nsec.vpn.data.model.Server
 import com.nsec.vpn.data.model.VpnState
 import com.nsec.vpn.data.model.VpnStats
@@ -87,36 +85,19 @@ fun HomeScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(LightSurface)
-                        .border(1.dp, LightCardBorder, RoundedCornerShape(10.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    androidx.compose.foundation.Image(
-                        painter = painterResource(id = R.drawable.nsec_launcher_foreground),
-                        contentDescription = "Nsec VPN Logo",
-                        modifier = Modifier.size(34.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.width(10.dp))
-                Column {
-                    Text(
-                        text = "Nsec VPN",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                    Text(
-                        text = "WireGuard • nsecvpn.com",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = PrimaryBlue
-                    )
-                }
+            Column {
+                Text(
+                    text = "Nsec VPN",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+                Text(
+                    text = "WireGuard • nsecvpn.com",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = PrimaryBlue
+                )
             }
 
             Surface(
