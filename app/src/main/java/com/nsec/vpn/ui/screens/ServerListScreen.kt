@@ -16,10 +16,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nsec.vpn.data.model.Server
+import com.nsec.vpn.ui.components.AdBannerView
 import com.nsec.vpn.ui.components.ServerCard
 import com.nsec.vpn.ui.theme.*
 
@@ -36,23 +39,24 @@ fun ServerListScreen(
     modifier: Modifier = Modifier
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var selectedTab by remember { mutableStateOf(0) }
 
-    val tabs = listOf("ALL", "RECOMMENDED", "FAVORITES")
+    val tabs = listOf("All", "Free", "VIP", "Favorites")
 
     val filteredServers = remember(servers, searchQuery, selectedTab) {
-        servers.filter { server ->
-            val matchesSearch = server.name.contains(searchQuery, ignoreCase = true) ||
-                    server.countryName.contains(searchQuery, ignoreCase = true) ||
-                    server.city.contains(searchQuery, ignoreCase = true)
+        servers.filter { s ->
+            val matchesQuery = s.name.contains(searchQuery, ignoreCase = true) ||
+                    s.countryName.contains(searchQuery, ignoreCase = true) ||
+                    s.city.contains(searchQuery, ignoreCase = true)
 
             val matchesTab = when (selectedTab) {
-                1 -> server.isRecommended
-                2 -> server.isFavorite
+                1 -> !s.isPremiumOnly
+                2 -> s.isPremiumOnly
+                3 -> s.isFavorite
                 else -> true
             }
 
-            matchesSearch && matchesTab
+            matchesQuery && matchesTab
         }
     }
 
@@ -67,20 +71,12 @@ fun ServerListScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
-                Text(
-                    text = "Server Network",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
-                Text(
-                    text = "${servers.size} high-speed WireGuard clusters",
-                    fontSize = 12.sp,
-                    color = TextSecondary
-                )
-            }
-
+            Text(
+                text = "VPN Locations",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary
+            )
             IconButton(onClick = onRefreshPings) {
                 Icon(
                     imageVector = Icons.Default.Refresh,
@@ -90,14 +86,15 @@ fun ServerListScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            placeholder = { Text("Search country, city, or protocol...", color = TextTertiary, fontSize = 13.sp) },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = TextTertiary) },
-            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("Search country or city...", color = TextTertiary, fontSize = 14.sp) },
+            leadingIcon = {
+                Icon(Icons.Default.Search, contentDescription = null, tint = TextTertiary)
+            },
             singleLine = true,
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
@@ -107,12 +104,14 @@ fun ServerListScreen(
                 unfocusedBorderColor = LightCardBorder,
                 focusedTextColor = TextPrimary,
                 unfocusedTextColor = TextPrimary
-            )
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("server_search_input")
         )
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        // Fastest Location Auto-Picker Card
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -120,7 +119,8 @@ fun ServerListScreen(
                 .background(PrimaryBlueContainer)
                 .border(1.dp, PrimaryBlue.copy(alpha = 0.35f), RoundedCornerShape(14.dp))
                 .clickable { onAutoSelectBest() }
-                .padding(14.dp),
+                .padding(14.dp)
+                .testTag("auto_select_best_server_card"),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
@@ -140,27 +140,26 @@ fun ServerListScreen(
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Fastest Server (Smart Connect)",
+                    text = "Auto-Select Optimal Server",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextPrimary
                 )
                 Text(
-                    text = "Automatically routes to lowest latency gateway",
+                    text = "Connects to lowest latency & lowest load gateway",
                     fontSize = 11.sp,
                     color = TextSecondary
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
-        // Filter Tabs
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            tabs.forEachIndexed { index, title ->
+            tabs.forEachIndexed { index, tabTitle ->
                 val isSelected = selectedTab == index
                 Box(
                     modifier = Modifier
@@ -177,10 +176,10 @@ fun ServerListScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = title,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isSelected) androidx.compose.ui.graphics.Color.White else TextSecondary
+                        text = tabTitle,
+                        fontSize = 12.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        color = if (isSelected) Color.White else TextSecondary
                     )
                 }
             }
@@ -190,7 +189,7 @@ fun ServerListScreen(
 
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.weight(1f)
         ) {
             items(filteredServers, key = { it.id }) { server ->
                 ServerCard(
@@ -206,6 +205,11 @@ fun ServerListScreen(
                     onToggleFavorite = { onToggleFavorite(server.id) }
                 )
             }
+        }
+
+        if (userTier == "FREE") {
+            Spacer(modifier = Modifier.height(10.dp))
+            AdBannerView(onRemoveAdsClicked = onUpgradeRequired)
         }
     }
 }

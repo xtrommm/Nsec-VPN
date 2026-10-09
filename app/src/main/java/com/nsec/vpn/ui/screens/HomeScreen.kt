@@ -10,13 +10,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -24,7 +26,6 @@ import com.nsec.vpn.R
 import com.nsec.vpn.data.model.Server
 import com.nsec.vpn.data.model.VpnState
 import com.nsec.vpn.data.model.VpnStats
-import com.nsec.vpn.ui.components.AdBannerView
 import com.nsec.vpn.ui.components.ConnectButton
 import com.nsec.vpn.ui.components.LiveStatsBar
 import com.nsec.vpn.ui.theme.*
@@ -35,15 +36,15 @@ fun HomeScreen(
     vpnStats: VpnStats,
     selectedServer: Server?,
     userTier: String,
+    announcementTitle: String? = null,
+    announcementBody: String? = null,
     onToggleVpn: () -> Unit,
     onNavigateToServers: () -> Unit,
     onUpgradeClicked: () -> Unit,
-    announcementTitle: String? = null,
-    announcementBody: String? = null,
     modifier: Modifier = Modifier
 ) {
-    var announcementDismissed by remember { mutableStateOf(false) }
     val isConnected = vpnState is VpnState.Connected
+    var announcementDismissed by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -71,7 +72,8 @@ fun HomeScreen(
                     }
                 }
                 Text(
-                    "✕",
+                    text = "DISMISS",
+                    fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextSecondary,
                     modifier = Modifier.clickable { announcementDismissed = true }.padding(4.dp)
@@ -79,7 +81,6 @@ fun HomeScreen(
             }
         }
 
-        // Top App Header
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -117,7 +118,6 @@ fun HomeScreen(
                 }
             }
 
-            // User Tier Badge
             Surface(
                 shape = RoundedCornerShape(20.dp),
                 color = if (userTier == "FREE") LightCardHighlight else AmberContainer,
@@ -128,16 +128,19 @@ fun HomeScreen(
                 modifier = Modifier.clickable { onUpgradeClicked() }
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
-                    if (userTier != "FREE") {
-                        Icon(Icons.Default.Star, contentDescription = null, tint = AmberWarning, modifier = Modifier.size(13.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                    }
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = null,
+                        tint = if (userTier == "FREE") TextSecondary else AmberWarning,
+                        modifier = Modifier.size(12.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = if (userTier == "FREE") "FREE" else "VIP ACTIVE",
-                        fontSize = 10.sp,
+                        text = if (userTier == "FREE") "FREE TIER" else "VIP ACTIVE",
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (userTier == "FREE") TextSecondary else AmberWarning
                     )
@@ -147,7 +150,6 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Virtual IP Banner Card
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -173,36 +175,32 @@ fun HomeScreen(
                     letterSpacing = 0.8.sp
                 )
                 Text(
-                    text = if (isConnected) "10.8.0.2 (WireGuard Gateway)" else "192.168.1.1 (Standard ISP)",
+                    text = if (isConnected) "10.8.0.2 • ${selectedServer?.city ?: "New York"}, ${selectedServer?.countryCode ?: "US"}"
+                    else "198.51.100.22 • Unencrypted Connection",
                     fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Medium,
                     color = TextPrimary
                 )
             }
-            Text(
-                text = if (isConnected) "ENCRYPTED" else "UNSECURED",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (isConnected) EmeraldGreen else CrimsonError
-            )
+            if (!isConnected) {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = "Unencrypted",
+                    tint = AmberWarning,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
         }
 
-        Spacer(modifier = Modifier.height(30.dp))
+        Spacer(modifier = Modifier.height(36.dp))
 
-        // Main Connect Power Button
         ConnectButton(
             vpnState = vpnState,
             onToggle = onToggleVpn
         )
 
-        Spacer(modifier = Modifier.height(28.dp))
+        Spacer(modifier = Modifier.height(36.dp))
 
-        // Live Speed & Duration Stats Bar
-        LiveStatsBar(stats = vpnStats)
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Selected Server Card Picker
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -210,11 +208,11 @@ fun HomeScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "SERVER LOCATION",
+                    text = "SELECTED SERVER",
                     fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     color = TextSecondary,
-                    letterSpacing = 0.8.sp
+                    letterSpacing = 1.sp
                 )
                 Text(
                     text = "CHANGE",
@@ -229,55 +227,50 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Surface(
-                shape = RoundedCornerShape(14.dp),
-                color = LightSurface,
-                border = BorderStroke(1.dp, LightCardBorder),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onNavigateToServers() }
-            ) {
+            if (selectedServer != null) {
                 Row(
-                    modifier = Modifier.padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(LightSurface)
+                        .border(1.dp, LightCardBorder, RoundedCornerShape(14.dp))
+                        .clickable { onNavigateToServers() }
+                        .padding(14.dp)
+                        .testTag("selected_server_card"),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = selectedServer.flagEmoji,
+                        fontSize = 24.sp,
+                        modifier = Modifier.padding(end = 12.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = selectedServer?.flagEmoji ?: "🌐",
-                            fontSize = 24.sp,
-                            modifier = Modifier.padding(end = 12.dp)
+                            text = "${selectedServer.city}, ${selectedServer.countryName}",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
                         )
-                        Column {
-                            Text(
-                                text = selectedServer?.name ?: "Fastest Available Location",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary
-                            )
-                            Text(
-                                text = "${selectedServer?.city ?: "Auto"}, ${selectedServer?.countryName ?: "Global"} • ${selectedServer?.pingMs ?: 35}ms",
-                                fontSize = 11.sp,
-                                color = TextSecondary
-                            )
-                        }
+                        Text(
+                            text = "Ping: ${selectedServer.pingMs ?: 32}ms • Load: ${selectedServer.currentLoad}%",
+                            fontSize = 12.sp,
+                            color = TextSecondary
+                        )
                     }
-
                     Icon(
-                        imageVector = Icons.Default.ChevronRight,
-                        contentDescription = "Select Server",
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                        contentDescription = "Change Server",
                         tint = TextTertiary,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(14.dp)
                     )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        // Monetization Banner for Free Tier Users
-        if (userTier == "FREE") {
-            AdBannerView(onRemoveAdsClicked = onUpgradeClicked)
-        }
+        LiveStatsBar(stats = vpnStats)
+
+        Spacer(modifier = Modifier.height(20.dp))
     }
 }

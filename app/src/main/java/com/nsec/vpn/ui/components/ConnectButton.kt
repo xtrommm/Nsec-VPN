@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PowerSettingsNew
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,15 +38,13 @@ fun ConnectButton(
     onToggle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isConnecting = vpnState is VpnState.Connecting
-    val isConnected = vpnState is VpnState.Connected
+    val infiniteTransition = rememberInfiniteTransition(label = "pulseTransition")
 
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1f,
-        targetValue = if (isConnecting || isConnected) 1.14f else 1.03f,
+        targetValue = if (vpnState is VpnState.Connected || vpnState is VpnState.Connecting) 1.15f else 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(if (isConnecting) 700 else 1800, easing = FastOutSlowInEasing),
+            animation = tween(1400, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "pulseScale"
@@ -61,6 +62,14 @@ fun ConnectButton(
         label = "buttonColor"
     )
 
+    val labelText = when (vpnState) {
+        is VpnState.Connected -> "PROTECTED"
+        is VpnState.Connecting -> "CONNECTING..."
+        is VpnState.Disconnecting -> "DISCONNECTING..."
+        is VpnState.Error -> "TAP TO RETRY"
+        is VpnState.Disconnected -> "TAP TO CONNECT"
+    }
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
@@ -69,25 +78,30 @@ fun ConnectButton(
             contentAlignment = Alignment.Center,
             modifier = Modifier.size(220.dp)
         ) {
-            // Outermost Ripple Ring
-            Box(
-                modifier = Modifier
-                    .size(210.dp)
-                    .scale(pulseScale)
-                    .clip(CircleShape)
-                    .background(buttonColor.copy(alpha = if (isConnected) 0.08f else 0.04f))
-            )
+            if (vpnState is VpnState.Connected || vpnState is VpnState.Connecting) {
+                Box(
+                    modifier = Modifier
+                        .size(200.dp)
+                        .scale(pulseScale)
+                        .clip(CircleShape)
+                        .background(buttonColor.copy(alpha = 0.15f))
+                )
+            }
 
-            // Middle Ripple Ring
             Box(
                 modifier = Modifier
                     .size(175.dp)
-                    .scale(pulseScale * 0.96f)
                     .clip(CircleShape)
-                    .background(buttonColor.copy(alpha = if (isConnected) 0.16f else 0.08f))
+                    .background(
+                        Brush.radialGradient(
+                            listOf(
+                                buttonColor.copy(alpha = 0.25f),
+                                Color.Transparent
+                            )
+                        )
+                    )
             )
 
-            // Main Core Button
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
@@ -113,31 +127,37 @@ fun ConnectButton(
                         indication = null,
                         onClick = onToggle
                     )
-                    .testTag("vpn_toggle_button")
+                    .testTag("vpn_connect_button")
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        imageVector = Icons.Default.PowerSettingsNew,
-                        contentDescription = "VPN Power Switch",
-                        tint = buttonColor,
-                        modifier = Modifier.size(54.dp)
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = when (vpnState) {
-                            is VpnState.Connected -> "PROTECTED"
-                            is VpnState.Connecting -> "CONNECTING"
-                            is VpnState.Disconnecting -> "STOPPING"
-                            is VpnState.Error -> "RETRY"
-                            is VpnState.Disconnected -> "TAP TO CONNECT"
-                        },
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.ExtraBold,
+                if (vpnState is VpnState.Connecting) {
+                    CircularProgressIndicator(
                         color = buttonColor,
-                        letterSpacing = 0.8.sp
+                        strokeWidth = 3.dp,
+                        modifier = Modifier.size(72.dp)
                     )
                 }
+
+                Icon(
+                    imageVector = when (vpnState) {
+                        is VpnState.Connected -> Icons.Default.Security
+                        is VpnState.Error -> Icons.Default.Refresh
+                        else -> Icons.Default.PowerSettingsNew
+                    },
+                    contentDescription = labelText,
+                    tint = buttonColor,
+                    modifier = Modifier.size(54.dp)
+                )
             }
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = labelText,
+            color = buttonColor,
+            fontWeight = FontWeight.Bold,
+            fontSize = 15.sp,
+            letterSpacing = 1.5.sp
+        )
     }
 }

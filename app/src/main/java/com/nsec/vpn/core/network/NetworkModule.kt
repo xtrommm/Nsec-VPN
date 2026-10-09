@@ -1,6 +1,7 @@
 package com.nsec.vpn.core.network
 
 import android.content.Context
+import com.nsec.vpn.BuildConfig
 import com.nsec.vpn.data.api.NsecVpnApi
 import com.nsec.vpn.data.local.KeyStoreManager
 import com.nsec.vpn.data.repository.VpnRepository
@@ -19,7 +20,11 @@ object NetworkModule {
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(10, TimeUnit.SECONDS)
             .addInterceptor(HttpLoggingInterceptor().apply {
-                level = HttpLoggingInterceptor.Level.BASIC
+                level = if (BuildConfig.DEBUG) {
+                    HttpLoggingInterceptor.Level.BASIC
+                } else {
+                    HttpLoggingInterceptor.Level.NONE
+                }
             })
             .build()
     }
@@ -34,10 +39,12 @@ object NetworkModule {
     }
 }
 
-class ServiceLocator(val context: Context) {
-    val keyStoreManager by lazy { KeyStoreManager(context) }
-    val vpnRepository by lazy { VpnRepository(context, NetworkModule.api, keyStoreManager) }
-    val tunnelManager by lazy { WireGuardTunnelManager.getInstance(context) }
+class ServiceLocator(context: Context) {
+    val appContext: Context = context.applicationContext
+
+    val keyStoreManager by lazy { KeyStoreManager(appContext) }
+    val vpnRepository by lazy { VpnRepository(appContext, NetworkModule.api, keyStoreManager) }
+    val tunnelManager by lazy { WireGuardTunnelManager.getInstance(appContext) }
 
     companion object {
         @Volatile

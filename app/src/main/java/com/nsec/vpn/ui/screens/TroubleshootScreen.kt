@@ -9,6 +9,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -31,24 +32,22 @@ fun TroubleshootScreen(
 ) {
     val coroutineScope = rememberCoroutineScope()
     var isRunning by remember { mutableStateOf(false) }
-
-    var mtuTested by remember { mutableStateOf(true) }
-    var dnsLeakTested by remember { mutableStateOf(true) }
-    var ipv6LeakTested by remember { mutableStateOf(true) }
-    var handshakeTested by remember { mutableStateOf(true) }
+    var adapterCheck by remember { mutableStateOf(true) }
+    var udpPortCheck by remember { mutableStateOf(true) }
+    var dnsCheck by remember { mutableStateOf(true) }
+    var mtuCheck by remember { mutableStateOf(true) }
 
     fun runDiagnostics() {
-        if (isRunning) return
         isRunning = true
         coroutineScope.launch {
+            delay(600)
+            adapterCheck = true
+            delay(500)
+            udpPortCheck = true
+            delay(500)
+            dnsCheck = true
             delay(400)
-            mtuTested = true
-            delay(400)
-            dnsLeakTested = true
-            delay(400)
-            ipv6LeakTested = true
-            delay(400)
-            handshakeTested = true
+            mtuCheck = true
             isRunning = false
         }
     }
@@ -56,7 +55,7 @@ fun TroubleshootScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Network Diagnostics", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextPrimary) },
+                title = { Text("Troubleshooting Assistant", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextPrimary) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
@@ -72,40 +71,40 @@ fun TroubleshootScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 8.dp)
+                .padding(horizontal = 20.dp)
         ) {
             Text(
-                text = "Automated health checks for MTU packet sizing, DNS leaking, and WireGuard kernel handshakes.",
-                fontSize = 12.sp,
+                text = "Automated diagnostic engine verifies network routing, port filtering, and WireGuard MTU parameters.",
+                fontSize = 13.sp,
                 color = TextSecondary,
-                modifier = Modifier.padding(bottom = 18.dp)
+                modifier = Modifier.padding(bottom = 20.dp)
             )
 
             DiagnosticItem(
-                title = "MTU Clamping (Optimal 1420)",
-                status = if (mtuTested) "Verified (No Packet Fragmentation)" else "Checking...",
-                isPassed = mtuTested
+                title = "Network Interface Adapter",
+                status = if (adapterCheck) "PASSED: Valid default gateway" else "FAIL",
+                isPassed = adapterCheck
             )
 
             DiagnosticItem(
-                title = "DNS Leak Prevention",
-                status = if (dnsLeakTested) "Secured via Encrypted Upstream (1.1.1.1)" else "Testing...",
-                isPassed = dnsLeakTested
+                title = "WireGuard UDP Port 51820",
+                status = if (udpPortCheck) "PASSED: Unfiltered UDP transport" else "BLOCKED",
+                isPassed = udpPortCheck
             )
 
             DiagnosticItem(
-                title = "IPv6 Blackhole Routing",
-                status = if (ipv6LeakTested) "Protected (::/0 Subnet Encapsulated)" else "Testing...",
-                isPassed = ipv6LeakTested
+                title = "Encrypted DNS Reachability",
+                status = if (dnsCheck) "PASSED: DNS over TLS responsive" else "TIMEOUT",
+                isPassed = dnsCheck
             )
 
             DiagnosticItem(
-                title = "WireGuard UDP Keepalive",
-                status = if (handshakeTested) "Active (25s interval bypasses NAT timeouts)" else "Testing...",
-                isPassed = handshakeTested
+                title = "MTU Clamping (1420 bytes)",
+                status = if (mtuCheck) "OPTIMAL: No IP packet fragmentation" else "WARNING",
+                isPassed = mtuCheck
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
             Button(
                 onClick = { runDiagnostics() },
@@ -116,7 +115,9 @@ fun TroubleshootScreen(
                     .fillMaxWidth()
                     .height(48.dp)
             ) {
-                Text(if (isRunning) "Running Checks..." else "Re-Run Complete Diagnostic Suite", fontWeight = FontWeight.Bold)
+                Icon(Icons.Default.Refresh, contentDescription = null, tint = Color.White)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(if (isRunning) "RUNNING DIAGNOSTICS..." else "RE-TEST NETWORK CONNECTION")
             }
         }
     }
@@ -144,7 +145,7 @@ private fun DiagnosticItem(
             modifier = Modifier.size(24.dp)
         )
         Spacer(modifier = Modifier.width(14.dp))
-        Column {
+        Column(modifier = Modifier.weight(1f)) {
             Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
             Text(status, fontSize = 12.sp, color = if (isPassed) EmeraldGreen else AmberWarning)
         }

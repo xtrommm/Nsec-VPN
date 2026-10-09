@@ -1,24 +1,28 @@
 package com.nsec.vpn.tiles
 
+import android.content.Intent
+import android.os.Build
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
-import com.nsec.vpn.core.network.ServiceLocator
+import androidx.annotation.RequiresApi
+import com.nsec.vpn.MainActivity
 import com.nsec.vpn.data.model.VpnState
+import com.nsec.vpn.vpn.WireGuardTunnelManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
+@RequiresApi(Build.VERSION_CODES.N)
 class VpnTileService : TileService() {
     private val scope = CoroutineScope(Dispatchers.Main)
-    private var stateJob: Job? = null
+    private var listenJob: Job? = null
 
     override fun onStartListening() {
         super.onStartListening()
-        val locator = ServiceLocator.getInstance(this)
-        stateJob?.cancel()
-        stateJob = scope.launch {
-            locator.tunnelManager.vpnState.collect { state ->
+        listenJob?.cancel()
+        listenJob = scope.launch {
+            WireGuardTunnelManager.getInstance(this@VpnTileService).vpnState.collect { state ->
                 updateTileState(state)
             }
         }
@@ -26,22 +30,24 @@ class VpnTileService : TileService() {
 
     override fun onStopListening() {
         super.onStopListening()
-        stateJob?.cancel()
+        listenJob?.cancel()
+        listenJob = null
     }
 
     override fun onClick() {
         super.onClick()
-        val locator = ServiceLocator.getInstance(this)
-        val currentState = locator.tunnelManager.vpnState.value
-        val repo = locator.vpnRepository
-
-        if (currentState is VpnState.Connected || currentState is VpnState.Connecting) {
-            locator.tunnelManager.disconnect()
-        } else {
-            val server = repo.selectedServer.value ?: repo.servers.value.firstOrNull()
-            if (server != null) {
-                locator.tunnelManager.startConnect(server = server, onNeedsPermission = {})
+        val tunnelManager = WireGuardTunnelManager.getInstance(this)
+        when (tunnelManager.vpnState.value) {
+            is VpnState.Connected -> {
+                tunnelManager.disconnect()
             }
+            is VpnState.Disconnected -> {
+                val intent = Intent(this, MainActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                }
+                startActivityAndCollapse(intent)
+            }
+            else -> {}
         }
     }
 

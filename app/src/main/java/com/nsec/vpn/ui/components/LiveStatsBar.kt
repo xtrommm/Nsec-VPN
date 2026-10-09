@@ -87,17 +87,17 @@ private fun StatItem(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 imageVector = icon,
-                contentDescription = null,
+                contentDescription = label,
                 tint = iconTint,
                 modifier = Modifier.size(14.dp)
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = label,
-                fontSize = 10.sp,
+                fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = TextSecondary,
-                letterSpacing = 0.5.sp
+                letterSpacing = 0.8.sp
             )
         }
         Spacer(modifier = Modifier.height(4.dp))

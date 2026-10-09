@@ -4,10 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Icon
@@ -44,64 +42,61 @@ fun ServerCard(
             .clickable(onClick = onSelect)
             .padding(14.dp)
             .testTag("server_item_${server.id}"),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.weight(1f)
-        ) {
-            Text(
-                text = server.flagEmoji,
-                fontSize = 24.sp,
-                modifier = Modifier.padding(end = 12.dp)
-            )
+        Text(
+            text = server.flagEmoji,
+            fontSize = 28.sp,
+            modifier = Modifier.padding(end = 12.dp)
+        )
 
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = server.name,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    if (server.isRecommended) {
-                        Text(
-                            text = "FASTEST",
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = EmeraldGreen,
-                            modifier = Modifier
-                                .background(EmeraldContainer, RoundedCornerShape(4.dp))
-                                .padding(horizontal = 5.dp, vertical = 2.dp)
-                        )
-                    }
-                    if (server.isPremiumOnly) {
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "VIP",
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = AmberWarning,
-                            modifier = Modifier
-                                .background(AmberContainer, RoundedCornerShape(4.dp))
-                                .padding(horizontal = 5.dp, vertical = 2.dp)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "${server.city}, ${server.countryName} • Load: ${server.currentLoad}%",
-                    fontSize = 11.sp,
-                    color = TextSecondary
+                    text = server.city,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
                 )
+                if (server.isRecommended) {
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "FASTEST",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = EmeraldGreen,
+                        modifier = Modifier
+                            .background(EmeraldContainer, RoundedCornerShape(4.dp))
+                            .padding(horizontal = 5.dp, vertical = 2.dp)
+                    )
+                }
+                if (server.isPremiumOnly) {
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "VIP",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AmberWarning,
+                        modifier = Modifier
+                            .background(AmberContainer, RoundedCornerShape(4.dp))
+                            .padding(horizontal = 5.dp, vertical = 2.dp)
+                    )
+                }
             }
+
+            Spacer(modifier = Modifier.height(2.dp))
+
+            Text(
+                text = server.countryName,
+                fontSize = 12.sp,
+                color = TextSecondary
+            )
         }
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(
+            horizontalAlignment = Alignment.End,
+            modifier = Modifier.padding(end = 8.dp)
+        ) {
             val ping = server.pingMs ?: 45L
             val pingColor = when {
                 ping < 50 -> EmeraldGreen
@@ -109,38 +104,31 @@ fun ServerCard(
                 else -> CrimsonError
             }
 
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .clip(CircleShape)
-                    .background(pingColor)
-            )
-            Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = "${ping}ms",
                 fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 color = pingColor
             )
 
-            if (onToggleFavorite != null) {
-                Spacer(modifier = Modifier.width(8.dp))
-                IconButton(onClick = onToggleFavorite, modifier = Modifier.size(28.dp)) {
-                    Icon(
-                        imageVector = if (server.isFavorite) Icons.Default.Star else Icons.Outlined.StarBorder,
-                        contentDescription = "Favorite",
-                        tint = if (server.isFavorite) AmberWarning else TextTertiary,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            }
+            Spacer(modifier = Modifier.height(2.dp))
 
-            if (isSelected) {
-                Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "${server.currentLoad}% load",
+                fontSize = 11.sp,
+                color = TextTertiary
+            )
+        }
+
+        if (onToggleFavorite != null) {
+            IconButton(
+                onClick = onToggleFavorite,
+                modifier = Modifier.size(32.dp)
+            ) {
                 Icon(
-                    imageVector = Icons.Default.CheckCircle,
-                    contentDescription = "Selected",
-                    tint = PrimaryBlue,
+                    imageVector = if (server.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                    contentDescription = "Favorite",
+                    tint = if (server.isFavorite) AmberWarning else TextTertiary,
                     modifier = Modifier.size(20.dp)
                 )
             }

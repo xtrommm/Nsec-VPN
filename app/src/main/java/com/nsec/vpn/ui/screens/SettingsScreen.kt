@@ -1,6 +1,5 @@
 package com.nsec.vpn.ui.screens
 
-import android.content.Context
 import android.content.Intent
 import android.provider.Settings
 import androidx.compose.foundation.background
@@ -11,6 +10,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.AltRoute
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -34,6 +35,8 @@ fun SettingsScreen(
     onSelectDns: (DnsProvider) -> Unit,
     splitTunnelingEnabled: Boolean,
     onToggleSplitTunneling: (Boolean) -> Unit,
+    autoConnectEnabled: Boolean,
+    onToggleAutoConnect: (Boolean) -> Unit,
     onOpenSplitTunnelApps: () -> Unit,
     onOpenTroubleshooting: () -> Unit,
     onOpenPrivacyPolicy: () -> Unit,
@@ -43,7 +46,6 @@ fun SettingsScreen(
     val context = LocalContext.current
     var showDnsDialog by remember { mutableStateOf(false) }
     var showKillSwitchDialog by remember { mutableStateOf(false) }
-    var autoConnectEnabled by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -53,50 +55,43 @@ fun SettingsScreen(
             .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
         Text(
-            text = "Settings & Security",
+            text = "Settings",
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             color = TextPrimary
         )
-        Text(
-            text = "Cryptographic protocols & tunnel configuration",
-            fontSize = 12.sp,
-            color = TextSecondary,
-            modifier = Modifier.padding(top = 2.dp, bottom = 18.dp)
-        )
 
-        SectionHeader("TUNNEL PROTOCOL")
+        Spacer(modifier = Modifier.height(18.dp))
 
-        SettingsClickableItem(
-            icon = Icons.Default.VpnKey,
-            title = "Protocol Engine",
-            subtitle = "WireGuard® Core (State-of-the-Art ChaCha20-Poly1305)",
-            onClick = {}
+        SectionHeader("SECURITY & PROTOCOL")
+
+        SettingsToggleItem(
+            icon = Icons.Default.Shield,
+            title = "Kill Switch",
+            subtitle = "Block all internet traffic if VPN drops unexpectedly",
+            isChecked = killSwitchEnabled,
+            onCheckedChange = { checked ->
+                if (checked) {
+                    showKillSwitchDialog = true
+                } else {
+                    onToggleKillSwitch(false)
+                }
+            }
         )
 
         SettingsClickableItem(
             icon = Icons.Default.Dns,
-            title = "Encrypted DNS Provider",
+            title = "Encrypted DNS",
             subtitle = selectedDns.displayName,
             onClick = { showDnsDialog = true }
         )
 
         SettingsToggleItem(
-            icon = Icons.Default.Security,
-            title = "Kill Switch Protection",
-            subtitle = "Block unencrypted network traffic if the tunnel drops",
-            isChecked = killSwitchEnabled,
-            onCheckedChange = {
-                if (it) showKillSwitchDialog = true else onToggleKillSwitch(false)
-            }
-        )
-
-        SettingsToggleItem(
-            icon = Icons.Default.CallSplit,
-            title = "App Split Tunneling",
-            subtitle = "Exclude selected banking or streaming apps from VPN",
+            icon = Icons.AutoMirrored.Filled.AltRoute,
+            title = "Split Tunneling",
+            subtitle = "Allow select apps to bypass the VPN tunnel",
             isChecked = splitTunnelingEnabled,
-            onCheckedChange = onToggleSplitTunneling,
+            onCheckedChange = { onToggleSplitTunneling(it) },
             trailingAction = if (splitTunnelingEnabled) {
                 {
                     Text(
@@ -119,7 +114,7 @@ fun SettingsScreen(
             title = "Auto-Connect on Launch",
             subtitle = "Immediately secure your network when opening Nsec VPN",
             isChecked = autoConnectEnabled,
-            onCheckedChange = { autoConnectEnabled = it }
+            onCheckedChange = onToggleAutoConnect
         )
 
         SettingsClickableItem(
@@ -174,7 +169,7 @@ fun SettingsScreen(
             title = { Text("Select Encrypted DNS", color = TextPrimary, fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    DnsProvider.values().forEach { provider ->
+                    DnsProvider.entries.forEach { provider ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
@@ -183,7 +178,7 @@ fun SettingsScreen(
                                     onSelectDns(provider)
                                     showDnsDialog = false
                                 }
-                                .padding(vertical = 6.dp)
+                                .padding(vertical = 8.dp)
                         ) {
                             RadioButton(
                                 selected = selectedDns == provider,
@@ -195,7 +190,7 @@ fun SettingsScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Column {
-                                Text(provider.displayName, color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                                Text(provider.displayName, color = TextPrimary, fontSize = 14.sp)
                                 Text("${provider.primary}, ${provider.secondary}", color = TextSecondary, fontSize = 11.sp)
                             }
                         }
@@ -217,7 +212,7 @@ fun SettingsScreen(
             title = { Text("Enable Android System Kill Switch", color = TextPrimary, fontWeight = FontWeight.Bold) },
             text = {
                 Text(
-                    "For total leak prevention, enable 'Always-on VPN' and 'Block connections without VPN' in your Android system network settings.",
+                    "For full hardware-level kill switch protection against packet leaks, Android provides the 'Always-on VPN' and 'Block connections without VPN' system setting.\n\nTap below to open system VPN settings.",
                     color = TextSecondary,
                     fontSize = 13.sp,
                     lineHeight = 18.sp
@@ -280,11 +275,11 @@ private fun SettingsToggleItem(
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-            Text(subtitle, fontSize = 11.sp, color = TextSecondary)
+            Text(subtitle, fontSize = 12.sp, color = TextSecondary)
         }
         if (trailingAction != null) {
             trailingAction()
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(10.dp))
         }
         Switch(
             checked = isChecked,
@@ -320,9 +315,14 @@ private fun SettingsClickableItem(
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-            Text(subtitle, fontSize = 11.sp, color = TextSecondary)
+            Text(subtitle, fontSize = 12.sp, color = TextSecondary)
         }
-        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = TextTertiary, modifier = Modifier.size(20.dp))
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+            contentDescription = null,
+            tint = TextTertiary,
+            modifier = Modifier.size(14.dp)
+        )
     }
     Spacer(modifier = Modifier.height(10.dp))
 }

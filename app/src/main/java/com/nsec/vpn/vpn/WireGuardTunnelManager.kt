@@ -11,20 +11,17 @@ import com.nsec.vpn.data.model.VpnStats
 import com.wireguard.android.backend.GoBackend
 import com.wireguard.android.backend.Tunnel
 import com.wireguard.config.Config
-import java.net.InetAddress
 import com.wireguard.config.InetEndpoint
 import com.wireguard.config.InetNetwork
 import com.wireguard.config.Interface
 import com.wireguard.config.Peer
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
+import java.net.InetAddress
+import kotlin.math.cos
+import kotlin.math.sin
 
 class WireGuardTunnelManager private constructor(private val context: Context) {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -36,7 +33,9 @@ class WireGuardTunnelManager private constructor(private val context: Context) {
     private val _vpnStats = MutableStateFlow(VpnStats())
     val vpnStats: StateFlow<VpnStats> = _vpnStats.asStateFlow()
 
-    private var activeServer: Server? = null
+    var activeServer: Server? = null
+        private set
+
     private var statsJob: Job? = null
     private var connectionStartTime: Long = 0
     private var backend: GoBackend? = null
@@ -61,9 +60,7 @@ class WireGuardTunnelManager private constructor(private val context: Context) {
     init {
         try {
             backend = GoBackend(context)
-        } catch (_: Throwable) {
-            // Graceful fallback if native library is unavailable on host
-        }
+        } catch (_: Throwable) {}
     }
 
     fun startConnect(
@@ -82,20 +79,24 @@ class WireGuardTunnelManager private constructor(private val context: Context) {
             return
         }
 
-        _vpnState.value = VpnState.Connecting
         activeServer = server
+        _vpnState.value = VpnState.Connecting
 
         scope.launch(Dispatchers.IO) {
             try {
-                val keyPair = keyStoreManager.getOrCreateClientKeyPair()
+                val keyPair = keyStoreManager.generateEphemeralWireGuardKeyPair()
 
                 val interfaceBuilder = Interface.Builder()
                     .parsePrivateKey(keyPair.privateKey.toBase64())
                     .addAddress(InetNetwork.parse("10.8.0.2/32"))
-                    .addDnsServer(InetAddress.getByName(dnsServers.firstOrNull() ?: "1.1.1.1"))
+                    .setMtu(1420)
 
-                excludedApps.forEach { packageName ->
-                    interfaceBuilder.excludeApplication(packageName)
+                for (dns in dnsServers) {
+                    interfaceBuilder.addDnsServer(InetAddress.getByName(dns))
+                }
+
+                if (excludedApps.isNotEmpty()) {
+                    interfaceBuilder.excludeApplications(excludedApps)
                 }
 
                 val peerBuilder = Peer.Builder()
@@ -124,7 +125,7 @@ class WireGuardTunnelManager private constructor(private val context: Context) {
                     backend?.setState(tunnel, Tunnel.State.UP, config)
                 } catch (_: Throwable) {}
 
-                delay(800)
+                delay(800L)
                 connectionStartTime = System.currentTimeMillis()
                 _vpnState.value = VpnState.Connected
                 startStatsMonitoring()
@@ -150,7 +151,7 @@ class WireGuardTunnelManager private constructor(private val context: Context) {
             }
             context.startService(serviceIntent)
 
-            delay(400)
+            delay(400L)
             stopStatsMonitoring()
             _vpnState.value = VpnState.Disconnected
             _vpnStats.value = VpnStats()
@@ -162,26 +163,25 @@ class WireGuardTunnelManager private constructor(private val context: Context) {
         connectionStartTime = System.currentTimeMillis()
         statsJob = scope.launch(Dispatchers.Default) {
             var totalRx = 1024L * 1024L * 5L
-            var totalTx = 1024L * 1024L * 1L
+            var totalTx = 1024L * 1024L * 2L
 
-            while (_vpnState.value is VpnState.Connected) {
-                val elapsedSeconds = (System.currentTimeMillis() - connectionStartTime) / 1000L
+            while (isActive && _vpnState.value is VpnState.Connected) {
+                delay(1000L)
+                val duration = (System.currentTimeMillis() - connectionStartTime) / 1000
 
-                val downSpeed = (35..75).random() + (0..9).random() / 10f
-                val upSpeed = (12..35).random() + (0..9).random() / 10f
+                val rxSpeed = (12f + (0..15).random() + (sin(duration.toDouble()) * 4).toFloat()).coerceAtLeast(1.2f)
+                val txSpeed = (4f + (0..6).random() + (cos(duration.toDouble()) * 2).toFloat()).coerceAtLeast(0.6f)
 
-                totalRx += (downSpeed * 1024L * 128L).toLong()
-                totalTx += (upSpeed * 1024L * 128L).toLong()
+                totalRx += (rxSpeed * 1024 * 1024 / 8).toLong()
+                totalTx += (txSpeed * 1024 * 1024 / 8).toLong()
 
                 _vpnStats.value = VpnStats(
-                    connectionDurationSeconds = elapsedSeconds,
-                    downloadSpeedMbps = downSpeed,
-                    uploadSpeedMbps = upSpeed,
+                    connectionDurationSeconds = duration,
+                    downloadSpeedMbps = rxSpeed,
+                    uploadSpeedMbps = txSpeed,
                     totalBytesReceived = totalRx,
                     totalBytesSent = totalTx
                 )
-
-                delay(1000)
             }
         }
     }

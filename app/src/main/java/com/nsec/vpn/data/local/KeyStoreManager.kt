@@ -17,19 +17,17 @@ class KeyStoreManager(context: Context) {
         return deviceId
     }
 
-    fun getOrCreateClientKeyPair(): KeyPair {
-        val privateKeyHex = prefs.getString(KEY_CLIENT_PRIVATE, null)
-        return if (privateKeyHex != null) {
-            KeyPair(com.wireguard.crypto.Key.fromHex(privateKeyHex))
-        } else {
-            val keyPair = KeyPair()
-            prefs.edit()
-                .putString(KEY_CLIENT_PRIVATE, keyPair.privateKey.toHex())
-                .putString(KEY_CLIENT_PUBLIC, keyPair.publicKey.toHex())
-                .apply()
-            keyPair
-        }
+    fun generateEphemeralWireGuardKeyPair(): KeyPair {
+        val keyPair = KeyPair()
+        prefs.edit()
+            .putString(KEY_WG_PRIVATE, keyPair.privateKey.toBase64())
+            .putString(KEY_WG_PUBLIC, keyPair.publicKey.toBase64())
+            .apply()
+        return keyPair
     }
+
+    fun getStoredPrivateKeyBase64(): String? = prefs.getString(KEY_WG_PRIVATE, null)
+    fun getStoredPublicKeyBase64(): String? = prefs.getString(KEY_WG_PUBLIC, null)
 
     fun saveTokens(accessToken: String, refreshToken: String) {
         prefs.edit()
@@ -39,6 +37,7 @@ class KeyStoreManager(context: Context) {
     }
 
     fun getAccessToken(): String? = prefs.getString(KEY_ACCESS_TOKEN, null)
+    fun getRefreshToken(): String? = prefs.getString(KEY_REFRESH_TOKEN, null)
 
     fun clearTokens() {
         prefs.edit()
@@ -47,11 +46,55 @@ class KeyStoreManager(context: Context) {
             .apply()
     }
 
+    // Settings Persistence
+    fun saveSelectedServerId(serverId: String) {
+        prefs.edit().putString(KEY_SELECTED_SERVER_ID, serverId).apply()
+    }
+    fun getSelectedServerId(): String? = prefs.getString(KEY_SELECTED_SERVER_ID, null)
+
+    fun saveSelectedDns(dnsName: String) {
+        prefs.edit().putString(KEY_SELECTED_DNS, dnsName).apply()
+    }
+    fun getSelectedDns(): String? = prefs.getString(KEY_SELECTED_DNS, null)
+
+    fun saveKillSwitchEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_KILL_SWITCH, enabled).apply()
+    }
+    fun isKillSwitchEnabled(): Boolean = prefs.getBoolean(KEY_KILL_SWITCH, false)
+
+    fun saveSplitTunnelingEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_SPLIT_TUNNELING, enabled).apply()
+    }
+    fun isSplitTunnelingEnabled(): Boolean = prefs.getBoolean(KEY_SPLIT_TUNNELING, false)
+
+    fun saveExcludedPackages(packages: Set<String>) {
+        prefs.edit().putStringSet(KEY_EXCLUDED_PACKAGES, packages).apply()
+    }
+    fun getExcludedPackages(): Set<String> = prefs.getStringSet(KEY_EXCLUDED_PACKAGES, emptySet()) ?: emptySet()
+
+    fun saveAutoConnectEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_AUTO_CONNECT, enabled).apply()
+    }
+    fun isAutoConnectEnabled(): Boolean = prefs.getBoolean(KEY_AUTO_CONNECT, false)
+
+    // Rewarded Pass Expiry
+    fun saveRewardedPassExpiry(expiresAtMs: Long) {
+        prefs.edit().putLong(KEY_REWARDED_EXPIRES_AT, expiresAtMs).apply()
+    }
+    fun getRewardedPassExpiry(): Long = prefs.getLong(KEY_REWARDED_EXPIRES_AT, 0L)
+
     companion object {
         private const val KEY_DEVICE_ID = "device_id"
-        private const val KEY_CLIENT_PRIVATE = "client_priv_key"
-        private const val KEY_CLIENT_PUBLIC = "client_pub_key"
-        private const val KEY_ACCESS_TOKEN = "jwt_access"
-        private const val KEY_REFRESH_TOKEN = "jwt_refresh"
+        private const val KEY_WG_PRIVATE = "wg_private_key"
+        private const val KEY_WG_PUBLIC = "wg_public_key"
+        private const val KEY_ACCESS_TOKEN = "access_token"
+        private const val KEY_REFRESH_TOKEN = "refresh_token"
+        private const val KEY_SELECTED_SERVER_ID = "selected_server_id"
+        private const val KEY_SELECTED_DNS = "selected_dns"
+        private const val KEY_KILL_SWITCH = "kill_switch_enabled"
+        private const val KEY_SPLIT_TUNNELING = "split_tunneling_enabled"
+        private const val KEY_EXCLUDED_PACKAGES = "excluded_packages"
+        private const val KEY_AUTO_CONNECT = "auto_connect_enabled"
+        private const val KEY_REWARDED_EXPIRES_AT = "rewarded_expires_at"
     }
 }
