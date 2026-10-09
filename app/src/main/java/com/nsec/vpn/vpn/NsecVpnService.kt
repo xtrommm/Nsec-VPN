@@ -32,6 +32,7 @@ class NsecVpnService : VpnService() {
                 }
             }
             ACTION_DISCONNECT -> {
+                WireGuardTunnelManager.getInstance(this).disconnect()
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }
