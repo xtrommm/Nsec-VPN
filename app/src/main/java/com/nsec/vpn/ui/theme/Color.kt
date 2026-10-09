@@ -4,7 +4,6 @@ import androidx.compose.ui.graphics.Color
 
 val LightBackground = Color(0xFFF8FAFC)        // Slate 50 - Off-white light gray base background
 val LightSurface = Color(0xFFFFFFFF)           // Crisp Pure White for elevated cards & surfaces
-val LightCard = Color(0xFFFFFFFF)              // Pure White surface for cards
 val LightCardBorder = Color(0xFFE2E8F0)         // Slate 200 - Soft card outline stroke
 val LightCardHighlight = Color(0xFFF1F5F9)      // Slate 100 - Subdued container highlight
 val LightCardBorderHighlight = Color(0xFFCBD5E1)// Slate 300 - Distinct card stroke on focus/active
@@ -22,5 +21,3 @@ val CrimsonError = Color(0xFFEF4444)           // Rose 500 - Disconnected / Erro
 val TextPrimary = Color(0xFF0F172A)             // Slate 900 - Dark charcoal text
 val TextSecondary = Color(0xFF475569)           // Slate 600 - Secondary text
 val TextTertiary = Color(0xFF94A3B8)            // Slate 400 - Captions / Placeholder text
-
-val ElectricBlue = PrimaryBlue

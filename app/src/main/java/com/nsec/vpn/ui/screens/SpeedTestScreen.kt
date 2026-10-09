@@ -28,14 +28,15 @@ import com.nsec.vpn.data.model.Server
 import com.nsec.vpn.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 @Composable
 fun SpeedTestScreen(
     currentServer: Server?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val coroutineScope = rememberCoroutineScope()
-    var isTesting by remember { mutableStateOf(false) }
+    var isTesting by remember { mutableStateOf(value = false) }
     var currentSpeedMbps by remember { mutableFloatStateOf(0f) }
     var pingMs by remember { mutableStateOf<Long?>(null) }
     var jitterMs by remember { mutableStateOf<Long?>(null) }
@@ -44,7 +45,7 @@ fun SpeedTestScreen(
     val animatedSpeed by animateFloatAsState(
         targetValue = currentSpeedMbps,
         animationSpec = tween(durationMillis = 300),
-        label = "speedNeedle"
+        label = "speedNeedle",
     )
 
     fun runSpeedTest() {
@@ -56,13 +57,13 @@ fun SpeedTestScreen(
         jitterMs = null
 
         coroutineScope.launch {
-            delay(500)
+            delay(500L)
             pingMs = (currentServer?.pingMs ?: 28L) + (-3..4).random().toLong()
             jitterMs = (2..6).random().toLong()
 
             val targetSpeed = (48..92).random().toFloat()
             for (step in 1..25) {
-                delay(120)
+                delay(120L)
                 val noise = (-4..6).random()
                 val progress = step / 25f
                 val speed = (targetSpeed * progress) + noise
@@ -72,7 +73,7 @@ fun SpeedTestScreen(
                 }
             }
 
-            delay(400)
+            delay(400L)
             currentSpeedMbps = peakDownloadMbps
             isTesting = false
         }
@@ -83,27 +84,27 @@ fun SpeedTestScreen(
             .fillMaxSize()
             .background(LightBackground)
             .padding(horizontal = 20.dp, vertical = 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
             text = "Speed Benchmark",
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
-            color = TextPrimary
+            color = TextPrimary,
         )
 
         Text(
             text = "Measuring tunnel throughput on ${currentServer?.name ?: "Global Gateway"}",
             fontSize = 12.sp,
             color = TextSecondary,
-            modifier = Modifier.padding(top = 4.dp)
+            modifier = Modifier.padding(top = 4.dp),
         )
 
         Spacer(modifier = Modifier.height(30.dp))
 
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier.size(240.dp)
+            modifier = Modifier.size(240.dp),
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val strokeWidth = 14.dp.toPx()
@@ -117,7 +118,7 @@ fun SpeedTestScreen(
                     useCenter = false,
                     topLeft = Offset(center.x - radius, center.y - radius),
                     size = Size(radius * 2, radius * 2),
-                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
                 )
 
                 val fraction = (animatedSpeed / 120f).coerceIn(0f, 1f)
@@ -125,29 +126,29 @@ fun SpeedTestScreen(
 
                 drawArc(
                     brush = Brush.sweepGradient(
-                        listOf(PrimaryBlue, EmeraldGreen)
+                        listOf(PrimaryBlue, EmeraldGreen),
                     ),
                     startAngle = 150f,
                     sweepAngle = activeSweep,
                     useCenter = false,
                     topLeft = Offset(center.x - radius, center.y - radius),
                     size = Size(radius * 2, radius * 2),
-                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
                 )
             }
 
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = String.format("%.1f", animatedSpeed),
+                    text = String.format(Locale.US, "%.1f", animatedSpeed),
                     fontSize = 42.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = TextPrimary
+                    color = TextPrimary,
                 )
                 Text(
                     text = "Mbps",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = PrimaryBlue
+                    color = PrimaryBlue,
                 )
             }
         }
@@ -161,13 +162,13 @@ fun SpeedTestScreen(
                 .background(LightSurface)
                 .border(1.dp, LightCardBorder, RoundedCornerShape(16.dp))
                 .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceAround
+            horizontalArrangement = Arrangement.SpaceAround,
         ) {
-            MetricColumn(label = "PING", value = pingMs?.let { "${it} ms" } ?: "--")
+            MetricColumn(label = "PING", value = pingMs?.let { "$it ms" } ?: "--")
             Box(modifier = Modifier.width(1.dp).height(30.dp).background(LightCardBorder))
-            MetricColumn(label = "JITTER", value = jitterMs?.let { "${it} ms" } ?: "--")
+            MetricColumn(label = "JITTER", value = jitterMs?.let { "$it ms" } ?: "--")
             Box(modifier = Modifier.width(1.dp).height(30.dp).background(LightCardBorder))
-            MetricColumn(label = "PEAK", value = if (peakDownloadMbps > 0) String.format("%.1f M", peakDownloadMbps) else "--")
+            MetricColumn(label = "PEAK", value = if (peakDownloadMbps > 0) String.format(Locale.US, "%.1f M", peakDownloadMbps) else "--")
         }
 
         Spacer(modifier = Modifier.height(36.dp))
@@ -180,14 +181,14 @@ fun SpeedTestScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp)
-                .testTag("start_speed_test_button")
+                .testTag("start_speed_test_button"),
         ) {
             Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White)
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = if (isTesting) "TESTING IN PROGRESS..." else "START SPEED TEST",
                 fontWeight = FontWeight.Bold,
-                fontSize = 14.sp
+                fontSize = 14.sp,
             )
         }
     }

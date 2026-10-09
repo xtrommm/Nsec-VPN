@@ -27,12 +27,11 @@ private val ProLightColorScheme = lightColorScheme(
     surfaceVariant = LightCardHighlight,
     onSurfaceVariant = TextSecondary,
     error = CrimsonError,
-    onError = Color.White
+    onError = Color.White,
 )
 
 @Composable
 fun NsecVpnTheme(
-    darkTheme: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = ProLightColorScheme
@@ -53,13 +52,4 @@ fun NsecVpnTheme(
         typography = Typography,
         content = content
     )
-}
-
-@Composable
-fun MyApplicationTheme(
-    darkTheme: Boolean = false,
-    dynamicColor: Boolean = false,
-    content: @Composable () -> Unit
-) {
-    NsecVpnTheme(darkTheme = darkTheme, content = content)
 }

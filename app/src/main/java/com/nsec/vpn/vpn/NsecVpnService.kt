@@ -4,7 +4,6 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.net.VpnService
@@ -74,7 +73,7 @@ class NsecVpnService : VpnService() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Nsec VPN Connected")
             .setContentText("Secured via WireGuard: $serverName")
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_notification_small)
             .setContentIntent(pendingOpenApp)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)

@@ -22,11 +22,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nsec.vpn.data.model.VpnStats
 import com.nsec.vpn.ui.theme.*
+import java.util.Locale
 
 @Composable
 fun LiveStatsBar(
     stats: VpnStats,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Row(
         modifier = modifier
@@ -37,41 +38,41 @@ fun LiveStatsBar(
             .border(1.dp, LightCardBorder, RoundedCornerShape(16.dp))
             .padding(vertical = 14.dp, horizontal = 12.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         StatItem(
             icon = Icons.Default.Timer,
             iconTint = PrimaryBlue,
             label = "DURATION",
-            value = stats.formattedDuration
+            value = stats.formattedDuration,
         )
 
         Box(
             modifier = Modifier
                 .width(1.dp)
                 .height(36.dp)
-                .background(LightCardBorder)
+                .background(LightCardBorder),
         )
 
         StatItem(
             icon = Icons.Default.ArrowDownward,
             iconTint = EmeraldGreen,
             label = "DOWNLOAD",
-            value = String.format("%.1f Mb/s", stats.downloadSpeedMbps)
+            value = String.format(Locale.US, "%.1f Mb/s", stats.downloadSpeedMbps),
         )
 
         Box(
             modifier = Modifier
                 .width(1.dp)
                 .height(36.dp)
-                .background(LightCardBorder)
+                .background(LightCardBorder),
         )
 
         StatItem(
             icon = Icons.Default.ArrowUpward,
             iconTint = AccentIndigo,
             label = "UPLOAD",
-            value = String.format("%.1f Mb/s", stats.uploadSpeedMbps)
+            value = String.format(Locale.US, "%.1f Mb/s", stats.uploadSpeedMbps),
         )
     }
 }
@@ -81,7 +82,7 @@ private fun StatItem(
     icon: ImageVector,
     iconTint: Color,
     label: String,
-    value: String
+    value: String,
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -89,7 +90,7 @@ private fun StatItem(
                 imageVector = icon,
                 contentDescription = label,
                 tint = iconTint,
-                modifier = Modifier.size(14.dp)
+                modifier = Modifier.size(14.dp),
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text(
@@ -97,7 +98,7 @@ private fun StatItem(
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = TextSecondary,
-                letterSpacing = 0.8.sp
+                letterSpacing = 0.8.sp,
             )
         }
         Spacer(modifier = Modifier.height(4.dp))
@@ -105,7 +106,7 @@ private fun StatItem(
             text = value,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
-            color = TextPrimary
+            color = TextPrimary,
         )
     }
 }
