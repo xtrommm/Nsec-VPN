@@ -87,13 +87,13 @@ fun HomeScreen(
         ) {
             Column {
                 Text(
-                    text = "Nsec VPN",
+                    text = "Nsec -VPN",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextPrimary
                 )
                 Text(
-                    text = "WireGuard • nsecvpn.com",
+                    text = "MILITARY GRADE",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
                     color = PrimaryBlue
