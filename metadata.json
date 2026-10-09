@@ -2,5 +2,5 @@
   "name": "Nsec VPN",
   "description": "High-speed, zero-logs WireGuard VPN client with global secure servers by nsecvpn.com.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": []
 }

@@ -1,3 +1,9 @@
+# Nsec VPN ProGuard / R8 Rules
+
+# Keep App DTOs and Data Models for Moshi JSON serialization
+-keep class com.nsec.vpn.data.api.** { *; }
+-keep class com.nsec.vpn.data.model.** { *; }
+
 # WireGuard Tunnel Native and Java classes
 -keep class com.wireguard.** { *; }
 -dontwarn com.wireguard.**
