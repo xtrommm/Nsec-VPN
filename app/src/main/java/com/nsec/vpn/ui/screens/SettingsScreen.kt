@@ -126,7 +126,7 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        SectionHeader("ABOUT & ACCOUNT")
+        SectionHeader("ABOUT")
 
         SettingsClickableItem(
             icon = Icons.Default.CardGiftcard,
@@ -157,7 +157,7 @@ fun SettingsScreen(
         SettingsClickableItem(
             icon = Icons.Default.Info,
             title = "App Version",
-            subtitle = "Nsec VPN v1.0.0 (Release 36)",
+            subtitle = "Nsec VPN v1.0.0",
             onClick = {}
         )
     }
