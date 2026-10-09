@@ -77,6 +77,12 @@ class KeyStoreManager(context: Context) {
     }
     fun isAutoConnectEnabled(): Boolean = prefs.getBoolean(KEY_AUTO_CONNECT, false)
 
+    // VPN Prominent Disclosure Acceptance
+    fun saveVpnDisclosureAccepted(accepted: Boolean) {
+        prefs.edit().putBoolean(KEY_VPN_DISCLOSURE_ACCEPTED, accepted).apply()
+    }
+    fun isVpnDisclosureAccepted(): Boolean = prefs.getBoolean(KEY_VPN_DISCLOSURE_ACCEPTED, false)
+
     // Rewarded Pass Expiry
     fun saveRewardedPassExpiry(expiresAtMs: Long) {
         prefs.edit().putLong(KEY_REWARDED_EXPIRES_AT, expiresAtMs).apply()
@@ -95,6 +101,7 @@ class KeyStoreManager(context: Context) {
         private const val KEY_SPLIT_TUNNELING = "split_tunneling_enabled"
         private const val KEY_EXCLUDED_PACKAGES = "excluded_packages"
         private const val KEY_AUTO_CONNECT = "auto_connect_enabled"
+        private const val KEY_VPN_DISCLOSURE_ACCEPTED = "vpn_disclosure_accepted"
         private const val KEY_REWARDED_EXPIRES_AT = "rewarded_expires_at"
     }
 }

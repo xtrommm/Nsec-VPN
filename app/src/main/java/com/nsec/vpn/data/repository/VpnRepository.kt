@@ -1,6 +1,8 @@
 package com.nsec.vpn.data.repository
 
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import com.nsec.vpn.data.api.NsecVpnApi
 import com.nsec.vpn.data.api.RegisterDeviceRequest
 import com.nsec.vpn.data.local.KeyStoreManager
@@ -65,6 +67,8 @@ class VpnRepository(
         if (rewardedExpiry > System.currentTimeMillis()) {
             _userTier.value = "REWARDED_PASS"
         }
+
+        cleanUninstalledExcludedPackages(context)
     }
 
     suspend fun refreshServers() = withContext(Dispatchers.IO) {
@@ -140,8 +144,8 @@ class VpnRepository(
             val res = api.registerDevice(
                 RegisterDeviceRequest(
                     deviceId = deviceId,
-                    deviceModel = android.os.Build.MODEL,
-                    osVersion = android.os.Build.VERSION.RELEASE,
+                    deviceModel = Build.MODEL,
+                    osVersion = Build.VERSION.RELEASE,
                     appVersion = "1.0.0",
                     appVersionCode = 1
                 )
@@ -208,6 +212,12 @@ class VpnRepository(
         keyStoreManager.saveExcludedPackages(current)
     }
 
+    fun isVpnDisclosureAccepted(): Boolean = keyStoreManager.isVpnDisclosureAccepted()
+
+    fun setVpnDisclosureAccepted(accepted: Boolean) {
+        keyStoreManager.saveVpnDisclosureAccepted(accepted)
+    }
+
     fun grantRewardedPass(durationMinutes: Long = 30) {
         val expiryMs = System.currentTimeMillis() + (durationMinutes * 60 * 1000L)
         keyStoreManager.saveRewardedPassExpiry(expiryMs)
@@ -219,6 +229,30 @@ class VpnRepository(
             val expiryMs = keyStoreManager.getRewardedPassExpiry()
             if (expiryMs <= System.currentTimeMillis()) {
                 _userTier.value = "FREE"
+            }
+        }
+    }
+
+    private fun cleanUninstalledExcludedPackages(context: Context) {
+        val pm = context.packageManager
+        val currentSaved = _excludedPackages.value
+        if (currentSaved.isNotEmpty()) {
+            val valid = currentSaved.filter { pkg ->
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        pm.getPackageInfo(pkg, PackageManager.PackageInfoFlags.of(0L))
+                    } else {
+                        @Suppress("DEPRECATION")
+                        pm.getPackageInfo(pkg, 0)
+                    }
+                    true
+                } catch (_: Exception) {
+                    false
+                }
+            }.toSet()
+            if (valid != currentSaved) {
+                _excludedPackages.value = valid
+                keyStoreManager.saveExcludedPackages(valid)
             }
         }
     }

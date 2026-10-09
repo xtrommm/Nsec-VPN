@@ -1,7 +1,8 @@
 package com.nsec.vpn.ui.screens
 
-import android.content.pm.ApplicationInfo
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -21,6 +22,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nsec.vpn.ui.theme.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 data class AppItem(val appName: String, val packageName: String)
 
@@ -36,23 +39,36 @@ fun SplitTunnelScreen(
     var installedApps by remember { mutableStateOf<List<AppItem>>(emptyList()) }
 
     LaunchedEffect(Unit) {
-        val pm = context.packageManager
-        val packages = pm.getInstalledApplications(PackageManager.GET_META_DATA)
-            .filter { (it.flags and ApplicationInfo.FLAG_SYSTEM) == 0 }
-            .map {
-                AppItem(
-                    appName = pm.getApplicationLabel(it).toString(),
-                    packageName = it.packageName
-                )
+        withContext(Dispatchers.IO) {
+            val pm = context.packageManager
+            val mainIntent = Intent(Intent.ACTION_MAIN, null).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
             }
-            .sortedBy { it.appName }
+            val resolvedActivities = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                pm.queryIntentActivities(mainIntent, PackageManager.ResolveInfoFlags.of(0L))
+            } else {
+                @Suppress("DEPRECATION")
+                pm.queryIntentActivities(mainIntent, 0)
+            }
 
-        installedApps = if (packages.isNotEmpty()) packages else listOf(
-            AppItem("Netflix", "com.netflix.mediaclient"),
-            AppItem("Spotify", "com.spotify.music"),
-            AppItem("Banking App", "com.bank.app"),
-            AppItem("Chrome Browser", "com.android.chrome")
-        )
+            val ownPackageName = context.packageName
+            val packages = resolvedActivities
+                .mapNotNull { resolveInfo ->
+                    val pkgName = resolveInfo.activityInfo?.packageName ?: return@mapNotNull null
+                    if (pkgName == ownPackageName) return@mapNotNull null
+                    val label = resolveInfo.loadLabel(pm).toString()
+                    AppItem(appName = label, packageName = pkgName)
+                }
+                .distinctBy { it.packageName }
+                .sortedBy { it.appName }
+
+            installedApps = if (packages.isNotEmpty()) packages else listOf(
+                AppItem("Netflix", "com.netflix.mediaclient"),
+                AppItem("Spotify", "com.spotify.music"),
+                AppItem("Banking App", "com.bank.app"),
+                AppItem("Chrome Browser", "com.android.chrome")
+            )
+        }
     }
 
     Scaffold(

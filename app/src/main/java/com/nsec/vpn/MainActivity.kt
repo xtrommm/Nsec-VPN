@@ -1,6 +1,8 @@
 package com.nsec.vpn
 
+import android.Manifest
 import android.app.Activity
+import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CardGiftcard
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -67,7 +70,12 @@ class MainActivity : ComponentActivity() {
 
                 var showVipModal by remember { mutableStateOf(false) }
                 var showPromoDialog by remember { mutableStateOf(false) }
+                var showVpnDisclosureDialog by remember { mutableStateOf(false) }
                 var promoCodeInput by remember { mutableStateOf("") }
+
+                val notificationPermissionLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.RequestPermission()
+                ) { _ -> }
 
                 val vpnPermissionLauncher = rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.StartActivityForResult()
@@ -109,10 +117,21 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                fun triggerConnectSequence() {
+                    if (!vpnRepo.isVpnDisclosureAccepted()) {
+                        showVpnDisclosureDialog = true
+                    } else {
+                        handleToggleVpn()
+                    }
+                }
+
                 LaunchedEffect(Unit) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
                     vpnRepo.checkRewardedPassExpiry()
                     if (autoConnectEnabled && vpnState is VpnState.Disconnected) {
-                        handleToggleVpn()
+                        triggerConnectSequence()
                     }
                 }
 
@@ -190,7 +209,7 @@ class MainActivity : ComponentActivity() {
                                             vpnStats = vpnStats,
                                             selectedServer = selectedServer,
                                             userTier = userTier,
-                                            onToggleVpn = { handleToggleVpn() },
+                                            onToggleVpn = { triggerConnectSequence() },
                                             onNavigateToServers = { currentTab = Screen.Servers },
                                             onUpgradeClicked = { showVipModal = true }
                                         )
@@ -238,6 +257,54 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
+                }
+
+                // VPN Prominent Privacy & Service Disclosure Dialog
+                if (showVpnDisclosureDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showVpnDisclosureDialog = false },
+                        containerColor = LightSurface,
+                        title = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Shield, contentDescription = null, tint = PrimaryBlue)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("VPN Service & Privacy Disclosure", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            }
+                        },
+                        text = {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(
+                                    "Nsec VPN uses Android's VpnService API to establish a secure WireGuard tunnel that encrypts your internet traffic.",
+                                    color = TextPrimary,
+                                    fontSize = 13.sp,
+                                    lineHeight = 18.sp
+                                )
+                                Text(
+                                    "• Your traffic is routed through encrypted VPN gateways.\n• Strict No-Logs Guarantee: We do not log, track, or record your browsing activity.\n• Required solely for secure network encapsulation.",
+                                    color = TextSecondary,
+                                    fontSize = 12.sp,
+                                    lineHeight = 17.sp
+                                )
+                            }
+                        },
+                        confirmButton = {
+                            Button(
+                                onClick = {
+                                    showVpnDisclosureDialog = false
+                                    vpnRepo.setVpnDisclosureAccepted(true)
+                                    handleToggleVpn()
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+                            ) {
+                                Text("ACCEPT & CONTINUE")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showVpnDisclosureDialog = false }) {
+                                Text("DECLINE", color = TextSecondary)
+                            }
+                        }
+                    )
                 }
 
                 if (showVipModal) {
