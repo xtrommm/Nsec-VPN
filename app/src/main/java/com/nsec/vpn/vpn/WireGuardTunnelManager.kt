@@ -125,7 +125,6 @@ class WireGuardTunnelManager private constructor(private val context: Context) {
                     backend?.setState(tunnel, Tunnel.State.UP, config)
                 } catch (_: Throwable) {}
 
-                delay(800L)
                 connectionStartTime = System.currentTimeMillis()
                 _vpnState.value = VpnState.Connected
                 startStatsMonitoring()

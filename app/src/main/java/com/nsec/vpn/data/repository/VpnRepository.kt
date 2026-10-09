@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.net.InetSocketAddress
 import java.net.Socket
@@ -68,7 +69,9 @@ class VpnRepository(
             _userTier.value = "REWARDED_PASS"
         }
 
-        cleanUninstalledExcludedPackages(context)
+        kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+            cleanUninstalledExcludedPackages(context)
+        }
     }
 
     suspend fun refreshServers() = withContext(Dispatchers.IO) {
