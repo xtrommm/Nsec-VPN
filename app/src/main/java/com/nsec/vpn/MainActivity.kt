@@ -54,7 +54,6 @@ class MainActivity : ComponentActivity() {
                 val coroutineScope = rememberCoroutineScope()
 
                 val vpnState by tunnelManager.vpnState.collectAsStateWithLifecycle()
-                val vpnStats by tunnelManager.vpnStats.collectAsStateWithLifecycle()
                 val servers by vpnRepo.servers.collectAsStateWithLifecycle()
                 val selectedServer by vpnRepo.selectedServer.collectAsStateWithLifecycle()
                 val userTier by vpnRepo.userTier.collectAsStateWithLifecycle()
@@ -129,9 +128,11 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                if (activeSubScreen != null) {
-                    BackHandler {
+                BackHandler(enabled = activeSubScreen != null || currentTab != Screen.Home) {
+                    if (activeSubScreen != null) {
                         activeSubScreen = null
+                    } else if (currentTab != Screen.Home) {
+                        currentTab = Screen.Home
                     }
                 }
 
@@ -200,7 +201,7 @@ class MainActivity : ComponentActivity() {
                                     Screen.Home -> {
                                         HomeScreen(
                                             vpnState = vpnState,
-                                            vpnStats = vpnStats,
+                                            tunnelManager = tunnelManager,
                                             selectedServer = selectedServer,
                                             userTier = userTier,
                                             onToggleVpn = { triggerConnectSequence() },

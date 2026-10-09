@@ -22,17 +22,18 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nsec.vpn.data.model.Server
 import com.nsec.vpn.data.model.VpnState
-import com.nsec.vpn.data.model.VpnStats
 import com.nsec.vpn.ui.components.ConnectButton
 import com.nsec.vpn.ui.components.LiveStatsBar
 import com.nsec.vpn.ui.theme.*
+import com.nsec.vpn.vpn.WireGuardTunnelManager
 
 @Composable
 fun HomeScreen(
     vpnState: VpnState,
-    vpnStats: VpnStats,
+    tunnelManager: WireGuardTunnelManager,
     selectedServer: Server?,
     userTier: String,
     announcementTitle: String? = null,
@@ -43,6 +44,7 @@ fun HomeScreen(
     modifier: Modifier = Modifier
 ) {
     val isConnected = vpnState is VpnState.Connected
+    val vpnStats by tunnelManager.vpnStats.collectAsStateWithLifecycle()
     var announcementDismissed by remember { mutableStateOf(false) }
 
     Column(
