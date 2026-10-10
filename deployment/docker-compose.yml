@@ -4,11 +4,11 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: nsecvpn-postgres
-    restart: always
+    restart: unless-stopped
     environment:
       POSTGRES_DB: nsecvpn_db
       POSTGRES_USER: nsecvpn_admin
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?Database password is required}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Required}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -24,15 +24,17 @@ services:
       context: ../backend
       dockerfile: Dockerfile
     container_name: nsecvpn-backend
-    restart: always
+    restart: unless-stopped
     environment:
       NODE_ENV: production
-      PORT: 4000
+      PORT: "4000"
       DATABASE_URL: postgresql://nsecvpn_admin:${DB_PASSWORD}@postgres:5432/nsecvpn_db
-      JWT_SECRET: ${JWT_SECRET:?JWT secret is required}
+      JWT_SECRET: ${JWT_SECRET:?Required}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@nsecvpn.com}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Admin password is required}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Required}
       CORS_ORIGIN: ${CORS_ORIGIN:-https://admin.nsecvpn.com}
+    ports:
+      - "127.0.0.1:3001:4000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -44,25 +46,11 @@ services:
       context: ../admin-panel
       dockerfile: Dockerfile
     container_name: nsecvpn-admin
-    restart: always
-    depends_on:
-      - backend
-    networks:
-      - nsec_net
-
-  proxy:
-    image: nginx:alpine
-    container_name: nsecvpn-proxy
-    restart: always
+    restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - "127.0.0.1:3002:80"
     depends_on:
       - backend
-      - admin-panel
     networks:
       - nsec_net
 
