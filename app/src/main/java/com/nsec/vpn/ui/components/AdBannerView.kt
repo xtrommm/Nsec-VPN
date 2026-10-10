@@ -33,13 +33,14 @@ fun AdMobBannerView(
 
     val adSize = remember(screenWidthDp) {
         try {
-            AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(context, screenWidthDp)
+            // Smart inline adaptive banner ad size (adjusts height/width like 320x100, 320x250, etc. based on screen size)
+            AdSize.getCurrentOrientationInlineAdaptiveBannerAdSize(context, screenWidthDp)
         } catch (_: Throwable) {
-            AdSize.BANNER
+            AdSize.MEDIUM_RECTANGLE
         }
     }
 
-    val adHeightDp = adSize.height.coerceAtLeast(60)
+    val adHeightDp = adSize.height.coerceAtLeast(100).coerceAtMost(280)
 
     var adViewInstance by remember { mutableStateOf<AdView?>(null) }
 
