@@ -149,11 +149,11 @@ fun SmartNativeAd(
                     NativeAdTemplate.HIDDEN -> R.layout.native_ad_compact
                 }
                 val adView = LayoutInflater.from(ctx).inflate(layoutRes, null) as NativeAdView
-                populateNativeAdView(currentAd!!, adView)
+                currentAd?.let { populateNativeAdView(it, adView) }
                 adView
             },
             update = { adView ->
-                populateNativeAdView(currentAd!!, adView)
+                currentAd?.let { populateNativeAdView(it, adView) }
             }
         )
     }
@@ -171,39 +171,44 @@ fun populateNativeAdView(nativeAd: NativeAd, adView: NativeAdView) {
 
         (adView.headlineView as? TextView)?.text = nativeAd.headline
 
-        if (nativeAd.body == null) {
-            adView.bodyView?.visibility = android.view.View.GONE
+        val bodyView = adView.bodyView
+        if (nativeAd.body == null || bodyView == null) {
+            bodyView?.visibility = android.view.View.GONE
         } else {
-            adView.bodyView?.visibility = android.view.View.VISIBLE
-            (adView.bodyView as? TextView)?.text = nativeAd.body
+            bodyView.visibility = android.view.View.VISIBLE
+            (bodyView as? TextView)?.text = nativeAd.body
         }
 
-        if (nativeAd.callToAction == null) {
-            adView.callToActionView?.visibility = android.view.View.GONE
+        val ctaView = adView.callToActionView
+        if (nativeAd.callToAction == null || ctaView == null) {
+            ctaView?.visibility = android.view.View.GONE
         } else {
-            adView.callToActionView?.visibility = android.view.View.VISIBLE
-            (adView.callToActionView as? Button)?.text = nativeAd.callToAction
+            ctaView.visibility = android.view.View.VISIBLE
+            (ctaView as? Button)?.text = nativeAd.callToAction
         }
 
-        if (nativeAd.icon == null) {
-            adView.iconView?.visibility = android.view.View.GONE
+        val iconView = adView.iconView
+        if (nativeAd.icon == null || iconView == null) {
+            iconView?.visibility = android.view.View.GONE
         } else {
-            adView.iconView?.visibility = android.view.View.VISIBLE
-            (adView.iconView as? ImageView)?.setImageDrawable(nativeAd.icon?.drawable)
+            iconView.visibility = android.view.View.VISIBLE
+            (iconView as? ImageView)?.setImageDrawable(nativeAd.icon?.drawable)
         }
 
-        if (nativeAd.advertiser == null) {
-            adView.advertiserView?.visibility = android.view.View.GONE
+        val advView = adView.advertiserView
+        if (nativeAd.advertiser == null || advView == null) {
+            advView?.visibility = android.view.View.GONE
         } else {
-            adView.advertiserView?.visibility = android.view.View.VISIBLE
-            (adView.advertiserView as? TextView)?.text = nativeAd.advertiser
+            advView.visibility = android.view.View.VISIBLE
+            (advView as? TextView)?.text = nativeAd.advertiser
         }
 
-        if (nativeAd.starRating == null || adView.starRatingView == null) {
-            adView.starRatingView?.visibility = android.view.View.GONE
+        val ratingView = adView.starRatingView
+        if (nativeAd.starRating == null || ratingView == null) {
+            ratingView?.visibility = android.view.View.GONE
         } else {
-            adView.starRatingView?.visibility = android.view.View.VISIBLE
-            (adView.starRatingView as? RatingBar)?.rating = nativeAd.starRating!!.toFloat()
+            ratingView.visibility = android.view.View.VISIBLE
+            (ratingView as? RatingBar)?.rating = nativeAd.starRating!!.toFloat()
         }
 
         adView.setNativeAd(nativeAd)
