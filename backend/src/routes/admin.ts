@@ -1,0 +1,409 @@
+import { Router, Response } from 'express';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { prisma } from '../db';
+import { authenticateAdmin, AuthenticatedAdminRequest } from '../middleware/auth';
+import { validateBody } from '../middleware/validate';
+import {
+  AdminLoginSchema,
+  CreateServerSchema,
+  UpdateServerSchema,
+  UpdateConfigSchema,
+  JwtAdminPayload
+} from '../types';
+import { adminLoginLimiter } from '../middleware/rateLimit';
+import { StatsService } from '../services/stats';
+import { AgentClient } from '../services/agentClient';
+import { invalidateConfigCache } from './config';
+
+const router = Router();
+const JWT_SECRET = process.env.JWT_SECRET || 'nsec_vpn_production_secret_change_me_2026';
+
+// Helper to record audit trail
+async function logAudit(
+  adminId: string,
+  action: string,
+  resource: string,
+  targetId?: string,
+  meta?: any
+) {
+  try {
+    await prisma.auditLog.create({
+      data: {
+        adminId,
+        action,
+        targetResource: resource,
+        targetId,
+        metadata: meta ? JSON.stringify(meta) : null
+      }
+    });
+  } catch (_e) {
+    // Audit logging should not crash the primary operational path
+  }
+}
+
+// 1. Admin Login
+router.post(
+  '/login',
+  adminLoginLimiter,
+  validateBody(AdminLoginSchema),
+  async (req, res: Response) => {
+    const { email, password } = req.body;
+
+    try {
+      const admin = await prisma.adminUser.findUnique({ where: { email } });
+      if (!admin) {
+        return res.status(401).json({
+          success: false,
+          error: 'INVALID_CREDENTIALS',
+          message: 'Invalid email or password'
+        });
+      }
+
+      const isValid = await bcrypt.compare(password, admin.passwordHash);
+      if (!isValid) {
+        return res.status(401).json({
+          success: false,
+          error: 'INVALID_CREDENTIALS',
+          message: 'Invalid email or password'
+        });
+      }
+
+      const payload: JwtAdminPayload = {
+        adminId: admin.id,
+        email: admin.email,
+        role: admin.role
+      };
+
+      const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '12h' });
+
+      await logAudit(admin.id, 'ADMIN_LOGIN', 'AUTH');
+
+      return res.json({
+        success: true,
+        token,
+        admin: {
+          id: admin.id,
+          email: admin.email,
+          role: admin.role
+        }
+      });
+    } catch (_err) {
+      return res.status(500).json({
+        success: false,
+        error: 'INTERNAL_ERROR',
+        message: 'Login processing failed'
+      });
+    }
+  }
+);
+
+// 2. Overview Statistics
+router.get('/stats', authenticateAdmin(), async (_req, res: Response) => {
+  try {
+    const metrics = await StatsService.getDashboardMetrics();
+    return res.json({ success: true, data: metrics });
+  } catch (_err) {
+    return res.status(500).json({
+      success: false,
+      error: 'DB_ERROR',
+      message: 'Failed to aggregate statistics'
+    });
+  }
+});
+
+// 3. Server Management
+router.get('/servers', authenticateAdmin(), async (_req, res: Response) => {
+  try {
+    const servers = await prisma.serverNode.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
+    return res.json({ success: true, servers });
+  } catch (_err) {
+    return res.status(500).json({
+      success: false,
+      error: 'DB_ERROR',
+      message: 'Failed to fetch servers'
+    });
+  }
+});
+
+router.post(
+  '/servers',
+  authenticateAdmin(),
+  validateBody(CreateServerSchema),
+  async (req: AuthenticatedAdminRequest, res: Response) => {
+    try {
+      const { agentSecret, ...serverData } = req.body;
+      const server = await prisma.serverNode.create({
+        data: {
+          ...serverData,
+          agentSecretHash: agentSecret
+        }
+      });
+
+      await logAudit(req.admin!.adminId, 'CREATE_SERVER', 'SERVER', server.id, { name: server.name });
+      return res.status(201).json({ success: true, server });
+    } catch (err: any) {
+      return res.status(500).json({
+        success: false,
+        error: 'DB_ERROR',
+        message: err.message || 'Failed to create server'
+      });
+    }
+  }
+);
+
+router.put(
+  '/servers/:id',
+  authenticateAdmin(),
+  validateBody(UpdateServerSchema),
+  async (req: AuthenticatedAdminRequest, res: Response) => {
+    const { id } = req.params;
+    const { agentSecret, ...updateData } = req.body;
+
+    try {
+      const dataToUpdate: any = { ...updateData };
+      if (agentSecret) {
+        dataToUpdate.agentSecretHash = agentSecret;
+      }
+
+      const server = await prisma.serverNode.update({
+        where: { id },
+        data: dataToUpdate
+      });
+
+      await logAudit(req.admin!.adminId, 'UPDATE_SERVER', 'SERVER', id, req.body);
+      return res.json({ success: true, server });
+    } catch (_err) {
+      return res.status(404).json({
+        success: false,
+        error: 'NOT_FOUND',
+        message: 'Server not found'
+      });
+    }
+  }
+);
+
+router.delete(
+  '/servers/:id',
+  authenticateAdmin('SUPER_ADMIN'),
+  async (req: AuthenticatedAdminRequest, res: Response) => {
+    const { id } = req.params;
+    try {
+      await prisma.serverNode.delete({ where: { id } });
+      await logAudit(req.admin!.adminId, 'DELETE_SERVER', 'SERVER', id);
+      return res.json({ success: true, message: 'Server node deleted' });
+    } catch (_err) {
+      return res.status(500).json({
+        success: false,
+        error: 'DB_ERROR',
+        message: 'Failed to delete server'
+      });
+    }
+  }
+);
+
+// Ping individual server health & live peer count
+router.post(
+  '/servers/:id/ping',
+  authenticateAdmin(),
+  async (req: AuthenticatedAdminRequest, res: Response) => {
+    const { id } = req.params;
+    try {
+      const server = await prisma.serverNode.findUnique({ where: { id } });
+      if (!server) {
+        return res.status(404).json({ success: false, error: 'NOT_FOUND', message: 'Server not found' });
+      }
+
+      const health = await AgentClient.getNodeHealth(server.agentUrl, server.agentSecretHash);
+      if (health.online) {
+        await prisma.serverNode.update({
+          where: { id },
+          data: { currentLoad: health.loadPercent }
+        });
+      }
+
+      return res.json({ success: true, health });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, error: 'HEALTH_CHECK_FAILED', message: err.message });
+    }
+  }
+);
+
+// 4. Device Management
+router.get('/devices', authenticateAdmin(), async (req, res: Response) => {
+  const page = Math.max(parseInt(req.query.page as string, 10) || 1, 1);
+  const limit = Math.min(Math.max(parseInt(req.query.limit as string, 10) || 20, 1), 100);
+  const search = (req.query.search as string)?.trim() || '';
+
+  try {
+    const where = search ? { deviceId: { contains: search, mode: 'insensitive' as any } } : {};
+    const [total, devices] = await Promise.all([
+      prisma.device.count({ where }),
+      prisma.device.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          deviceId: true,
+          deviceModel: true,
+          osVersion: true,
+          appVersion: true,
+          tier: true,
+          passExpiresAt: true,
+          isBlocked: true,
+          createdAt: true
+        }
+      })
+    ]);
+
+    return res.json({
+      success: true,
+      devices,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit) || 1
+      }
+    });
+  } catch (_err) {
+    return res.status(500).json({
+      success: false,
+      error: 'DB_ERROR',
+      message: 'Failed to fetch devices'
+    });
+  }
+});
+
+router.put(
+  '/devices/:id/tier',
+  authenticateAdmin(),
+  async (req: AuthenticatedAdminRequest, res: Response) => {
+    const { id } = req.params;
+    const { tier } = req.body;
+
+    if (!['FREE', 'VIP', 'REWARDED_PASS'].includes(tier)) {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_TIER',
+        message: 'Invalid subscription tier'
+      });
+    }
+
+    try {
+      const updated = await prisma.device.update({
+        where: { id },
+        data: {
+          tier,
+          passExpiresAt: tier === 'VIP' ? new Date(Date.now() + 365 * 86400000) : null
+        }
+      });
+
+      await logAudit(req.admin!.adminId, 'UPDATE_DEVICE_TIER', 'DEVICE', id, { tier });
+      return res.json({ success: true, device: updated });
+    } catch (_err) {
+      return res.status(404).json({
+        success: false,
+        error: 'NOT_FOUND',
+        message: 'Device not found'
+      });
+    }
+  }
+);
+
+router.put(
+  '/devices/:id/block',
+  authenticateAdmin(),
+  async (req: AuthenticatedAdminRequest, res: Response) => {
+    const { id } = req.params;
+    const { isBlocked } = req.body;
+
+    try {
+      const updated = await prisma.device.update({
+        where: { id },
+        data: { isBlocked: Boolean(isBlocked) }
+      });
+
+      await logAudit(
+        req.admin!.adminId,
+        isBlocked ? 'BLOCK_DEVICE' : 'UNBLOCK_DEVICE',
+        'DEVICE',
+        id
+      );
+      return res.json({ success: true, device: updated });
+    } catch (_err) {
+      return res.status(404).json({
+        success: false,
+        error: 'NOT_FOUND',
+        message: 'Device not found'
+      });
+    }
+  }
+);
+
+// 5. Remote Configuration Management
+router.get('/config', authenticateAdmin(), async (_req, res: Response) => {
+  const config = await prisma.appConfig.findUnique({ where: { id: 'global_config' } });
+  return res.json({ success: true, config });
+});
+
+router.put(
+  '/config',
+  authenticateAdmin(),
+  validateBody(UpdateConfigSchema),
+  async (req: AuthenticatedAdminRequest, res: Response) => {
+    try {
+      const updated = await prisma.appConfig.upsert({
+        where: { id: 'global_config' },
+        update: req.body,
+        create: { id: 'global_config', ...req.body }
+      });
+
+      // Invalidate in-memory cache so clients immediately see updates
+      invalidateConfigCache();
+
+      await logAudit(req.admin!.adminId, 'UPDATE_CONFIG', 'APP_CONFIG', 'global_config', req.body);
+      return res.json({ success: true, config: updated });
+    } catch (err: any) {
+      return res.status(500).json({
+        success: false,
+        error: 'DB_ERROR',
+        message: err.message
+      });
+    }
+  }
+);
+
+// 6. Audit Trail (Super Admin only)
+router.get('/audit-logs', authenticateAdmin('SUPER_ADMIN'), async (_req, res: Response) => {
+  const logs = await prisma.auditLog.findMany({
+    take: 100,
+    orderBy: { createdAt: 'desc' },
+    include: { admin: { select: { email: true, role: true } } }
+  });
+  return res.json({ success: true, logs });
+});
+
+// 7. CSV Export of Anonymous Aggregated Data
+router.get('/export/stats', authenticateAdmin(), async (_req, res: Response) => {
+  const stats = await prisma.anonymousStat.findMany({
+    orderBy: { date: 'desc' },
+    take: 1000
+  });
+
+  let csv = 'Date,Country,AppVersion,Tier,ConnectionsCount\n';
+  stats.forEach((s) => {
+    const formattedDate = s.date.toISOString().split('T')[0];
+    csv += `${formattedDate},${s.countryCode},${s.appVersion},${s.tier},${s.connectionsCount}\n`;
+  });
+
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename=nsecvpn_anonymous_stats.csv');
+  return res.send(csv);
+});
+
+export default router;

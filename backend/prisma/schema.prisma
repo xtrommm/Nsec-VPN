@@ -1,0 +1,150 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+}
+
+enum SubscriptionTier {
+  FREE
+  VIP
+  REWARDED_PASS
+}
+
+model AdminUser {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  role         UserRole  @default(ADMIN)
+  totpSecret   String?
+  totpEnabled  Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  auditLogs    AuditLog[]
+
+  @@index([email])
+}
+
+model Device {
+  id            String           @id @default(uuid())
+  deviceId      String           @unique
+  deviceModel   String?
+  osVersion     String?
+  appVersion    String?
+  tier          SubscriptionTier @default(FREE)
+  passExpiresAt DateTime?
+  isBlocked     Boolean          @default(false)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  tokens        RefreshToken[]
+  peerSessions  PeerSession[]
+
+  @@index([deviceId])
+  @@index([tier])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique
+  deviceId  String
+  device    Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([deviceId])
+  @@index([tokenHash])
+}
+
+model ServerNode {
+  id              String        @id @default(uuid())
+  name            String
+  countryCode     String
+  countryName     String
+  city            String
+  flagEmoji       String
+  endpoint        String        // e.g. "us.nsecvpn.com:51820"
+  publicKey       String        // WireGuard server public key
+  subnetIpv4      String        @default("10.8.0.0/24")
+  agentUrl        String        // e.g. "http://198.51.100.24:51821"
+  agentSecretHash String
+  currentLoad     Int           @default(0)
+  isPremiumOnly   Boolean       @default(false)
+  isRecommended   Boolean       @default(false)
+  active          Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  peerSessions    PeerSession[]
+
+  @@index([active, isPremiumOnly])
+  @@index([countryCode])
+}
+
+model PeerSession {
+  id              String      @id @default(uuid())
+  peerId          String      @unique
+  deviceId        String
+  device          Device      @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  serverId        String
+  server          ServerNode  @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  allocatedIp     String      // e.g. "10.8.0.42/32"
+  clientPublicKey String
+  active          Boolean     @default(true)
+  expiresAt       DateTime
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([serverId, active])
+  @@index([deviceId])
+  @@unique([serverId, allocatedIp, active])
+}
+
+model AppConfig {
+  id                          String   @id @default("global_config")
+  minAppVersionCode           Int      @default(1)
+  latestAppVersionCode        Int      @default(1)
+  forceUpdate                 Boolean  @default(false)
+  maintenanceMode             Boolean  @default(false)
+  announcementActive          Boolean  @default(false)
+  announcementTitle           String?
+  announcementBody            String?
+  bannerAdsEnabled            Boolean  @default(true)
+  interstitialAdsEnabled       Boolean  @default(true)
+  interstitialIntervalSeconds Int      @default(120)
+  rewardedAdsEnabled          Boolean  @default(true)
+  updatedAt                   DateTime @updatedAt
+}
+
+model AuditLog {
+  id             String    @id @default(uuid())
+  adminId        String
+  admin          AdminUser @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  action         String
+  targetResource String
+  targetId       String?
+  metadata       String?   // JSON representation of changes
+  createdAt      DateTime  @default(now())
+
+  @@index([adminId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model AnonymousStat {
+  id               String   @id @default(uuid())
+  date             DateTime @default(now()) @db.Date
+  connectionsCount Int      @default(0)
+  countryCode      String
+  appVersion       String
+  tier             String
+
+  @@index([date])
+  @@index([countryCode])
+}

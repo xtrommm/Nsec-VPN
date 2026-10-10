@@ -11,7 +11,8 @@ data class Server(
     val isPremiumOnly: Boolean,
     val isRecommended: Boolean = false,
     val pingMs: Long? = null,
-    val isFavorite: Boolean = false
+    val isFavorite: Boolean = false,
+    val totalNodes: Int = 1
 )
 
 data class TunnelConfig(

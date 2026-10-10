@@ -8,7 +8,7 @@ services:
     environment:
       POSTGRES_DB: nsecvpn_db
       POSTGRES_USER: nsecvpn_admin
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-nsecvpn_secure_pass_2026}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Database password is required}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -28,10 +28,11 @@ services:
     environment:
       NODE_ENV: production
       PORT: 4000
-      DATABASE_URL: postgresql://nsecvpn_admin:${DB_PASSWORD:-nsecvpn_secure_pass_2026}@postgres:5432/nsecvpn_db
-      JWT_SECRET: ${JWT_SECRET:-nsec_super_secret_jwt_key_2026}
+      DATABASE_URL: postgresql://nsecvpn_admin:${DB_PASSWORD}@postgres:5432/nsecvpn_db
+      JWT_SECRET: ${JWT_SECRET:?JWT secret is required}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@nsecvpn.com}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-AdminSecure2026!}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Admin password is required}
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://admin.nsecvpn.com}
     depends_on:
       postgres:
         condition: service_healthy

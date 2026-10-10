@@ -48,7 +48,8 @@ data class ServerItemDto(
     val flagEmoji: String,
     val currentLoad: Int,
     val isPremiumOnly: Boolean,
-    val isRecommended: Boolean = false
+    val isRecommended: Boolean = false,
+    val totalNodes: Int = 1
 )
 
 data class ConnectVpnRequest(val serverId: String, val clientPublicKey: String)

@@ -59,6 +59,18 @@ fun ServerCard(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
+                if (server.totalNodes > 1) {
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "${server.totalNodes} NODES",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = PrimaryBlue,
+                        modifier = Modifier
+                            .background(PrimaryBlueContainer, RoundedCornerShape(4.dp))
+                            .padding(horizontal = 5.dp, vertical = 2.dp)
+                    )
+                }
                 if (server.isRecommended) {
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
@@ -88,7 +100,7 @@ fun ServerCard(
             Spacer(modifier = Modifier.height(2.dp))
 
             Text(
-                text = server.countryName,
+                text = if (server.totalNodes > 1) "${server.countryName} • Load Balanced Cluster" else server.countryName,
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

@@ -1,365 +1,128 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-import jwt from 'jsonwebtoken';
+import helmet from 'helmet';
+import compression from 'compression';
 import dotenv from 'dotenv';
+import bcrypt from 'bcryptjs';
+import pino from 'pino';
+import pinoHttp from 'pino-http';
+import { prisma } from './db';
+import { globalLimiter } from './middleware/rateLimit';
+
+// Import Route Handlers
+import authRoutes from './routes/auth';
+import vpnRoutes from './routes/vpn';
+import serverRoutes from './routes/servers';
+import configRoutes from './routes/config';
+import billingRoutes from './routes/billing';
+import adminRoutes from './routes/admin';
 
 dotenv.config();
 
+const logger = pino({
+  level: process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'info' : 'debug'),
+  redact: {
+    paths: ['req.headers.authorization', 'req.body.password', 'req.body.agentSecret', 'req.body.purchaseToken'],
+    censor: '[REDACTED]'
+  }
+});
+
 const app = express();
 const PORT = process.env.PORT || 4000;
-const JWT_SECRET = process.env.JWT_SECRET || 'nsec_super_secret_jwt_key_2026';
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@nsecvpn.com';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'AdminSecure2026!';
 
-app.use(cors());
-app.use(express.json());
+// Security and Performance Middleware
+app.use(helmet());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
+app.use(compression());
+app.use(express.json({ limit: '1mb' }));
+app.use(pinoHttp({ logger, autoLogging: { ignore: (req) => req.url === '/health' || req.url === '/ready' } }));
+app.use(globalLimiter);
 
-// In-Memory Data Store (with persistent defaults)
-interface ServerNode {
-  id: string;
-  name: string;
-  countryCode: string;
-  countryName: string;
-  city: string;
-  flagEmoji: string;
-  endpoint: string;
-  publicKey: string;
-  currentLoad: number;
-  isPremiumOnly: boolean;
-  isRecommended: boolean;
-  active: boolean;
-}
+// Health & Readiness Endpoints (Docker / Kubernetes)
+app.get('/health', (_req: Request, res: Response) => {
+  res.status(200).json({ status: 'OK', uptime: process.uptime(), timestamp: new Date().toISOString() });
+});
 
-interface DeviceUser {
-  id: string;
-  deviceId: string;
-  model: string;
-  tier: 'FREE' | 'VIP';
-  passExpiresAt: string | null;
-  registeredAt: string;
-  lastConnectedAt: string | null;
-}
-
-interface PeerSession {
-  peerId: string;
-  deviceId: string;
-  serverId: string;
-  clientIp: string;
-  clientPublicKey: string;
-  connectedAt: string;
-}
-
-let servers: ServerNode[] = [
-  {
-    id: 'us-nyc-1',
-    name: 'US East (New York)',
-    countryCode: 'US',
-    countryName: 'United States',
-    city: 'New York',
-    flagEmoji: '🇺🇸',
-    endpoint: 'us.nsecvpn.com:51820',
-    publicKey: '8J5aOQv4rTqK3F6mE5nP7sL9wY2zU1xV4bN7mQ0kP8M=',
-    currentLoad: 24,
-    isPremiumOnly: false,
-    isRecommended: true,
-    active: true
-  },
-  {
-    id: 'de-fra-1',
-    name: 'Germany (Frankfurt)',
-    countryCode: 'DE',
-    countryName: 'Germany',
-    city: 'Frankfurt',
-    flagEmoji: '🇩🇪',
-    endpoint: 'de.nsecvpn.com:51820',
-    publicKey: '9K6bPRw5sUrL4G7nF6oQ8tM0xZ3aV2yW5cO8nR1lQ9N=',
-    currentLoad: 38,
-    isPremiumOnly: false,
-    isRecommended: false,
-    active: true
-  },
-  {
-    id: 'sg-sin-1',
-    name: 'Singapore (VIP 10G)',
-    countryCode: 'SG',
-    countryName: 'Singapore',
-    city: 'Singapore',
-    flagEmoji: '🇸🇬',
-    endpoint: 'sg.nsecvpn.com:51820',
-    publicKey: '1A7cQSx6tVsM5H8oG7pR9uN1yA4bW3zX6dP9oS2mR0O=',
-    currentLoad: 12,
-    isPremiumOnly: true,
-    isRecommended: false,
-    active: true
-  },
-  {
-    id: 'jp-tok-1',
-    name: 'Japan (Tokyo VIP)',
-    countryCode: 'JP',
-    countryName: 'Japan',
-    city: 'Tokyo',
-    flagEmoji: '🇯🇵',
-    endpoint: 'jp.nsecvpn.com:51820',
-    publicKey: '2B8dRTy7uWtN6I9pH8qS0vO2zB5cX4aY7eQ0pT3nS1P=',
-    currentLoad: 19,
-    isPremiumOnly: true,
-    isRecommended: false,
-    active: true
+app.get('/ready', async (_req: Request, res: Response) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.status(200).json({ status: 'READY', database: 'CONNECTED' });
+  } catch (err: any) {
+    res.status(503).json({ status: 'UNAVAILABLE', error: 'Database connection failed' });
   }
-];
+});
 
-let devices: Map<string, DeviceUser> = new Map();
-let activeSessions: Map<string, PeerSession> = new Map();
-let nextIpOctet = 2;
+// Mount Production API Routes
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/vpn', vpnRoutes);
+app.use('/api/v1/servers', serverRoutes);
+app.use('/api/v1', configRoutes);
+app.use('/api/v1/billing', billingRoutes);
+app.use('/api/v1/admin', adminRoutes);
 
-let appConfig = {
-  app: {
-    minAppVersionCode: 1,
-    latestAppVersionCode: 1,
-    forceUpdate: false
-  },
-  announcement: {
-    active: false,
-    title: 'Network Maintenance Notice',
-    body: 'All high-speed nodes running WireGuard 1.0 are fully operational.',
-    dismissible: true
-  },
-  ads: {
-    bannerEnabled: true,
-    interstitialEnabled: true,
-    interstitialIntervalSeconds: 120,
-    rewardedEnabled: true
+// Global 404 Handler
+app.use((_req: Request, res: Response) => {
+  res.status(404).json({ success: false, error: 'NOT_FOUND', message: 'Resource does not exist' });
+});
+
+// Centralized Safe Error Handler (Zero stack traces exposed)
+app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
+  logger.error({ err, path: req.path, method: req.method }, 'Unhandled request error');
+  const statusCode = typeof err.status === 'number' ? err.status : 500;
+  res.status(statusCode).json({
+    success: false,
+    error: err.code || 'INTERNAL_SERVER_ERROR',
+    message: process.env.NODE_ENV === 'production' ? 'An unexpected error occurred' : err.message
+  });
+});
+
+// Auto-seed Initial Super Admin on startup if none exists
+async function seedDefaultAdmin() {
+  try {
+    const adminCount = await prisma.adminUser.count();
+    if (adminCount === 0) {
+      const defaultEmail = process.env.ADMIN_EMAIL || 'admin@nsecvpn.com';
+      const defaultPass = process.env.ADMIN_PASSWORD || 'NsecAdmin2026!Secure';
+      const passwordHash = await bcrypt.hash(defaultPass, 12);
+      await prisma.adminUser.create({
+        data: {
+          email: defaultEmail,
+          passwordHash,
+          role: 'SUPER_ADMIN'
+        }
+      });
+      logger.info(`[BOOTSTRAP] Initial super admin initialized: ${defaultEmail}`);
+    }
+  } catch (e: any) {
+    logger.warn(`[BOOTSTRAP] Database not yet ready or migrating: ${e.message}`);
   }
-};
+}
 
-// Authentication Middleware
-const authenticateAppToken = (req: Request, res: Response, next: NextFunction) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  if (!token) return res.status(401).json({ success: false, message: 'Missing auth token' });
+// Start Server
+const server = app.listen(PORT, async () => {
+  logger.info(`🚀 Nsec VPN Production Backend running on port ${PORT}`);
+  await seedDefaultAdmin();
+});
 
-  jwt.verify(token, JWT_SECRET, (err, decoded: any) => {
-    if (err) return res.status(403).json({ success: false, message: 'Invalid or expired token' });
-    (req as any).user = decoded;
-    next();
+// Graceful Process Teardown
+const shutdown = async (signal: string) => {
+  logger.info(`[SHUTDOWN] Received ${signal}. Draining HTTP listener and DB connections...`);
+  server.close(async () => {
+    try {
+      await prisma.$disconnect();
+      logger.info('[SHUTDOWN] Database connections released. Exiting gracefully.');
+      process.exit(0);
+    } catch (_err) {
+      process.exit(1);
+    }
   });
 };
 
-const authenticateAdmin = (req: Request, res: Response, next: NextFunction) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  if (!token) return res.status(401).json({ success: false, message: 'Admin authentication required' });
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 
-  jwt.verify(token, JWT_SECRET, (err, decoded: any) => {
-    if (err || decoded.role !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Forbidden' });
-    }
-    next();
-  });
-};
-
-// ==========================================
-// 1. Mobile Client REST APIs
-// ==========================================
-
-// Register anonymous device UUID
-app.post('/api/v1/auth/register-device', (req: Request, res: Response) => {
-  const { deviceId, deviceModel } = req.body;
-  if (!deviceId) return res.status(400).json({ success: false, message: 'deviceId is required' });
-
-  let device = devices.get(deviceId);
-  if (!device) {
-    device = {
-      id: `dev_${Date.now()}`,
-      deviceId,
-      model: deviceModel || 'Android Device',
-      tier: 'FREE',
-      passExpiresAt: null,
-      registeredAt: new Date().toISOString(),
-      lastConnectedAt: null
-    };
-    devices.set(deviceId, device);
-  }
-
-  const accessToken = jwt.sign({ deviceId: device.deviceId, tier: device.tier }, JWT_SECRET, { expiresIn: '7d' });
-  const refreshToken = jwt.sign({ deviceId: device.deviceId }, JWT_SECRET, { expiresIn: '30d' });
-
-  res.json({
-    success: true,
-    data: {
-      accessToken,
-      refreshToken,
-      device: {
-        id: device.id,
-        tier: device.tier,
-        passExpiresAt: device.passExpiresAt
-      }
-    }
-  });
-});
-
-// Refresh Auth Token
-app.post('/api/v1/auth/refresh-token', (req: Request, res: Response) => {
-  const { refreshToken } = req.body;
-  if (!refreshToken) return res.status(400).json({ success: false, message: 'refreshToken required' });
-
-  jwt.verify(refreshToken, JWT_SECRET, (err: any, decoded: any) => {
-    if (err) return res.status(403).json({ success: false, message: 'Invalid refresh token' });
-    const newAccessToken = jwt.sign({ deviceId: decoded.deviceId }, JWT_SECRET, { expiresIn: '7d' });
-    const newRefreshToken = jwt.sign({ deviceId: decoded.deviceId }, JWT_SECRET, { expiresIn: '30d' });
-    res.json({ success: true, data: { accessToken: newAccessToken, refreshToken: newRefreshToken } });
-  });
-});
-
-// Fetch Active Servers List
-app.get('/api/v1/servers', authenticateAppToken, (_req: Request, res: Response) => {
-  const activeServers = servers.filter(s => s.active);
-  res.json({
-    success: true,
-    data: { servers: activeServers }
-  });
-});
-
-// Request WireGuard Peer Handshake Lease
-app.post('/api/v1/vpn/connect', authenticateAppToken, (req: Request, res: Response) => {
-  const { serverId, clientPublicKey } = req.body;
-  const targetServer = servers.find(s => s.id === serverId && s.active);
-
-  if (!targetServer) {
-    return res.status(404).json({ success: false, message: 'Server node not found or inactive' });
-  }
-
-  // Allocate client IP in 10.8.0.0/24 subnet
-  const clientAddress = `10.8.0.${nextIpOctet}/32`;
-  nextIpOctet = (nextIpOctet % 250) + 1;
-
-  const peerId = `peer_${Date.now()}`;
-  activeSessions.set(peerId, {
-    peerId,
-    deviceId: (req as any).user.deviceId,
-    serverId: targetServer.id,
-    clientIp: clientAddress,
-    clientPublicKey,
-    connectedAt: new Date().toISOString()
-  });
-
-  res.json({
-    success: true,
-    data: {
-      peerId,
-      tunnelConfig: {
-        serverPublicKey: targetServer.publicKey,
-        serverEndpoint: targetServer.endpoint,
-        clientAddress,
-        dnsServers: ['1.1.1.1', '1.0.0.1'],
-        allowedIps: ['0.0.0.0/0', '::/0'],
-        persistentKeepalive: 25,
-        mtu: 1420
-      }
-    }
-  });
-});
-
-// Teardown Peer Handshake Lease
-app.post('/api/v1/vpn/disconnect', authenticateAppToken, (req: Request, res: Response) => {
-  const { peerId } = req.body;
-  if (peerId) activeSessions.delete(peerId);
-  res.json({ success: true, message: 'Disconnected' });
-});
-
-// Fetch Remote App Configuration
-app.get('/api/v1/config', (_req: Request, res: Response) => {
-  res.json({ success: true, data: appConfig });
-});
-
-// Legal documents (Privacy & Terms)
-app.get('/api/v1/legal/:type', (req: Request, res: Response) => {
-  res.json({
-    success: true,
-    data: {
-      type: req.params.type,
-      version: '1.0.0',
-      contentMarkdown: '# Nsec VPN Zero-Logs Policy\n\nNsec VPN strictly guarantees zero logs of internet traffic.'
-    }
-  });
-});
-
-// ==========================================
-// 2. Web Admin Panel Management APIs
-// ==========================================
-
-// Admin Login
-app.post('/api/v1/admin/login', (req: Request, res: Response) => {
-  const { email, password } = req.body;
-  if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-    const token = jwt.sign({ email, role: 'admin' }, JWT_SECRET, { expiresIn: '24h' });
-    return res.json({ success: true, token, email });
-  }
-  res.status(401).json({ success: false, message: 'Invalid credentials' });
-});
-
-// Real-time Overview Statistics
-app.get('/api/v1/admin/stats', authenticateAdmin, (_req: Request, res: Response) => {
-  res.json({
-    success: true,
-    data: {
-      totalServers: servers.length,
-      activeTunnels: activeSessions.size,
-      totalDevices: devices.size,
-      vipSubscribers: Array.from(devices.values()).filter(d => d.tier === 'VIP').length,
-      avgServerLoad: Math.round(servers.reduce((acc, s) => acc + s.currentLoad, 0) / (servers.length || 1))
-    }
-  });
-});
-
-// Manage Servers
-app.get('/api/v1/admin/servers', authenticateAdmin, (_req: Request, res: Response) => {
-  res.json({ success: true, servers });
-});
-
-app.post('/api/v1/admin/servers', authenticateAdmin, (req: Request, res: Response) => {
-  const newServer: ServerNode = {
-    id: `srv_${Date.now()}`,
-    ...req.body,
-    currentLoad: 5,
-    active: true
-  };
-  servers.push(newServer);
-  res.json({ success: true, server: newServer });
-});
-
-app.put('/api/v1/admin/servers/:id', authenticateAdmin, (req: Request, res: Response) => {
-  const index = servers.findIndex(s => s.id === req.params.id);
-  if (index === -1) return res.status(404).json({ success: false, message: 'Server not found' });
-  servers[index] = { ...servers[index], ...req.body };
-  res.json({ success: true, server: servers[index] });
-});
-
-app.delete('/api/v1/admin/servers/:id', authenticateAdmin, (req: Request, res: Response) => {
-  servers = servers.filter(s => s.id !== req.params.id);
-  res.json({ success: true, message: 'Server deleted' });
-});
-
-// Manage Devices & Subscriptions
-app.get('/api/v1/admin/devices', authenticateAdmin, (_req: Request, res: Response) => {
-  res.json({ success: true, devices: Array.from(devices.values()) });
-});
-
-app.put('/api/v1/admin/devices/:id/tier', authenticateAdmin, (req: Request, res: Response) => {
-  const { tier } = req.body;
-  const device = Array.from(devices.values()).find(d => d.id === req.params.id);
-  if (!device) return res.status(404).json({ success: false, message: 'Device not found' });
-  device.tier = tier;
-  devices.set(device.deviceId, device);
-  res.json({ success: true, device });
-});
-
-// Update Remote Configuration & AdMob Controls
-app.put('/api/v1/admin/config', authenticateAdmin, (req: Request, res: Response) => {
-  appConfig = { ...appConfig, ...req.body };
-  res.json({ success: true, config: appConfig });
-});
-
-app.listen(PORT, () => {
-  console.log(`🚀 Nsec VPN Backend API listening on port ${PORT}`);
-});
+export default app;
