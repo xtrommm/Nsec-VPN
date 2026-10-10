@@ -65,9 +65,9 @@ fun ServerCard(
                         text = "${server.totalNodes} NODES",
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
-                        color = PrimaryBlue,
+                        color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
-                            .background(PrimaryBlueContainer, RoundedCornerShape(4.dp))
+                            .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(4.dp))
                             .padding(horizontal = 5.dp, vertical = 2.dp)
                     )
                 }

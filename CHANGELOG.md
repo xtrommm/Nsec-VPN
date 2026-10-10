@@ -2,6 +2,19 @@
 
 All notable changes to the Nsec VPN project are documented in this file following the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) standard.
 
+## [1.1.0] - 2026-10-10
+
+### Added
+- **Dark Mode Integration**: Full dark mode support across Android client with dynamic System/Light/Dark switching via Settings.
+- **Theme-Aware Badges & Cards**: Dynamic M3 color scheme mapping for server cluster node badges, status alerts, and contrast optimization.
+- **Android CI Workflow**: Comprehensive GitHub Actions CI job for Android (`testDebugUnitTest` and `assembleDebug`) with JDK 17.
+- **Executable Gradle Wrapper**: Added executable `gradlew` and `gradlew.bat` in repository root for standardized CI and local builds.
+
+### Fixed
+- **GitHub Dependabot Security Vulnerabilities**: Added package overrides and lockfile remediation for High-severity transitive dependency alerts (`braces`).
+- **CI Test Teardown / Hanging**: Configured `--detectOpenHandles --forceExit` and test environment flags for Jest test runs in GitHub Actions.
+- **Repository Hygiene (.gitignore)**: Added `node_modules/`, `dist/`, `.build-outputs/`, and logs to `.gitignore` to prevent repository bloat and GitHub push rejections.
+
 ## [1.0.0] - 2026-10-09
 
 ### Added

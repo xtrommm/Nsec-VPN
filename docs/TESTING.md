@@ -45,3 +45,4 @@ Before deploying to production, execute these 15 manual tests:
 13. **Google AdMob Toggles**: Turn off banner ads in Admin Panel; verify mobile app hides banners on next app launch.
 14. **Emergency Home Screen Announcement**: Enable announcement in Admin Panel; verify banner appears on Android app Home screen.
 15. **Quick Settings Tile**: Toggle VPN on and off from Android quick settings notification drawer.
+16. **Dynamic Theme & Dark Mode Switching**: In Settings, toggle between System, Light, and Dark mode; verify contrast, status bar icons, and badge rendering across all screens.

@@ -68,9 +68,18 @@ fun HomeScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(announcementTitle, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue)
+                    Text(
+                        text = announcementTitle,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
                     if (!announcementBody.isNullOrEmpty()) {
-                        Text(announcementBody, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface)
+                        Text(
+                            text = announcementBody,
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.9f)
+                        )
                     }
                 }
                 Text(
