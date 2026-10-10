@@ -278,7 +278,11 @@ class MainActivity : ComponentActivity() {
                                         )
                                     }
                                     Screen.SpeedTest -> {
-                                        SpeedTestScreen(currentServer = selectedServer)
+                                        SpeedTestScreen(
+                                            currentServer = selectedServer,
+                                            userTier = userTier,
+                                            adMobConfig = adMobConfig
+                                        )
                                     }
                                     Screen.Settings -> {
                                         SettingsScreen(

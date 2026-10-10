@@ -6,7 +6,9 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
@@ -25,6 +27,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nsec.vpn.data.model.Server
+import com.nsec.vpn.data.monetization.AdMobConfig
+import com.nsec.vpn.ui.components.AdMobBannerView
 import com.nsec.vpn.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -33,6 +37,8 @@ import java.util.Locale
 @Composable
 fun SpeedTestScreen(
     currentServer: Server?,
+    userTier: String = "FREE",
+    adMobConfig: AdMobConfig = AdMobConfig(),
     modifier: Modifier = Modifier,
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -85,6 +91,7 @@ fun SpeedTestScreen(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -191,6 +198,15 @@ fun SpeedTestScreen(
                 text = if (isTesting) "TESTING IN PROGRESS..." else "START SPEED TEST",
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
+            )
+        }
+
+        val isAdAllowed = userTier == "FREE" && adMobConfig.bannerEnabled
+        if (isAdAllowed) {
+            Spacer(modifier = Modifier.height(28.dp))
+            AdMobBannerView(
+                bannerAdUnitId = adMobConfig.bannerAdUnitId,
+                modifier = Modifier.fillMaxWidth()
             )
         }
     }
