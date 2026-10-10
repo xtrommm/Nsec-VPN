@@ -27,9 +27,9 @@ Official Website: **[nsecvpn.com](https://nsecvpn.com)**
 ### 📱 Android Client (`/app`)
 - **Modern Pro UI**: High-contrast Material 3 Light/Dark theme with responsive cards, micro-animations, and live stats.
 - **WireGuard® Protocol Engine**: Userspace Go backend (`wireguard-android`) using ChaCha20-Poly1305 encryption and Curve25519 key exchanges.
-- **Android 14-16 & 16 KB Page Size Compliant**: Fully compliant with Android 14, 15, and 16 (`systemExempted` foreground service type) and 16 KB memory page size alignment for JNI binaries.
-- **Smart Native Ads Monetization**: Google Native Ads integration (`SmartNativeAd`) with compact, medium, and large layouts, shimmer states, and lifecycle caching across Home, Server List, and Speed Test screens.
-- **AdMob Traffic Split Tunneling Bypass**: Automatic package and domain exclusion rules routing Google Mobile Ads SDK calls outside the VPN tunnel to prevent ad request timeouts or policy flags.
+- **Android 14-16 & 16 KB Page Size Compliant**: Fully compliant with Android 14, 15, and 16 (`systemExempted` foreground service type) and 16 KB memory page size alignment for JNI binaries (`useLegacyPackaging = true`).
+- **Smart Native Ads Monetization**: Google Native Ads integration (`SmartNativeAd`) with compact, medium, and large layouts, shimmer states, lifecycle caching, and robust null-safety across Home, Server List, and Speed Test screens.
+- **AdMob Traffic Split Tunneling Bypass**: Automatic package and domain exclusion rules in `WireGuardTunnelManager` and `NsecVpnService` routing Google Mobile Ads SDK calls outside the VPN tunnel to prevent ad request timeouts or policy flags.
 - **Smart Connect**: Automatically checks global node latencies via UDP socket handshakes and connects to the optimal gateway.
 - **Custom Encrypted DNS**: One-tap selection between Cloudflare (`1.1.1.1`), Google (`8.8.8.8`), AdGuard (`94.140.14.14`), and Quad9 (`9.9.9.9`).
 - **App Split Tunneling**: Exclude banking, local entertainment, or ad SDK apps from the VPN tunnel.
