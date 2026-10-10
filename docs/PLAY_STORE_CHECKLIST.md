@@ -38,17 +38,19 @@ In Android 14+ (`targetSdkVersion 34+`), apps declaring `FOREGROUND_SERVICE` mus
 
 ---
 
-## 3. Data Safety Form Responses
+## 3. Ads & Split Tunneling Compliance (Google Play Policy)
 
-Accurate Data Safety declaration matching real Nsec VPN architecture:
-
-| Question | Answer | Details |
-|---|---|---|
-| Does your app collect or share user data? | **Yes** | Device or other IDs (Anonymous Keystore UUID for subscription sync). |
-| Is data encrypted in transit? | **Yes** | All API traffic is HTTPS / TLS 1.3. Tunnel traffic is ChaCha20-Poly1305. |
-| Can users request data deletion? | **Yes** | In-app one-tap 'Clear Keystore Identity & Cache' or email support. |
-| Does the app log web browsing or traffic? | **No** | Zero logs of websites visited, apps accessed, or IP payloads. |
-| Are IP addresses logged? | **No** | Originating client IP addresses are never logged or stored. |
+Under Google Play policies regarding Monetization and Ads:
+- **Ad Traffic Split Tunneling**: The application implements automated split tunneling exclusion rules (`addDisallowedApplication`) for the app's own package (`com.nsec.vpn`) and ad request endpoints. This ensures Google Mobile Ads (AdMob) SDK calls route directly over the standard network interface outside the VPN tunnel, preventing ad delivery failures, timeout errors, and ad mediation policy violations.
+- **Data Safety Form Responses**:
+  
+  | Question | Answer | Details |
+  |---|---|---|
+  | Does your app collect or share user data? | **Yes** | Device or other IDs (Anonymous Keystore UUID for subscription sync and ad identifiers where enabled). |
+  | Is data encrypted in transit? | **Yes** | All API traffic is HTTPS / TLS 1.3. Tunnel traffic is ChaCha20-Poly1305. |
+  | Can users request data deletion? | **Yes** | In-app one-tap 'Clear Keystore Identity & Cache' or email support. |
+  | Does the app log web browsing or traffic? | **No** | Zero logs of websites visited, apps accessed, or IP payloads. |
+  | Are IP addresses logged? | **No** | Originating client IP addresses are never logged or stored. |
 
 ---
 
