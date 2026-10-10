@@ -55,16 +55,16 @@ fun TroubleshootScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Troubleshooting Assistant", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextPrimary) },
+                title = { Text("Troubleshooting Assistant", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = LightBackground)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
             )
         },
-        containerColor = LightBackground
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Column(
             modifier = modifier
@@ -76,7 +76,7 @@ fun TroubleshootScreen(
             Text(
                 text = "Automated diagnostic engine verifies network routing, port filtering, and WireGuard MTU parameters.",
                 fontSize = 13.sp,
-                color = TextSecondary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 20.dp)
             )
 
@@ -133,8 +133,8 @@ private fun DiagnosticItem(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(LightSurface)
-            .border(1.dp, LightCardBorder, RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -146,7 +146,7 @@ private fun DiagnosticItem(
         )
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+            Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
             Text(status, fontSize = 12.sp, color = if (isPassed) EmeraldGreen else AmberWarning)
         }
     }

@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -30,8 +31,8 @@ fun ServerCard(
     onToggleFavorite: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    val borderColor = if (isSelected) PrimaryBlue else LightCardBorder
-    val backgroundColor = if (isSelected) PrimaryBlueContainer else LightSurface
+    val borderColor = if (isSelected) PrimaryBlue else MaterialTheme.colorScheme.outline
+    val backgroundColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
 
     Row(
         modifier = modifier
@@ -56,7 +57,7 @@ fun ServerCard(
                     text = server.city,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 if (server.isRecommended) {
                     Spacer(modifier = Modifier.width(6.dp))
@@ -66,7 +67,7 @@ fun ServerCard(
                         fontWeight = FontWeight.Bold,
                         color = EmeraldGreen,
                         modifier = Modifier
-                            .background(EmeraldContainer, RoundedCornerShape(4.dp))
+                            .background(MaterialTheme.colorScheme.emeraldBadgeContainer, RoundedCornerShape(4.dp))
                             .padding(horizontal = 5.dp, vertical = 2.dp)
                     )
                 }
@@ -78,7 +79,7 @@ fun ServerCard(
                         fontWeight = FontWeight.Bold,
                         color = AmberWarning,
                         modifier = Modifier
-                            .background(AmberContainer, RoundedCornerShape(4.dp))
+                            .background(MaterialTheme.colorScheme.amberBadgeContainer, RoundedCornerShape(4.dp))
                             .padding(horizontal = 5.dp, vertical = 2.dp)
                     )
                 }
@@ -89,7 +90,7 @@ fun ServerCard(
             Text(
                 text = server.countryName,
                 fontSize = 12.sp,
-                color = TextSecondary
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
@@ -116,7 +117,7 @@ fun ServerCard(
             Text(
                 text = "${server.currentLoad}% load",
                 fontSize = 11.sp,
-                color = TextTertiary
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
@@ -128,7 +129,7 @@ fun ServerCard(
                 Icon(
                     imageVector = if (server.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
                     contentDescription = "Favorite",
-                    tint = if (server.isFavorite) AmberWarning else TextTertiary,
+                    tint = if (server.isFavorite) AmberWarning else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp)
                 )
             }

@@ -28,16 +28,16 @@ fun LegalScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Zero-Logs Privacy Policy", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextPrimary) },
+                title = { Text("Zero-Logs Privacy Policy", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = LightBackground)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
             )
         },
-        containerColor = LightBackground
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Column(
             modifier = modifier
@@ -50,7 +50,7 @@ fun LegalScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(EmeraldContainer)
+                    .background(MaterialTheme.colorScheme.emeraldBadgeContainer)
                     .border(1.dp, EmeraldGreen.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
                     .padding(14.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -60,7 +60,7 @@ fun LegalScreen(
                 Text(
                     text = "Strict No-Logging Guarantee: Nsec VPN (nsecvpn.com) never logs, stores, or shares your personal network traffic.",
                     fontSize = 12.sp,
-                    color = TextPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                     lineHeight = 17.sp
                 )
             }
@@ -83,6 +83,6 @@ private fun PolicySection(title: String, content: String) {
     Column(modifier = Modifier.padding(bottom = 16.dp)) {
         Text(title, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue)
         Spacer(modifier = Modifier.height(6.dp))
-        Text(content, fontSize = 13.sp, color = TextSecondary, lineHeight = 19.sp)
+        Text(content, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 19.sp)
     }
 }

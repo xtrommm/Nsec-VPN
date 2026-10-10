@@ -3,9 +3,11 @@ package com.nsec.vpn
 import androidx.test.core.app.ApplicationProvider
 import com.nsec.vpn.data.api.*
 import com.nsec.vpn.data.local.KeyStoreManager
+import com.nsec.vpn.data.model.ThemeMode
 import com.nsec.vpn.data.repository.VpnRepository
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -69,5 +71,41 @@ class VpnRepositoryTest {
 
         repository.selectBestServer()
         assertNotNull(repository.selectedServer.value)
+    }
+
+    @Test
+    fun toggleFavorite_persistsFavoritesAcrossRepositoryReinitialization() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val fakeApi = FakeNsecVpnApi()
+        val keyStoreManager = KeyStoreManager(context)
+        val repository1 = VpnRepository(context, fakeApi, keyStoreManager)
+
+        val serverToFav = "srv_us_nyc"
+        repository1.toggleFavorite(serverToFav)
+
+        val favServerInRepo1 = repository1.servers.value.find { it.id == serverToFav }
+        assertNotNull(favServerInRepo1)
+        assertTrue(favServerInRepo1!!.isFavorite)
+
+        // Simulate app restart / new repository instance reading from persistent KeyStoreManager
+        val repository2 = VpnRepository(context, fakeApi, keyStoreManager)
+        val favServerInRepo2 = repository2.servers.value.find { it.id == serverToFav }
+        assertNotNull(favServerInRepo2)
+        assertTrue(favServerInRepo2!!.isFavorite)
+    }
+
+    @Test
+    fun setThemeMode_persistsThemeModeSetting() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val fakeApi = FakeNsecVpnApi()
+        val keyStoreManager = KeyStoreManager(context)
+        val repository1 = VpnRepository(context, fakeApi, keyStoreManager)
+
+        repository1.setThemeMode(ThemeMode.DARK)
+        assertEquals(ThemeMode.DARK, repository1.themeMode.value)
+
+        // Reinitialize repository to verify persistence
+        val repository2 = VpnRepository(context, fakeApi, keyStoreManager)
+        assertEquals(ThemeMode.DARK, repository2.themeMode.value)
     }
 }

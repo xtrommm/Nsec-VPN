@@ -89,6 +89,18 @@ class KeyStoreManager(context: Context) {
     }
     fun getRewardedPassExpiry(): Long = prefs.getLong(KEY_REWARDED_EXPIRES_AT, 0L)
 
+    // Favorite Servers Persistence
+    fun saveFavoriteServerIds(ids: Set<String>) {
+        prefs.edit().putStringSet(KEY_FAVORITE_SERVERS, ids).apply()
+    }
+    fun getFavoriteServerIds(): Set<String> = prefs.getStringSet(KEY_FAVORITE_SERVERS, emptySet()) ?: emptySet()
+
+    // Theme Preference Persistence
+    fun saveThemeMode(mode: String) {
+        prefs.edit().putString(KEY_THEME_MODE, mode).apply()
+    }
+    fun getThemeMode(): String = prefs.getString(KEY_THEME_MODE, "SYSTEM") ?: "SYSTEM"
+
     companion object {
         private const val KEY_DEVICE_ID = "device_id"
         private const val KEY_WG_PRIVATE = "wg_private_key"
@@ -103,5 +115,7 @@ class KeyStoreManager(context: Context) {
         private const val KEY_AUTO_CONNECT = "auto_connect_enabled"
         private const val KEY_VPN_DISCLOSURE_ACCEPTED = "vpn_disclosure_accepted"
         private const val KEY_REWARDED_EXPIRES_AT = "rewarded_expires_at"
+        private const val KEY_FAVORITE_SERVERS = "favorite_server_ids"
+        private const val KEY_THEME_MODE = "app_theme_mode"
     }
 }

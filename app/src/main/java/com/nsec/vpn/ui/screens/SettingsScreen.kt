@@ -25,10 +25,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nsec.vpn.data.model.DnsProvider
+import com.nsec.vpn.data.model.ThemeMode
 import com.nsec.vpn.ui.theme.*
 
 @Composable
 fun SettingsScreen(
+    themeMode: ThemeMode,
+    onSelectThemeMode: (ThemeMode) -> Unit,
     killSwitchEnabled: Boolean,
     onToggleKillSwitch: (Boolean) -> Unit,
     selectedDns: DnsProvider,
@@ -44,13 +47,14 @@ fun SettingsScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    var showThemeDialog by remember { mutableStateOf(false) }
     var showDnsDialog by remember { mutableStateOf(false) }
     var showKillSwitchDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(LightBackground)
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
@@ -58,10 +62,25 @@ fun SettingsScreen(
             text = "Settings",
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
-            color = TextPrimary
+            color = MaterialTheme.colorScheme.onBackground
         )
 
         Spacer(modifier = Modifier.height(18.dp))
+
+        SectionHeader("APPEARANCE & THEME")
+
+        SettingsClickableItem(
+            icon = when (themeMode) {
+                ThemeMode.LIGHT -> Icons.Default.LightMode
+                ThemeMode.DARK -> Icons.Default.DarkMode
+                ThemeMode.SYSTEM -> Icons.Default.BrightnessAuto
+            },
+            title = "App Theme",
+            subtitle = themeMode.displayName,
+            onClick = { showThemeDialog = true }
+        )
+
+        Spacer(modifier = Modifier.height(20.dp))
 
         SectionHeader("SECURITY & PROTOCOL")
 
@@ -162,11 +181,51 @@ fun SettingsScreen(
         )
     }
 
+    if (showThemeDialog) {
+        AlertDialog(
+            onDismissRequest = { showThemeDialog = false },
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = { Text("Choose Theme Mode", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ThemeMode.entries.forEach { mode ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onSelectThemeMode(mode)
+                                    showThemeDialog = false
+                                }
+                                .padding(vertical = 8.dp)
+                        ) {
+                            RadioButton(
+                                selected = themeMode == mode,
+                                onClick = {
+                                    onSelectThemeMode(mode)
+                                    showThemeDialog = false
+                                },
+                                colors = RadioButtonDefaults.colors(selectedColor = PrimaryBlue)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(mode.displayName, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showThemeDialog = false }) {
+                    Text("Close", color = PrimaryBlue)
+                }
+            }
+        )
+    }
+
     if (showDnsDialog) {
         AlertDialog(
             onDismissRequest = { showDnsDialog = false },
-            containerColor = LightSurface,
-            title = { Text("Select Encrypted DNS", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = { Text("Select Encrypted DNS", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     DnsProvider.entries.forEach { provider ->
@@ -190,8 +249,8 @@ fun SettingsScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Column {
-                                Text(provider.displayName, color = TextPrimary, fontSize = 14.sp)
-                                Text("${provider.primary}, ${provider.secondary}", color = TextSecondary, fontSize = 11.sp)
+                                Text(provider.displayName, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                                Text("${provider.primary}, ${provider.secondary}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                             }
                         }
                     }
@@ -208,12 +267,12 @@ fun SettingsScreen(
     if (showKillSwitchDialog) {
         AlertDialog(
             onDismissRequest = { showKillSwitchDialog = false },
-            containerColor = LightSurface,
-            title = { Text("Enable Android System Kill Switch", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = { Text("Enable Android System Kill Switch", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
             text = {
                 Text(
                     "For full hardware-level kill switch protection against packet leaks, Android provides the 'Always-on VPN' and 'Block connections without VPN' system setting.\n\nTap below to open system VPN settings.",
-                    color = TextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 13.sp,
                     lineHeight = 18.sp
                 )
@@ -234,7 +293,7 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showKillSwitchDialog = false }) {
-                    Text("Cancel", color = TextSecondary)
+                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         )
@@ -247,7 +306,7 @@ private fun SectionHeader(title: String) {
         text = title,
         fontSize = 11.sp,
         fontWeight = FontWeight.Bold,
-        color = TextSecondary,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         letterSpacing = 1.sp,
         modifier = Modifier.padding(bottom = 8.dp)
     )
@@ -266,16 +325,16 @@ private fun SettingsToggleItem(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(LightSurface)
-            .border(1.dp, LightCardBorder, RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(icon, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(22.dp))
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-            Text(subtitle, fontSize = 12.sp, color = TextSecondary)
+            Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+            Text(subtitle, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (trailingAction != null) {
             trailingAction()
@@ -287,7 +346,7 @@ private fun SettingsToggleItem(
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White,
                 checkedTrackColor = PrimaryBlue,
-                uncheckedTrackColor = LightCardBorderHighlight
+                uncheckedTrackColor = MaterialTheme.colorScheme.outlineVariant
             )
         )
     }
@@ -305,8 +364,8 @@ private fun SettingsClickableItem(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(LightSurface)
-            .border(1.dp, LightCardBorder, RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -314,13 +373,13 @@ private fun SettingsClickableItem(
         Icon(icon, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(22.dp))
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-            Text(subtitle, fontSize = 12.sp, color = TextSecondary)
+            Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+            Text(subtitle, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
             contentDescription = null,
-            tint = TextTertiary,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(14.dp)
         )
     }

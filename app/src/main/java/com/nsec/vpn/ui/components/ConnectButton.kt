@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -70,6 +71,8 @@ fun ConnectButton(
         is VpnState.Disconnected -> "TAP TO CONNECT"
     }
 
+    val surfaceColor = MaterialTheme.colorScheme.surface
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
@@ -116,12 +119,12 @@ fun ConnectButton(
                     .background(
                         Brush.verticalGradient(
                             listOf(
-                                Color.White,
-                                Color(0xFFF8FAFC)
+                                surfaceColor,
+                                surfaceColor
                             )
                         )
                     )
-                    .border(2.dp, buttonColor.copy(alpha = 0.25f), CircleShape)
+                    .border(2.dp, buttonColor.copy(alpha = 0.35f), CircleShape)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,

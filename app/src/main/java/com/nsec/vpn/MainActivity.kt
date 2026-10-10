@@ -27,6 +27,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nsec.vpn.core.network.ServiceLocator
 import com.nsec.vpn.data.model.VpnState
@@ -38,6 +39,7 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
@@ -50,7 +52,9 @@ class MainActivity : ComponentActivity() {
         val tunnelManager = serviceLocator.tunnelManager
 
         setContent {
-            NsecVpnTheme {
+            val themeMode by vpnRepo.themeMode.collectAsStateWithLifecycle()
+
+            NsecVpnTheme(themeMode = themeMode) {
                 val coroutineScope = rememberCoroutineScope()
 
                 val vpnState by tunnelManager.vpnState.collectAsStateWithLifecycle()
@@ -140,7 +144,7 @@ class MainActivity : ComponentActivity() {
                     bottomBar = {
                         if (activeSubScreen == null) {
                             NavigationBar(
-                                containerColor = LightSurface,
+                                containerColor = MaterialTheme.colorScheme.surface,
                                 tonalElevation = 6.dp
                             ) {
                                 listOf(Screen.Home, Screen.Servers, Screen.SpeedTest, Screen.Settings).forEach { screen ->
@@ -164,9 +168,9 @@ class MainActivity : ComponentActivity() {
                                         colors = NavigationBarItemDefaults.colors(
                                             selectedIconColor = PrimaryBlue,
                                             selectedTextColor = PrimaryBlue,
-                                            unselectedIconColor = TextSecondary,
-                                            unselectedTextColor = TextSecondary,
-                                            indicatorColor = PrimaryBlueContainer
+                                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            indicatorColor = MaterialTheme.colorScheme.primaryContainer
                                         ),
                                         modifier = Modifier.testTag("nav_${screen.route}")
                                     )
@@ -175,7 +179,7 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     contentWindowInsets = WindowInsets.safeDrawing,
-                    containerColor = LightBackground
+                    containerColor = MaterialTheme.colorScheme.background
                 ) { innerPadding ->
                     Box(modifier = Modifier.padding(innerPadding)) {
                         when (activeSubScreen) {
@@ -234,6 +238,8 @@ class MainActivity : ComponentActivity() {
                                     }
                                     Screen.Settings -> {
                                         SettingsScreen(
+                                            themeMode = themeMode,
+                                            onSelectThemeMode = { vpnRepo.setThemeMode(it) },
                                             killSwitchEnabled = killSwitchEnabled,
                                             onToggleKillSwitch = { vpnRepo.setKillSwitch(it) },
                                             selectedDns = selectedDns,
@@ -258,26 +264,26 @@ class MainActivity : ComponentActivity() {
                 if (showVipModal) {
                     AlertDialog(
                         onDismissRequest = { showVipModal = false },
-                        containerColor = LightSurface,
+                        containerColor = MaterialTheme.colorScheme.surface,
                         title = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.Star, contentDescription = null, tint = AmberWarning)
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Upgrade to Nsec VPN VIP", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                                Text("Upgrade to Nsec VPN VIP", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                             }
                         },
                         text = {
                             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Text(
                                     "Enjoy zero ads, unlimited 10Gbps WireGuard nodes, bypass all streaming geo-blocks, and priority routing.",
-                                    color = TextSecondary,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontSize = 12.sp,
                                     lineHeight = 17.sp
                                 )
 
                                 Surface(
                                     shape = RoundedCornerShape(12.dp),
-                                    color = PrimaryBlueContainer,
+                                    color = MaterialTheme.colorScheme.primaryContainer,
                                     border = BorderStroke(1.5.dp, PrimaryBlue),
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -294,17 +300,17 @@ class MainActivity : ComponentActivity() {
                                     ) {
                                         Column {
                                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Text("Yearly VIP Plan", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                                                Text("Yearly VIP Plan", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                                                 Spacer(modifier = Modifier.width(6.dp))
                                                 Text(
                                                     "50% OFF",
                                                     fontSize = 9.sp,
                                                     fontWeight = FontWeight.Bold,
                                                     color = EmeraldGreen,
-                                                    modifier = Modifier.background(EmeraldContainer, RoundedCornerShape(4.dp)).padding(horizontal = 4.dp, vertical = 2.dp)
+                                                    modifier = Modifier.background(MaterialTheme.colorScheme.emeraldBadgeContainer, RoundedCornerShape(4.dp)).padding(horizontal = 4.dp, vertical = 2.dp)
                                                 )
                                             }
-                                            Text("$29.99 / year ($2.50/mo)", fontSize = 11.sp, color = TextSecondary)
+                                            Text("$29.99 / year ($2.50/mo)", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
                                         Icon(Icons.Default.Star, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(20.dp))
                                     }
@@ -312,8 +318,8 @@ class MainActivity : ComponentActivity() {
 
                                 Surface(
                                     shape = RoundedCornerShape(12.dp),
-                                    color = LightSurface,
-                                    border = BorderStroke(1.dp, LightCardBorder),
+                                    color = MaterialTheme.colorScheme.surface,
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable {
@@ -328,16 +334,16 @@ class MainActivity : ComponentActivity() {
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
                                         Column {
-                                            Text("Monthly VIP Plan", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                                            Text("$4.99 / month • Cancel anytime", fontSize = 11.sp, color = TextSecondary)
+                                            Text("Monthly VIP Plan", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                            Text("$4.99 / month • Cancel anytime", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
                                     }
                                 }
 
                                 Surface(
                                     shape = RoundedCornerShape(12.dp),
-                                    color = LightCardHighlight,
-                                    border = BorderStroke(1.dp, LightCardBorder),
+                                    color = MaterialTheme.colorScheme.surfaceVariant,
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable {
@@ -348,14 +354,14 @@ class MainActivity : ComponentActivity() {
                                 ) {
                                     Column(modifier = Modifier.padding(12.dp)) {
                                         Text("Watch Rewarded Ad for 30m Free VIP", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue)
-                                        Text("Instantly unlocks all high-speed servers for 30 minutes without credit card.", fontSize = 10.sp, color = TextTertiary)
+                                        Text("Instantly unlocks all high-speed servers for 30 minutes without credit card.", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                 }
                             }
                         },
                         confirmButton = {
                             TextButton(onClick = { showVipModal = false }) {
-                                Text("Close", color = TextSecondary)
+                                Text("Close", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     )
@@ -364,30 +370,30 @@ class MainActivity : ComponentActivity() {
                 if (showPromoDialog) {
                     AlertDialog(
                         onDismissRequest = { showPromoDialog = false },
-                        containerColor = LightSurface,
+                        containerColor = MaterialTheme.colorScheme.surface,
                         title = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.CardGiftcard, contentDescription = null, tint = PrimaryBlue)
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Redeem Promo Code", color = TextPrimary, fontWeight = FontWeight.Bold)
+                                Text("Redeem Promo Code", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
                             }
                         },
                         text = {
                             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Text("Enter your invite or promotional code to unlock Premium access.", color = TextSecondary, fontSize = 13.sp)
+                                Text("Enter your invite or promotional code to unlock Premium access.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
                                 OutlinedTextField(
                                     value = promoCodeInput,
                                     onValueChange = { promoCodeInput = it },
-                                    placeholder = { Text("e.g. VIP2026", color = TextTertiary) },
+                                    placeholder = { Text("e.g. VIP2026", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                                     singleLine = true,
                                     shape = RoundedCornerShape(10.dp),
                                     colors = OutlinedTextFieldDefaults.colors(
-                                        focusedContainerColor = LightSurface,
-                                        unfocusedContainerColor = LightSurface,
+                                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                                         focusedBorderColor = PrimaryBlue,
-                                        unfocusedBorderColor = LightCardBorder,
-                                        focusedTextColor = TextPrimary,
-                                        unfocusedTextColor = TextPrimary
+                                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                                     ),
                                     modifier = Modifier.fillMaxWidth()
                                 )
@@ -409,7 +415,7 @@ class MainActivity : ComponentActivity() {
                         },
                         dismissButton = {
                             TextButton(onClick = { showPromoDialog = false }) {
-                                Text("Cancel", color = TextSecondary)
+                                Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     )

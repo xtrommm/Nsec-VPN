@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -34,8 +35,8 @@ fun LiveStatsBar(
             .fillMaxWidth()
             .shadow(elevation = 2.dp, shape = RoundedCornerShape(16.dp), spotColor = Color.Black.copy(alpha = 0.05f))
             .clip(RoundedCornerShape(16.dp))
-            .background(LightSurface)
-            .border(1.dp, LightCardBorder, RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
             .padding(vertical = 14.dp, horizontal = 12.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
@@ -51,7 +52,7 @@ fun LiveStatsBar(
             modifier = Modifier
                 .width(1.dp)
                 .height(36.dp)
-                .background(LightCardBorder),
+                .background(MaterialTheme.colorScheme.outline),
         )
 
         StatItem(
@@ -65,7 +66,7 @@ fun LiveStatsBar(
             modifier = Modifier
                 .width(1.dp)
                 .height(36.dp)
-                .background(LightCardBorder),
+                .background(MaterialTheme.colorScheme.outline),
         )
 
         StatItem(
@@ -97,7 +98,7 @@ private fun StatItem(
                 text = label,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = TextSecondary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 letterSpacing = 0.8.sp,
             )
         }
@@ -106,7 +107,7 @@ private fun StatItem(
             text = value,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
-            color = TextPrimary,
+            color = MaterialTheme.colorScheme.onSurface,
         )
     }
 }

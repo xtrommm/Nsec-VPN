@@ -50,7 +50,7 @@ fun HomeScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(LightBackground)
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -61,7 +61,7 @@ fun HomeScreen(
                     .fillMaxWidth()
                     .padding(bottom = 12.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(PrimaryBlueContainer)
+                    .background(MaterialTheme.colorScheme.primaryContainer)
                     .border(1.dp, PrimaryBlue.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
                     .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -69,14 +69,14 @@ fun HomeScreen(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(announcementTitle, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue)
                     if (!announcementBody.isNullOrEmpty()) {
-                        Text(announcementBody, fontSize = 11.sp, color = TextPrimary)
+                        Text(announcementBody, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface)
                     }
                 }
                 Text(
                     text = "DISMISS",
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.clickable { announcementDismissed = true }.padding(4.dp)
                 )
             }
@@ -92,7 +92,7 @@ fun HomeScreen(
                     text = "Nsec -VPN",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
                     text = "MILITARY GRADE",
@@ -104,10 +104,10 @@ fun HomeScreen(
 
             Surface(
                 shape = RoundedCornerShape(20.dp),
-                color = if (userTier == "FREE") LightCardHighlight else AmberContainer,
+                color = if (userTier == "FREE") MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.amberBadgeContainer,
                 border = BorderStroke(
                     1.dp,
-                    if (userTier == "FREE") LightCardBorder else AmberWarning.copy(alpha = 0.6f)
+                    if (userTier == "FREE") MaterialTheme.colorScheme.outline else AmberWarning.copy(alpha = 0.6f)
                 ),
                 modifier = Modifier.clickable { onUpgradeClicked() }
             ) {
@@ -118,7 +118,7 @@ fun HomeScreen(
                     Icon(
                         imageVector = Icons.Default.Lock,
                         contentDescription = null,
-                        tint = if (userTier == "FREE") TextSecondary else AmberWarning,
+                        tint = if (userTier == "FREE") MaterialTheme.colorScheme.onSurfaceVariant else AmberWarning,
                         modifier = Modifier.size(12.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
@@ -126,7 +126,7 @@ fun HomeScreen(
                         text = if (userTier == "FREE") "FREE TIER" else "VIP ACTIVE",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (userTier == "FREE") TextSecondary else AmberWarning
+                        color = if (userTier == "FREE") MaterialTheme.colorScheme.onSurfaceVariant else AmberWarning
                     )
                 }
             }
@@ -138,8 +138,8 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
-                .background(LightSurface)
-                .border(1.dp, LightCardBorder, RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.surface)
+                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
                 .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -163,7 +163,7 @@ fun HomeScreen(
                     else "198.51.100.22 • Unencrypted Connection",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
-                    color = TextPrimary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
             if (!isConnected) {
@@ -195,7 +195,7 @@ fun HomeScreen(
                     text = "SELECTED SERVER",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = TextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     letterSpacing = 1.sp
                 )
                 Text(
@@ -216,8 +216,8 @@ fun HomeScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(14.dp))
-                        .background(LightSurface)
-                        .border(1.dp, LightCardBorder, RoundedCornerShape(14.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(14.dp))
                         .clickable { onNavigateToServers() }
                         .padding(14.dp)
                         .testTag("selected_server_card"),
@@ -233,18 +233,18 @@ fun HomeScreen(
                             text = "${selectedServer.city}, ${selectedServer.countryName}",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "Ping: ${selectedServer.pingMs ?: 32}ms • Load: ${selectedServer.currentLoad}%",
                             fontSize = 12.sp,
-                            color = TextSecondary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
                         contentDescription = "Change Server",
-                        tint = TextTertiary,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(14.dp)
                     )
                 }

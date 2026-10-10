@@ -8,6 +8,7 @@ import com.nsec.vpn.data.api.RegisterDeviceRequest
 import com.nsec.vpn.data.local.KeyStoreManager
 import com.nsec.vpn.data.model.DnsProvider
 import com.nsec.vpn.data.model.Server
+import com.nsec.vpn.data.model.ThemeMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -46,8 +47,21 @@ class VpnRepository(
     private val _userTier = MutableStateFlow("FREE")
     val userTier: StateFlow<String> = _userTier.asStateFlow()
 
+    private val _favoriteServerIds = MutableStateFlow<Set<String>>(emptySet())
+    val favoriteServerIds: StateFlow<Set<String>> = _favoriteServerIds.asStateFlow()
+
+    private val _themeMode = MutableStateFlow(ThemeMode.SYSTEM)
+    val themeMode: StateFlow<ThemeMode> = _themeMode.asStateFlow()
+
     init {
-        _servers.value = getFallbackServers()
+        _favoriteServerIds.value = keyStoreManager.getFavoriteServerIds()
+
+        val savedThemeName = keyStoreManager.getThemeMode()
+        _themeMode.value = ThemeMode.entries.find { it.name == savedThemeName } ?: ThemeMode.SYSTEM
+
+        _servers.value = getFallbackServers().map { server ->
+            server.copy(isFavorite = _favoriteServerIds.value.contains(server.id))
+        }
 
         val savedServerId = keyStoreManager.getSelectedServerId()
         _selectedServer.value = _servers.value.firstOrNull { it.id == savedServerId }
@@ -81,6 +95,7 @@ class VpnRepository(
             val response = api.getServers("Bearer $token")
             if (response.isSuccessful && response.body()?.data?.servers != null) {
                 val dtos = response.body()!!.data!!.servers
+                val favs = _favoriteServerIds.value
                 val mapped = dtos.map { dto ->
                     Server(
                         id = dto.id,
@@ -91,14 +106,18 @@ class VpnRepository(
                         flagEmoji = dto.flagEmoji,
                         currentLoad = dto.currentLoad,
                         isPremiumOnly = dto.isPremiumOnly,
-                        isRecommended = dto.isRecommended
+                        isRecommended = dto.isRecommended,
+                        isFavorite = favs.contains(dto.id)
                     )
                 }
                 _servers.value = mapped
             }
         } catch (_: Exception) {
             if (_servers.value.isEmpty()) {
-                _servers.value = getFallbackServers()
+                val favs = _favoriteServerIds.value
+                _servers.value = getFallbackServers().map { s ->
+                    s.copy(isFavorite = favs.contains(s.id))
+                }
             }
         }
 
@@ -178,10 +197,24 @@ class VpnRepository(
     }
 
     fun toggleFavorite(serverId: String) {
+        val currentFavs = _favoriteServerIds.value.toMutableSet()
+        if (currentFavs.contains(serverId)) {
+            currentFavs.remove(serverId)
+        } else {
+            currentFavs.add(serverId)
+        }
+        _favoriteServerIds.value = currentFavs
+        keyStoreManager.saveFavoriteServerIds(currentFavs)
+
         val updated = _servers.value.map {
-            if (it.id == serverId) it.copy(isFavorite = !it.isFavorite) else it
+            if (it.id == serverId) it.copy(isFavorite = currentFavs.contains(it.id)) else it
         }
         _servers.value = updated
+    }
+
+    fun setThemeMode(mode: ThemeMode) {
+        _themeMode.value = mode
+        keyStoreManager.saveThemeMode(mode.name)
     }
 
     fun setDns(dns: DnsProvider) {

@@ -58,3 +58,10 @@ enum class DnsProvider(val displayName: String, val primary: String, val seconda
     ADGUARD("AdGuard (Ad-Blocking DNS)", "94.140.14.14", "94.140.15.15"),
     QUAD9("Quad9 (Security Filtered)", "9.9.9.9", "149.112.112.112")
 }
+
+enum class ThemeMode(val displayName: String) {
+    SYSTEM("System Default"),
+    LIGHT("Light Theme"),
+    DARK("Dark Theme")
+}
+

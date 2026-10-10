@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,6 +20,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nsec.vpn.data.model.Server
@@ -41,7 +43,10 @@ fun ServerListScreen(
     var searchQuery by remember { mutableStateOf("") }
     var selectedTab by remember { mutableStateOf(0) }
 
-    val tabs = listOf("All", "Free", "VIP", "Favorites")
+    val favCount = remember(servers) { servers.count { it.isFavorite } }
+    val tabs = remember(favCount) {
+        listOf("All", "Free", "VIP", if (favCount > 0) "Favorites ($favCount)" else "Favorites")
+    }
 
     val filteredServers = remember(servers, searchQuery, selectedTab) {
         servers.filter { s ->
@@ -63,7 +68,7 @@ fun ServerListScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(LightBackground)
+            .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
         Row(
@@ -75,7 +80,7 @@ fun ServerListScreen(
                 text = "VPN Locations",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary
+                color = MaterialTheme.colorScheme.onBackground
             )
             IconButton(onClick = onRefreshPings) {
                 Icon(
@@ -91,19 +96,19 @@ fun ServerListScreen(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            placeholder = { Text("Search country or city...", color = TextTertiary, fontSize = 14.sp) },
+            placeholder = { Text("Search country or city...", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp) },
             leadingIcon = {
-                Icon(Icons.Default.Search, contentDescription = null, tint = TextTertiary)
+                Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             },
             singleLine = true,
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = LightSurface,
-                unfocusedContainerColor = LightSurface,
+                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                 focusedBorderColor = PrimaryBlue,
-                unfocusedBorderColor = LightCardBorder,
-                focusedTextColor = TextPrimary,
-                unfocusedTextColor = TextPrimary
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
             ),
             modifier = Modifier
                 .fillMaxWidth()
@@ -116,7 +121,7 @@ fun ServerListScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(14.dp))
-                .background(PrimaryBlueContainer)
+                .background(MaterialTheme.colorScheme.primaryContainer)
                 .border(1.dp, PrimaryBlue.copy(alpha = 0.35f), RoundedCornerShape(14.dp))
                 .clickable { onAutoSelectBest() }
                 .padding(14.dp)
@@ -143,12 +148,12 @@ fun ServerListScreen(
                     text = "Auto-Select Optimal Server",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "Connects to lowest latency & lowest load gateway",
                     fontSize = 11.sp,
-                    color = TextSecondary
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -157,7 +162,7 @@ fun ServerListScreen(
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             tabs.forEachIndexed { index, tabTitle ->
                 val isSelected = selectedTab == index
@@ -165,10 +170,10 @@ fun ServerListScreen(
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(if (isSelected) PrimaryBlue else LightSurface)
+                        .background(if (isSelected) PrimaryBlue else MaterialTheme.colorScheme.surface)
                         .border(
                             1.dp,
-                            if (isSelected) PrimaryBlue else LightCardBorder,
+                            if (isSelected) PrimaryBlue else MaterialTheme.colorScheme.outline,
                             RoundedCornerShape(10.dp)
                         )
                         .clickable { selectedTab = index }
@@ -177,9 +182,10 @@ fun ServerListScreen(
                 ) {
                     Text(
                         text = tabTitle,
-                        fontSize = 12.sp,
+                        fontSize = 11.sp,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                        color = if (isSelected) Color.White else TextSecondary
+                        color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
                     )
                 }
             }
@@ -187,23 +193,72 @@ fun ServerListScreen(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.weight(1f)
-        ) {
-            items(filteredServers, key = { it.id }) { server ->
-                ServerCard(
-                    server = server,
-                    isSelected = selectedServer?.id == server.id,
-                    onSelect = {
-                        if (server.isPremiumOnly && userTier == "FREE") {
-                            onUpgradeRequired()
-                        } else {
-                            onSelectServer(server)
-                        }
-                    },
-                    onToggleFavorite = { onToggleFavorite(server.id) }
-                )
+        if (selectedTab == 3 && filteredServers.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
+                        .padding(24.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.StarBorder,
+                        contentDescription = null,
+                        tint = AmberWarning,
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "No Favorite Servers Yet",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "Tap the star icon on any server location to save it to your favorites list for quick access.",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        lineHeight = 17.sp
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = { selectedTab = 0 },
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("Explore All Locations", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        } else {
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                items(filteredServers, key = { it.id }) { server ->
+                    ServerCard(
+                        server = server,
+                        isSelected = selectedServer?.id == server.id,
+                        onSelect = {
+                            if (server.isPremiumOnly && userTier == "FREE") {
+                                onUpgradeRequired()
+                            } else {
+                                onSelectServer(server)
+                            }
+                        },
+                        onToggleFavorite = { onToggleFavorite(server.id) }
+                    )
+                }
             }
         }
 

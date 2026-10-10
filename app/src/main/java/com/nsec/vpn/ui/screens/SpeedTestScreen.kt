@@ -48,6 +48,8 @@ fun SpeedTestScreen(
         label = "speedNeedle",
     )
 
+    val outlineColor = MaterialTheme.colorScheme.outline
+
     fun runSpeedTest() {
         if (isTesting) return
         isTesting = true
@@ -82,7 +84,7 @@ fun SpeedTestScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(LightBackground)
+            .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = 20.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -90,13 +92,13 @@ fun SpeedTestScreen(
             text = "Speed Benchmark",
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
-            color = TextPrimary,
+            color = MaterialTheme.colorScheme.onBackground,
         )
 
         Text(
             text = "Measuring tunnel throughput on ${currentServer?.name ?: "Global Gateway"}",
             fontSize = 12.sp,
-            color = TextSecondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp),
         )
 
@@ -112,7 +114,7 @@ fun SpeedTestScreen(
                 val center = Offset(size.width / 2, size.height / 2)
 
                 drawArc(
-                    color = LightCardBorder,
+                    color = outlineColor,
                     startAngle = 150f,
                     sweepAngle = 240f,
                     useCenter = false,
@@ -142,7 +144,7 @@ fun SpeedTestScreen(
                     text = String.format(Locale.US, "%.1f", animatedSpeed),
                     fontSize = 42.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = TextPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
                     text = "Mbps",
@@ -159,15 +161,15 @@ fun SpeedTestScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
-                .background(LightSurface)
-                .border(1.dp, LightCardBorder, RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.surface)
+                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
                 .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceAround,
         ) {
             MetricColumn(label = "PING", value = pingMs?.let { "$it ms" } ?: "--")
-            Box(modifier = Modifier.width(1.dp).height(30.dp).background(LightCardBorder))
+            Box(modifier = Modifier.width(1.dp).height(30.dp).background(MaterialTheme.colorScheme.outline))
             MetricColumn(label = "JITTER", value = jitterMs?.let { "$it ms" } ?: "--")
-            Box(modifier = Modifier.width(1.dp).height(30.dp).background(LightCardBorder))
+            Box(modifier = Modifier.width(1.dp).height(30.dp).background(MaterialTheme.colorScheme.outline))
             MetricColumn(label = "PEAK", value = if (peakDownloadMbps > 0) String.format(Locale.US, "%.1f M", peakDownloadMbps) else "--")
         }
 
@@ -197,8 +199,8 @@ fun SpeedTestScreen(
 @Composable
 private fun MetricColumn(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(text = label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = TextSecondary)
+        Text(text = label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(modifier = Modifier.height(4.dp))
-        Text(text = value, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+        Text(text = value, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
     }
 }

@@ -74,16 +74,16 @@ fun SplitTunnelScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Split Tunneling Apps", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextPrimary) },
+                title = { Text("Split Tunneling Apps", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = LightBackground)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
             )
         },
-        containerColor = LightBackground
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Column(
             modifier = modifier
@@ -94,7 +94,7 @@ fun SplitTunnelScreen(
             Text(
                 text = "Selected apps will route directly via your local network interface instead of WireGuard encryption.",
                 fontSize = 12.sp,
-                color = TextSecondary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
@@ -105,14 +105,14 @@ fun SplitTunnelScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
-                            .background(LightSurface)
-                            .border(1.dp, LightCardBorder, RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surface)
+                            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
                             .padding(14.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(app.appName, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-                            Text(app.packageName, fontSize = 11.sp, color = TextTertiary)
+                            Text(app.appName, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                            Text(app.packageName, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Switch(
                             checked = isExcluded,
@@ -120,7 +120,7 @@ fun SplitTunnelScreen(
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
                                 checkedTrackColor = PrimaryBlue,
-                                uncheckedTrackColor = LightCardBorderHighlight
+                                uncheckedTrackColor = MaterialTheme.colorScheme.outlineVariant
                             )
                         )
                     }
