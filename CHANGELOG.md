@@ -2,6 +2,21 @@
 
 All notable changes to the Nsec VPN project are documented in this file following the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) standard.
 
+## [1.2.0] - 2026-10-11
+
+### Added
+- **Smart Native Ads Integration**: Built `NativeAdManager` and reusable `SmartNativeAd` Compose component supporting compact, medium, and large layouts with shimmer/loading states, custom XML layout templates (`native_ad_compact.xml`, `native_ad_medium.xml`, `native_ad_large.xml`), and test ad fallbacks across `HomeScreen`, `ServerListScreen`, and `SpeedTestScreen`.
+- **AdMob Traffic Bypass / Split Tunneling**: Implemented automatic package and domain exclusion rules in `WireGuardTunnelManager` and `NsecVpnService` to route Google Mobile Ads SDK traffic outside the VPN tunnel, preventing ad request timeouts and policy flags.
+- **Android 16 KB Page Alignment**: Enabled legacy JNI packaging (`useLegacyPackaging = true`) in `app/build.gradle.kts` to satisfy Android 15/16 16 KB ELF alignment requirements for `libwg-go.so`.
+- **Automated Native Ad & Split Tunneling Tests**: Added `SmartNativeAdTest.kt` for native ad component lifecycle and layout verification, and `SplitTunnelingTest.kt` for package/domain bypass validation.
+
+### Changed / Refactored
+- **Ad Layout Modernization**: Replaced legacy static `AdBannerView` banners across `HomeScreen`, `ServerListScreen`, and `SpeedTestScreen` with dynamic `SmartNativeAd` views.
+
+### Fixed
+- **SmartNativeAd NullPointerException**: Fixed null safety during `AndroidView` initialization in `SmartNativeAd` when layout inflation occurs off the main thread or prior to view attachment.
+- **Emulator AdMob Stability**: Configured `@xml/gma_ad_services_config.xml` and manifest surface sync properties to resolve AdMob binder crashes on emulator instances.
+
 ## [1.1.0] - 2026-10-10
 
 ### Added

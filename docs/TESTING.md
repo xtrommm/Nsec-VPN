@@ -17,12 +17,14 @@ npm test
 
 ### Android Unit & Robolectric Tests
 ```bash
-gradle :app:testDebugUnitTest
+./gradlew :app:testDebugUnitTest
 ```
 **Coverage Areas:**
 - ViewModels and repositories.
 - Keystore encryption and fallback logic.
 - Quick settings tile service logic.
+- `SmartNativeAdTest.kt`: Smart Native Ad rendering, layout templates (`compact`, `medium`, `large`), shimmer state triggers, and null safety during view inflation.
+- `SplitTunnelingTest.kt`: Split tunneling package exclusions and AdMob traffic bypass rules in WireGuard tunnel manager.
 
 ---
 
@@ -46,3 +48,5 @@ Before deploying to production, execute these 15 manual tests:
 14. **Emergency Home Screen Announcement**: Enable announcement in Admin Panel; verify banner appears on Android app Home screen.
 15. **Quick Settings Tile**: Toggle VPN on and off from Android quick settings notification drawer.
 16. **Dynamic Theme & Dark Mode Switching**: In Settings, toggle between System, Light, and Dark mode; verify contrast, status bar icons, and badge rendering across all screens.
+17. **Smart Native Ads Rendering**: Open Home, Server List, and Speed Test screens; verify Smart Native Ad views display ad headlines, CTA buttons, and badges without null pointer exceptions or UI jumps.
+18. **AdMob Traffic Bypass over VPN**: Connect to VPN tunnel, load ads across screens, and verify AdMob SDK HTTP/HTTPS requests bypass the VPN tunnel via split tunneling rules without timeout errors.
