@@ -135,3 +135,4 @@ Open the project in Android Studio, sync Gradle, and run `:app` on your Android 
 
 Nsec VPN is built with strict zero-logs guarantees. WireGuard® is a registered trademark of Jason A. Donenfeld.
 Distributed under the Apache 2.0 License.
+update

@@ -200,3 +200,4 @@ Base URL: `https://api.nsecvpn.com/api/v1`
 ### Get Legal Documents
 - **Endpoint**: `GET /legal/:type` (where `:type` is `privacy` or `terms`)
 - **Auth**: None (Cached: 300s)
+update

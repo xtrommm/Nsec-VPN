@@ -60,3 +60,4 @@ Accurate Data Safety declaration matching real Nsec VPN architecture:
 - [ ] **Feature Graphic**: 1024x500 PNG / JPG.
 - [ ] **Screenshots**: At least 4 screenshots (Home screen, Server list, Speed test, Settings).
 - [ ] **Privacy Policy URL**: `https://nsecvpn.com/privacy` or `https://api.nsecvpn.com/api/v1/legal/privacy`.
+update

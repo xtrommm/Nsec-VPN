@@ -29,3 +29,4 @@ Nsec VPN is provided on an "as is" and "as available" basis without warranties o
 ### 4. Subscription & Billing
 - **VIP Subscriptions**: Managed through Google Play. Auto-renewal can be managed in Google Play Subscription settings.
 - **Refunds**: Subject to Google Play Store standard refund policies.
+update

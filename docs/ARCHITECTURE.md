@@ -103,3 +103,4 @@ graph TD
 2. **Server-Side Cluster Routing (`/backend`)**:
    - In `POST /api/v1/vpn/connect`, if the requested server is part of a multi-node cluster, the backend verifies all sister nodes in that location and automatically routes the handshake to the least-loaded active gateway.
    - If a specific gateway reaches capacity or goes offline, the cluster automatically reroutes handshakes to the next available sister gateway in that same city.
+update

@@ -56,3 +56,4 @@ All notable changes to the Nsec VPN project are documented in this file followin
 - **Missing TypeScript Config**: Added `tsconfig.json` for the admin panel.
 - **Peer Persistence**: Configured `SaveConfig = true` and `wg-quick save` to preserve dynamic peers across server reboots.
 - **Server Load Calculation**: Implemented dynamic load percentage updates on peer connections and disconnections.
+update

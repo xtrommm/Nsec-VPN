@@ -48,3 +48,4 @@ Login is protected by bcrypt password hashing and rate-limiting (maximum 5 attem
 - **Google AdMob Toggles**: Enable or disable Banners, Interstitials, and Rewarded Ads on the fly without releasing new APK updates.
 - **Minimum App Version Code**: Enforce mandatory app upgrades when older versions are deprecated.
 - **Network Emergency Alerts**: Display instant notifications on the mobile client Home screen.
+update

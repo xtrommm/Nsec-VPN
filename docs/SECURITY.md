@@ -21,3 +21,4 @@ If you discover a security vulnerability, please report it privately:
 - **Email**: `security@nsecvpn.com`
 - Please do NOT open public GitHub issues for security vulnerabilities.
 - We aim to respond within 24 hours and patch critical issues within 72 hours.
+update

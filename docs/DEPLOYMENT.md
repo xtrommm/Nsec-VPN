@@ -78,3 +78,4 @@ Agent Shared Secret: 4f8a12e3c09b78d65412a9c8e7b6d5f4
 3. Click **Add New Node**.
 4. Enter the Endpoint, Public Key, Agent URL, and Shared Secret.
 5. Click **Save & Register Node**.
+update

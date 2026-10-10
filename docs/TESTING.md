@@ -50,3 +50,4 @@ Before deploying to production, execute these 15 manual tests:
 16. **Dynamic Theme & Dark Mode Switching**: In Settings, toggle between System, Light, and Dark mode; verify contrast, status bar icons, and badge rendering across all screens.
 17. **Smart Native Ads Rendering**: Open Home, Server List, and Speed Test screens; verify Smart Native Ad views display ad headlines, CTA buttons, and badges without null pointer exceptions or UI jumps.
 18. **AdMob Traffic Bypass over VPN**: Connect to VPN tunnel, load ads across screens, and verify AdMob SDK HTTP/HTTPS requests bypass the VPN tunnel via split tunneling rules without timeout errors.
+update

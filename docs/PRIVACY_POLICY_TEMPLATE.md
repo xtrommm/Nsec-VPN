@@ -38,3 +38,4 @@ When establishing a VPN connection, your device generates a private/public keypa
 
 ### 5. Data Deletion
 Users can delete their device registration at any time by clearing application data in Android System Settings or selecting **Reset Keystore Vault** within the app.
+update
