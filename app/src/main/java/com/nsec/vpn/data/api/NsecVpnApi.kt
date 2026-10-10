@@ -6,6 +6,7 @@ import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 data class RegisterDeviceRequest(
     val deviceId: String,
@@ -95,7 +96,10 @@ interface NsecVpnApi {
     suspend fun refreshToken(@Body request: RefreshTokenRequest): Response<RefreshTokenResponse>
 
     @GET("servers")
-    suspend fun getServers(@Header("Authorization") token: String): Response<ServerListResponse>
+    suspend fun getServers(
+        @Header("Authorization") token: String,
+        @Query("grouped") grouped: Boolean = true
+    ): Response<ServerListResponse>
 
     @POST("vpn/connect")
     suspend fun connect(

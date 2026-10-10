@@ -59,9 +59,9 @@ class VpnRepository(
         val savedThemeName = keyStoreManager.getThemeMode()
         _themeMode.value = ThemeMode.entries.find { it.name == savedThemeName } ?: ThemeMode.SYSTEM
 
-        _servers.value = getFallbackServers().map { server ->
+        _servers.value = groupServersByLocation(getFallbackServers().map { server ->
             server.copy(isFavorite = _favoriteServerIds.value.contains(server.id))
-        }
+        })
 
         val savedServerId = keyStoreManager.getSelectedServerId()
         _selectedServer.value = _servers.value.firstOrNull { it.id == savedServerId }
@@ -92,7 +92,7 @@ class VpnRepository(
         checkRewardedPassExpiry()
         try {
             val token = keyStoreManager.getAccessToken() ?: authenticateDevice()
-            val response = api.getServers("Bearer $token")
+            val response = api.getServers("Bearer $token", grouped = true)
             if (response.isSuccessful && response.body()?.data?.servers != null) {
                 val dtos = response.body()!!.data!!.servers
                 val favs = _favoriteServerIds.value
@@ -107,21 +107,47 @@ class VpnRepository(
                         currentLoad = dto.currentLoad,
                         isPremiumOnly = dto.isPremiumOnly,
                         isRecommended = dto.isRecommended,
-                        isFavorite = favs.contains(dto.id)
+                        isFavorite = favs.contains(dto.id),
+                        totalNodes = dto.totalNodes
                     )
                 }
-                _servers.value = mapped
+                _servers.value = groupServersByLocation(mapped)
             }
         } catch (_: Exception) {
             if (_servers.value.isEmpty()) {
                 val favs = _favoriteServerIds.value
-                _servers.value = getFallbackServers().map { s ->
+                _servers.value = groupServersByLocation(getFallbackServers().map { s ->
                     s.copy(isFavorite = favs.contains(s.id))
-                }
+                })
             }
         }
 
         measurePings()
+    }
+
+    private fun groupServersByLocation(serverList: List<Server>): List<Server> {
+        val clusterMap = linkedMapOf<String, MutableList<Server>>()
+        for (s in serverList) {
+            val key = "${s.countryCode.uppercase()}_${s.city.lowercase()}_${s.isPremiumOnly}"
+            clusterMap.getOrPut(key) { mutableListOf() }.add(s)
+        }
+        return clusterMap.values.map { pool ->
+            if (pool.size == 1) {
+                pool[0]
+            } else {
+                // If there are multiple servers in this location (e.g. 10 Singapore servers),
+                // choose the best/least loaded server to represent the location, and display the total nodes
+                val best = pool.minByOrNull { it.currentLoad } ?: pool[0]
+                val avgLoad = pool.map { it.currentLoad }.average().toInt()
+                val totalNodesCount = pool.sumOf { it.totalNodes.coerceAtLeast(1) }
+                best.copy(
+                    currentLoad = avgLoad,
+                    totalNodes = totalNodesCount,
+                    isFavorite = pool.any { it.isFavorite },
+                    isRecommended = pool.any { it.isRecommended }
+                )
+            }
+        }
     }
 
     suspend fun measurePings() = withContext(Dispatchers.IO) {
