@@ -24,15 +24,25 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nsec.vpn.data.model.Server
-import com.nsec.vpn.ui.components.AdBannerView
+import com.nsec.vpn.data.model.VpnState
+import com.nsec.vpn.data.monetization.AdMobConfig
+import com.nsec.vpn.data.monetization.NativeAdManager
 import com.nsec.vpn.ui.components.ServerCard
+import com.nsec.vpn.ui.components.SmartNativeAd
 import com.nsec.vpn.ui.theme.*
+
+sealed class ServerListItem {
+    data class ServerItem(val server: Server) : ServerListItem()
+    data class AdSlot(val id: String) : ServerListItem()
+}
 
 @Composable
 fun ServerListScreen(
     servers: List<Server>,
     selectedServer: Server?,
     userTier: String,
+    adMobConfig: AdMobConfig = AdMobConfig(),
+    nativeAdManager: NativeAdManager,
     onSelectServer: (Server) -> Unit,
     onAutoSelectBest: () -> Unit,
     onToggleFavorite: (String) -> Unit,
@@ -63,6 +73,19 @@ fun ServerListScreen(
 
             matchesQuery && matchesTab
         }
+    }
+
+    val listItems = remember(filteredServers, userTier, adMobConfig.nativeEnabled) {
+        val items = mutableListOf<ServerListItem>()
+        var adCounter = 0
+        filteredServers.forEachIndexed { index, server ->
+            items.add(ServerListItem.ServerItem(server))
+            if (userTier == "FREE" && adMobConfig.nativeEnabled && (index + 1) % 8 == 0 && adCounter < 3) {
+                items.add(ServerListItem.AdSlot("ad_slot_$adCounter"))
+                adCounter++
+            }
+        }
+        items
     }
 
     Column(
@@ -245,26 +268,43 @@ fun ServerListScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.weight(1f)
             ) {
-                items(filteredServers, key = { it.id }) { server ->
-                    ServerCard(
-                        server = server,
-                        isSelected = selectedServer?.id == server.id,
-                        onSelect = {
-                            if (server.isPremiumOnly && userTier == "FREE") {
-                                onUpgradeRequired()
-                            } else {
-                                onSelectServer(server)
-                            }
-                        },
-                        onToggleFavorite = { onToggleFavorite(server.id) }
-                    )
+                items(
+                    items = listItems,
+                    key = { item ->
+                        when (item) {
+                            is ServerListItem.ServerItem -> item.server.id
+                            is ServerListItem.AdSlot -> item.id
+                        }
+                    }
+                ) { item ->
+                    when (item) {
+                        is ServerListItem.ServerItem -> {
+                            val server = item.server
+                            ServerCard(
+                                server = server,
+                                isSelected = selectedServer?.id == server.id,
+                                onSelect = {
+                                    if (server.isPremiumOnly && userTier == "FREE") {
+                                        onUpgradeRequired()
+                                    } else {
+                                        onSelectServer(server)
+                                    }
+                                },
+                                onToggleFavorite = { onToggleFavorite(server.id) }
+                            )
+                        }
+                        is ServerListItem.AdSlot -> {
+                            SmartNativeAd(
+                                nativeAdManager = nativeAdManager,
+                                adMobConfig = adMobConfig,
+                                userTier = userTier,
+                                vpnState = VpnState.Disconnected,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
                 }
             }
-        }
-
-        if (userTier == "FREE") {
-            Spacer(modifier = Modifier.height(10.dp))
-            AdBannerView(onRemoveAdsClicked = onUpgradeRequired)
         }
     }
 }

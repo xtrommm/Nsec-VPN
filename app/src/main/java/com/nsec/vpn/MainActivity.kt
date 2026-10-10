@@ -251,6 +251,7 @@ class MainActivity : ComponentActivity() {
                                             selectedServer = selectedServer,
                                             userTier = userTier,
                                             adMobConfig = adMobConfig,
+                                            nativeAdManager = adMobManager.nativeAdManager,
                                             onToggleVpn = { triggerConnectSequence() },
                                             onNavigateToServers = { currentTab = Screen.Servers },
                                             onNavigateToConnected = { activeSubScreen = "connected" },
@@ -262,6 +263,8 @@ class MainActivity : ComponentActivity() {
                                             servers = servers,
                                             selectedServer = selectedServer,
                                             userTier = userTier,
+                                            adMobConfig = adMobConfig,
+                                            nativeAdManager = adMobManager.nativeAdManager,
                                             onSelectServer = { server ->
                                                 vpnRepo.selectServer(server)
                                                 currentTab = Screen.Home
@@ -281,7 +284,8 @@ class MainActivity : ComponentActivity() {
                                         SpeedTestScreen(
                                             currentServer = selectedServer,
                                             userTier = userTier,
-                                            adMobConfig = adMobConfig
+                                            adMobConfig = adMobConfig,
+                                            nativeAdManager = adMobManager.nativeAdManager
                                         )
                                     }
                                     Screen.Settings -> {

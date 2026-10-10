@@ -25,8 +25,9 @@ import androidx.compose.ui.unit.sp
 import com.nsec.vpn.data.model.Server
 import com.nsec.vpn.data.model.VpnState
 import com.nsec.vpn.data.monetization.AdMobConfig
-import com.nsec.vpn.ui.components.AdMobBannerView
+import com.nsec.vpn.data.monetization.NativeAdManager
 import com.nsec.vpn.ui.components.ConnectButton
+import com.nsec.vpn.ui.components.SmartNativeAd
 import com.nsec.vpn.ui.theme.*
 import com.nsec.vpn.vpn.WireGuardTunnelManager
 
@@ -37,6 +38,7 @@ fun HomeScreen(
     selectedServer: Server?,
     userTier: String,
     adMobConfig: AdMobConfig = AdMobConfig(),
+    nativeAdManager: NativeAdManager,
     announcementTitle: String? = null,
     announcementBody: String? = null,
     onToggleVpn: () -> Unit,
@@ -271,14 +273,15 @@ fun HomeScreen(
             }
         }
 
-        val isAdAllowed = userTier == "FREE" && adMobConfig.bannerEnabled
-        if (isAdAllowed) {
-            Spacer(modifier = Modifier.height(28.dp))
-            AdMobBannerView(
-                bannerAdUnitId = adMobConfig.bannerAdUnitId,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
+        Spacer(modifier = Modifier.height(28.dp))
+
+        SmartNativeAd(
+            nativeAdManager = nativeAdManager,
+            adMobConfig = adMobConfig,
+            userTier = userTier,
+            vpnState = vpnState,
+            modifier = Modifier.fillMaxWidth()
+        )
 
         Spacer(modifier = Modifier.height(20.dp))
     }

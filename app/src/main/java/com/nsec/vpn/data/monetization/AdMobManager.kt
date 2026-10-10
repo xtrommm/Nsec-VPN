@@ -18,18 +18,21 @@ import kotlinx.coroutines.flow.asStateFlow
 
 data class AdMobConfig(
     val bannerEnabled: Boolean = true,
+    val nativeEnabled: Boolean = true,
     val interstitialEnabled: Boolean = true,
     val interstitialIntervalSeconds: Int = 120,
     val rewardedEnabled: Boolean = true,
     val appOpenEnabled: Boolean = false,
     val testMode: Boolean = true,
     val bannerAdUnitId: String = "ca-app-pub-3940256099942544/6300978111",
+    val nativeAdUnitId: String = "ca-app-pub-3940256099942544/2247696110",
     val interstitialAdUnitId: String = "ca-app-pub-3940256099942544/1033173712",
     val rewardedAdUnitId: String = "ca-app-pub-3940256099942544/5224354917",
     val appOpenAdUnitId: String = "ca-app-pub-3940256099942544/9257395921"
 )
 
 class AdMobManager(private val context: Context) {
+    val nativeAdManager = NativeAdManager(context)
     private val _config = MutableStateFlow(AdMobConfig())
     val config: StateFlow<AdMobConfig> = _config.asStateFlow()
 

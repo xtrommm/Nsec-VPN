@@ -27,8 +27,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nsec.vpn.data.model.Server
+import com.nsec.vpn.data.model.VpnState
 import com.nsec.vpn.data.monetization.AdMobConfig
-import com.nsec.vpn.ui.components.AdMobBannerView
+import com.nsec.vpn.data.monetization.NativeAdManager
+import com.nsec.vpn.ui.components.SmartNativeAd
 import com.nsec.vpn.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -39,6 +41,7 @@ fun SpeedTestScreen(
     currentServer: Server?,
     userTier: String = "FREE",
     adMobConfig: AdMobConfig = AdMobConfig(),
+    nativeAdManager: NativeAdManager,
     modifier: Modifier = Modifier,
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -201,14 +204,15 @@ fun SpeedTestScreen(
             )
         }
 
-        val isAdAllowed = userTier == "FREE" && adMobConfig.bannerEnabled
-        if (isAdAllowed) {
-            Spacer(modifier = Modifier.height(28.dp))
-            AdMobBannerView(
-                bannerAdUnitId = adMobConfig.bannerAdUnitId,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
+        Spacer(modifier = Modifier.height(28.dp))
+
+        SmartNativeAd(
+            nativeAdManager = nativeAdManager,
+            adMobConfig = adMobConfig,
+            userTier = userTier,
+            vpnState = if (isTesting) VpnState.Connecting else VpnState.Disconnected,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 
