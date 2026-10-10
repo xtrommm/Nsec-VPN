@@ -1,6 +1,14 @@
 package com.nsec.vpn.data.monetization
 
+import android.app.Activity
 import android.content.Context
+import com.google.android.gms.ads.AdError
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.FullScreenContentCallback
+import com.google.android.gms.ads.LoadAdError
+import com.google.android.gms.ads.MobileAds
+import com.google.android.gms.ads.interstitial.InterstitialAd
+import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,6 +31,14 @@ class AdMobManager(private val context: Context) {
     val config: StateFlow<AdMobConfig> = _config.asStateFlow()
 
     private var lastInterstitialTimeMs: Long = 0
+    private var interstitialAd: InterstitialAd? = null
+    private var isPreloadingInterstitial = false
+
+    init {
+        try {
+            MobileAds.initialize(context) {}
+        } catch (_: Throwable) {}
+    }
 
     fun updateConfig(newConfig: AdMobConfig) {
         _config.value = newConfig
@@ -37,5 +53,75 @@ class AdMobManager(private val context: Context) {
 
     fun recordInterstitialShown() {
         lastInterstitialTimeMs = System.currentTimeMillis()
+    }
+
+    fun isInterstitialReady(): Boolean = interstitialAd != null
+
+    fun setInterstitialAdForTesting(ad: InterstitialAd?) {
+        interstitialAd = ad
+    }
+
+    fun preloadInterstitial(appContext: Context = context) {
+        if (interstitialAd != null || isPreloadingInterstitial) return
+        if (!_config.value.interstitialEnabled) return
+
+        isPreloadingInterstitial = true
+        try {
+            val adRequest = AdRequest.Builder().build()
+            InterstitialAd.load(
+                appContext.applicationContext,
+                _config.value.interstitialAdUnitId,
+                adRequest,
+                object : InterstitialAdLoadCallback() {
+                    override fun onAdLoaded(ad: InterstitialAd) {
+                        interstitialAd = ad
+                        isPreloadingInterstitial = false
+                    }
+
+                    override fun onAdFailedToLoad(loadAdError: LoadAdError) {
+                        interstitialAd = null
+                        isPreloadingInterstitial = false
+                    }
+                }
+            )
+        } catch (_: Throwable) {
+            isPreloadingInterstitial = false
+        }
+    }
+
+    fun showInterstitial(activity: Activity, onAdDismissed: () -> Unit) {
+        val ad = interstitialAd
+        if (ad == null || !canShowInterstitial() || activity.isFinishing || activity.isDestroyed) {
+            interstitialAd = null
+            onAdDismissed()
+            preloadInterstitial(activity)
+            return
+        }
+
+        try {
+            ad.fullScreenContentCallback = object : FullScreenContentCallback() {
+                override fun onAdDismissedFullScreenContent() {
+                    recordInterstitialShown()
+                    interstitialAd = null
+                    onAdDismissed()
+                    preloadInterstitial(activity)
+                }
+
+                override fun onAdFailedToShowFullScreenContent(adError: AdError) {
+                    interstitialAd = null
+                    onAdDismissed()
+                    preloadInterstitial(activity)
+                }
+
+                override fun onAdShowedFullScreenContent() {
+                    interstitialAd = null
+                }
+            }
+            ad.show(activity)
+        } catch (_: Throwable) {
+            interstitialAd = null
+            onAdDismissed()
+            preloadInterstitial(activity)
+        }
     }
 }

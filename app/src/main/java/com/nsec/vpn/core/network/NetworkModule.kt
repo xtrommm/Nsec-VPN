@@ -4,6 +4,7 @@ import android.content.Context
 import com.nsec.vpn.BuildConfig
 import com.nsec.vpn.data.api.NsecVpnApi
 import com.nsec.vpn.data.local.KeyStoreManager
+import com.nsec.vpn.data.monetization.AdMobManager
 import com.nsec.vpn.data.repository.VpnRepository
 import com.nsec.vpn.vpn.WireGuardTunnelManager
 import okhttp3.OkHttpClient
@@ -53,6 +54,7 @@ class ServiceLocator(context: Context) {
     val keyStoreManager by lazy { KeyStoreManager(appContext) }
     val vpnRepository by lazy { VpnRepository(appContext, NetworkModule.api, keyStoreManager) }
     val tunnelManager by lazy { WireGuardTunnelManager.getInstance(appContext) }
+    val adMobManager by lazy { AdMobManager(appContext) }
 
     companion object {
         @Volatile

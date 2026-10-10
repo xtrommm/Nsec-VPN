@@ -50,14 +50,17 @@ class MainActivity : ComponentActivity() {
         }
         val vpnRepo = serviceLocator.vpnRepository
         val tunnelManager = serviceLocator.tunnelManager
+        val adMobManager = serviceLocator.adMobManager
 
         setContent {
             val themeMode by vpnRepo.themeMode.collectAsStateWithLifecycle()
+            val adMobConfig by adMobManager.config.collectAsStateWithLifecycle()
 
             NsecVpnTheme(themeMode = themeMode) {
                 val coroutineScope = rememberCoroutineScope()
 
                 val vpnState by tunnelManager.vpnState.collectAsStateWithLifecycle()
+                val vpnStats by tunnelManager.vpnStats.collectAsStateWithLifecycle()
                 val servers by vpnRepo.servers.collectAsStateWithLifecycle()
                 val selectedServer by vpnRepo.selectedServer.collectAsStateWithLifecycle()
                 val userTier by vpnRepo.userTier.collectAsStateWithLifecycle()
@@ -69,6 +72,7 @@ class MainActivity : ComponentActivity() {
 
                 var currentTab by remember { mutableStateOf<Screen>(Screen.Home) }
                 var activeSubScreen by remember { mutableStateOf<String?>(null) }
+                var isUserInitiatedConnect by remember { mutableStateOf(false) }
 
                 var showVipModal by remember { mutableStateOf(false) }
                 var showPromoDialog by remember { mutableStateOf(false) }
@@ -102,6 +106,7 @@ class MainActivity : ComponentActivity() {
                             tunnelManager.disconnect()
                         }
                         is VpnState.Disconnected, is VpnState.Error -> {
+                            isUserInitiatedConnect = true
                             val server = selectedServer ?: servers.firstOrNull()
                             if (server != null) {
                                 tunnelManager.startConnect(
@@ -123,12 +128,38 @@ class MainActivity : ComponentActivity() {
                 }
 
                 LaunchedEffect(Unit) {
+                    adMobManager.preloadInterstitial(this@MainActivity)
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                     }
                     vpnRepo.checkRewardedPassExpiry()
                     if (autoConnectEnabled && vpnState is VpnState.Disconnected) {
                         triggerConnectSequence()
+                    }
+                }
+
+                LaunchedEffect(vpnState) {
+                    when (vpnState) {
+                        is VpnState.Connected -> {
+                            if (isUserInitiatedConnect) {
+                                isUserInitiatedConnect = false
+                                val isPremium = userTier != "FREE"
+                                val adAllowed = !isPremium && adMobConfig.interstitialEnabled && adMobManager.canShowInterstitial() && adMobManager.isInterstitialReady()
+                                if (adAllowed) {
+                                    adMobManager.showInterstitial(this@MainActivity) {
+                                        activeSubScreen = "connected"
+                                    }
+                                } else {
+                                    activeSubScreen = "connected"
+                                }
+                            }
+                        }
+                        is VpnState.Disconnected, is VpnState.Error -> {
+                            if (activeSubScreen == "connected") {
+                                activeSubScreen = null
+                            }
+                        }
+                        else -> {}
                     }
                 }
 
@@ -183,6 +214,16 @@ class MainActivity : ComponentActivity() {
                 ) { innerPadding ->
                     Box(modifier = Modifier.padding(innerPadding)) {
                         when (activeSubScreen) {
+                            "connected" -> {
+                                ConnectedScreen(
+                                    vpnState = vpnState,
+                                    vpnStats = vpnStats,
+                                    selectedServer = selectedServer,
+                                    userTier = userTier,
+                                    onDisconnect = { tunnelManager.disconnect() },
+                                    onBackToHome = { activeSubScreen = null }
+                                )
+                            }
                             "split_tunnel" -> {
                                 SplitTunnelScreen(
                                     excludedPackages = excludedPackages,
@@ -208,8 +249,10 @@ class MainActivity : ComponentActivity() {
                                             tunnelManager = tunnelManager,
                                             selectedServer = selectedServer,
                                             userTier = userTier,
+                                            adMobConfig = adMobConfig,
                                             onToggleVpn = { triggerConnectSequence() },
                                             onNavigateToServers = { currentTab = Screen.Servers },
+                                            onNavigateToConnected = { activeSubScreen = "connected" },
                                             onUpgradeClicked = { showVipModal = true }
                                         )
                                     }

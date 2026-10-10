@@ -22,11 +22,11 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nsec.vpn.data.model.Server
 import com.nsec.vpn.data.model.VpnState
+import com.nsec.vpn.data.monetization.AdMobConfig
+import com.nsec.vpn.ui.components.AdMobBannerView
 import com.nsec.vpn.ui.components.ConnectButton
-import com.nsec.vpn.ui.components.LiveStatsBar
 import com.nsec.vpn.ui.theme.*
 import com.nsec.vpn.vpn.WireGuardTunnelManager
 
@@ -36,15 +36,16 @@ fun HomeScreen(
     tunnelManager: WireGuardTunnelManager,
     selectedServer: Server?,
     userTier: String,
+    adMobConfig: AdMobConfig = AdMobConfig(),
     announcementTitle: String? = null,
     announcementBody: String? = null,
     onToggleVpn: () -> Unit,
     onNavigateToServers: () -> Unit,
+    onNavigateToConnected: () -> Unit = {},
     onUpgradeClicked: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val isConnected = vpnState is VpnState.Connected
-    val vpnStats by tunnelManager.vpnStats.collectAsStateWithLifecycle()
     var announcementDismissed by remember { mutableStateOf(false) }
 
     Column(
@@ -140,6 +141,9 @@ fun HomeScreen(
                 .clip(RoundedCornerShape(16.dp))
                 .background(MaterialTheme.colorScheme.surface)
                 .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
+                .then(
+                    if (isConnected) Modifier.clickable { onNavigateToConnected() } else Modifier
+                )
                 .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -166,7 +170,14 @@ fun HomeScreen(
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }
-            if (!isConnected) {
+            if (isConnected) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                    contentDescription = "View Connection Details",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(14.dp)
+                )
+            } else {
                 Icon(
                     imageVector = Icons.Default.Warning,
                     contentDescription = "Unencrypted",
@@ -251,9 +262,14 @@ fun HomeScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        LiveStatsBar(stats = vpnStats)
+        val isAdAllowed = userTier == "FREE" && adMobConfig.bannerEnabled
+        if (isAdAllowed) {
+            Spacer(modifier = Modifier.height(28.dp))
+            AdMobBannerView(
+                bannerAdUnitId = adMobConfig.bannerAdUnitId,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
 
         Spacer(modifier = Modifier.height(20.dp))
     }

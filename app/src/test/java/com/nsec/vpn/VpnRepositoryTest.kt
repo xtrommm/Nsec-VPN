@@ -23,7 +23,7 @@ class FakeNsecVpnApi : NsecVpnApi {
         return Response.success(RefreshTokenResponse(true, null))
     }
 
-    override suspend fun getServers(token: String): Response<ServerListResponse> {
+    override suspend fun getServers(token: String, grouped: Boolean): Response<ServerListResponse> {
         return Response.success(ServerListResponse(true, null))
     }
 
