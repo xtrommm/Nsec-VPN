@@ -129,6 +129,7 @@ class MainActivity : ComponentActivity() {
 
                 LaunchedEffect(Unit) {
                     adMobManager.preloadInterstitial(this@MainActivity)
+                    adMobManager.preloadRewarded(this@MainActivity)
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                     }
@@ -391,8 +392,14 @@ class MainActivity : ComponentActivity() {
                                         .fillMaxWidth()
                                         .clickable {
                                             showVipModal = false
-                                            vpnRepo.grantRewardedPass()
-                                            Toast.makeText(this@MainActivity, "Rewarded Ad Watched: 30-Minute VIP Pass Granted!", Toast.LENGTH_SHORT).show()
+                                            adMobManager.showRewarded(
+                                                activity = this@MainActivity,
+                                                onRewarded = {
+                                                    vpnRepo.grantRewardedPass()
+                                                    Toast.makeText(this@MainActivity, "Rewarded Ad Watched: 30-Minute VIP Pass Granted!", Toast.LENGTH_LONG).show()
+                                                },
+                                                onAdDismissed = {}
+                                            )
                                         }
                                 ) {
                                     Column(modifier = Modifier.padding(12.dp)) {

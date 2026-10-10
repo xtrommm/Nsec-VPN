@@ -9,6 +9,8 @@ import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.MobileAds
 import com.google.android.gms.ads.interstitial.InterstitialAd
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
+import com.google.android.gms.ads.rewarded.RewardedAd
+import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,6 +36,9 @@ class AdMobManager(private val context: Context) {
     private var interstitialAd: InterstitialAd? = null
     private var isPreloadingInterstitial = false
 
+    private var rewardedAd: RewardedAd? = null
+    private var isPreloadingRewarded = false
+
     init {
         try {
             MobileAds.initialize(context) {}
@@ -56,9 +61,14 @@ class AdMobManager(private val context: Context) {
     }
 
     fun isInterstitialReady(): Boolean = interstitialAd != null
+    fun isRewardedReady(): Boolean = rewardedAd != null
 
     fun setInterstitialAdForTesting(ad: InterstitialAd?) {
         interstitialAd = ad
+    }
+
+    fun setRewardedAdForTesting(ad: RewardedAd?) {
+        rewardedAd = ad
     }
 
     fun preloadInterstitial(appContext: Context = context) {
@@ -122,6 +132,70 @@ class AdMobManager(private val context: Context) {
             interstitialAd = null
             onAdDismissed()
             preloadInterstitial(activity)
+        }
+    }
+
+    fun preloadRewarded(appContext: Context = context) {
+        if (rewardedAd != null || isPreloadingRewarded) return
+        if (!_config.value.rewardedEnabled) return
+
+        isPreloadingRewarded = true
+        try {
+            val adRequest = AdRequest.Builder().build()
+            RewardedAd.load(
+                appContext.applicationContext,
+                _config.value.rewardedAdUnitId,
+                adRequest,
+                object : RewardedAdLoadCallback() {
+                    override fun onAdLoaded(ad: RewardedAd) {
+                        rewardedAd = ad
+                        isPreloadingRewarded = false
+                    }
+
+                    override fun onAdFailedToLoad(loadAdError: LoadAdError) {
+                        rewardedAd = null
+                        isPreloadingRewarded = false
+                    }
+                }
+            )
+        } catch (_: Throwable) {
+            isPreloadingRewarded = false
+        }
+    }
+
+    fun showRewarded(activity: Activity, onRewarded: () -> Unit, onAdDismissed: () -> Unit) {
+        val ad = rewardedAd
+        if (ad == null || activity.isFinishing || activity.isDestroyed) {
+            rewardedAd = null
+            onRewarded()
+            onAdDismissed()
+            preloadRewarded(activity)
+            return
+        }
+
+        try {
+            ad.fullScreenContentCallback = object : FullScreenContentCallback() {
+                override fun onAdDismissedFullScreenContent() {
+                    rewardedAd = null
+                    onAdDismissed()
+                    preloadRewarded(activity)
+                }
+
+                override fun onAdFailedToShowFullScreenContent(adError: AdError) {
+                    rewardedAd = null
+                    onAdDismissed()
+                    preloadRewarded(activity)
+                }
+            }
+
+            ad.show(activity) { _ ->
+                onRewarded()
+            }
+        } catch (_: Throwable) {
+            rewardedAd = null
+            onRewarded()
+            onAdDismissed()
+            preloadRewarded(activity)
         }
     }
 }

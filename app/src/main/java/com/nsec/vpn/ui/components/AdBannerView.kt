@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.google.android.gms.ads.AdListener
@@ -25,6 +27,20 @@ fun AdMobBannerView(
         return
     }
 
+    val configuration = LocalConfiguration.current
+    val screenWidthDp = configuration.screenWidthDp
+    val context = LocalContext.current
+
+    val adSize = remember(screenWidthDp) {
+        try {
+            AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(context, screenWidthDp)
+        } catch (_: Throwable) {
+            AdSize.BANNER
+        }
+    }
+
+    val adHeightDp = adSize.height.coerceAtLeast(60)
+
     var adViewInstance by remember { mutableStateOf<AdView?>(null) }
 
     DisposableEffect(Unit) {
@@ -38,14 +54,14 @@ fun AdMobBannerView(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(60.dp),
+            .height(adHeightDp.dp),
         contentAlignment = Alignment.Center
     ) {
         AndroidView(
             modifier = Modifier.fillMaxWidth(),
             factory = { ctx ->
                 AdView(ctx).apply {
-                    setAdSize(AdSize.BANNER)
+                    setAdSize(adSize)
                     adUnitId = bannerAdUnitId
                     adListener = object : AdListener() {
                         override fun onAdFailedToLoad(error: LoadAdError) {
