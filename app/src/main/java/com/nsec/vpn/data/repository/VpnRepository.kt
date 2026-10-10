@@ -93,8 +93,9 @@ class VpnRepository(
         try {
             val token = keyStoreManager.getAccessToken() ?: authenticateDevice()
             val response = api.getServers("Bearer $token", grouped = true)
-            if (response.isSuccessful && response.body()?.data?.servers != null) {
-                val dtos = response.body()!!.data!!.servers
+            val body = response.body()
+            if (response.isSuccessful && body?.data?.servers != null) {
+                val dtos = body.data.servers
                 val favs = _favoriteServerIds.value
                 val mapped = dtos.map { dto ->
                     Server(
@@ -198,8 +199,9 @@ class VpnRepository(
                     appVersionCode = 1
                 )
             )
-            if (res.isSuccessful && res.body()?.data != null) {
-                val data = res.body()!!.data!!
+            val body = res.body()
+            if (res.isSuccessful && body?.data != null) {
+                val data = body.data
                 keyStoreManager.saveTokens(data.accessToken, data.refreshToken)
                 _userTier.value = data.device.tier
                 return@withContext data.accessToken

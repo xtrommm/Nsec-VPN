@@ -106,7 +106,7 @@ fun SpeedTestScreen(
         )
 
         Text(
-            text = "Measuring tunnel throughput on ${currentServer?.name ?: "Global Gateway"}",
+            text = "Measuring direct network throughput (${currentServer?.name ?: "Global Gateway"})",
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp),

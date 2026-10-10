@@ -12,6 +12,7 @@ import android.os.ParcelFileDescriptor
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
+import com.nsec.vpn.BuildConfig
 import com.nsec.vpn.MainActivity
 import com.nsec.vpn.R
 
@@ -68,19 +69,44 @@ class NsecVpnService : VpnService() {
                 } catch (_: Throwable) {}
             }
 
+            // Always exclude the app's own package so AdMob ad requests and API calls bypass the VPN tunnel
+            try {
+                builder.addDisallowedApplication(packageName)
+            } catch (e: Exception) {
+                Log.e("NsecVpnService", "Failed to exclude own package: ${e.message}")
+            }
+
             if (!excludedApps.isNullOrEmpty()) {
                 for (pkg in excludedApps) {
-                    try {
-                        builder.addDisallowedApplication(pkg)
-                    } catch (_: Throwable) {}
+                    if (pkg != packageName) {
+                        try {
+                            builder.addDisallowedApplication(pkg)
+                        } catch (_: Throwable) {}
+                    }
                 }
             }
 
             vpnInterface?.close()
             vpnInterface = builder.establish()
             Log.i("NsecVpnService", "VPN TUN interface established successfully")
+
+            if (BuildConfig.DEBUG) {
+                checkAppNetworkCapabilities()
+            }
         } catch (e: Exception) {
             Log.e("NsecVpnService", "Could not establish VPN TUN interface: ${e.message}")
+        }
+    }
+
+    private fun checkAppNetworkCapabilities() {
+        try {
+            val cm = getSystemService(android.net.ConnectivityManager::class.java)
+            val activeNetwork = cm?.activeNetwork
+            val caps = cm?.getNetworkCapabilities(activeNetwork)
+            val hasVpn = caps?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN) ?: false
+            Log.d("NsecVpnService", "[AdTrafficDebug] App active network has TRANSPORT_VPN: $hasVpn (Expected: false)")
+        } catch (e: Exception) {
+            Log.d("NsecVpnService", "[AdTrafficDebug] Failed to check network capabilities: ${e.message}")
         }
     }
 

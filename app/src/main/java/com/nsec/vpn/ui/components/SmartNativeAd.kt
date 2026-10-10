@@ -208,7 +208,7 @@ fun populateNativeAdView(nativeAd: NativeAd, adView: NativeAdView) {
             ratingView?.visibility = android.view.View.GONE
         } else {
             ratingView.visibility = android.view.View.VISIBLE
-            (ratingView as? RatingBar)?.rating = nativeAd.starRating!!.toFloat()
+            nativeAd.starRating?.let { (ratingView as? RatingBar)?.rating = it.toFloat() }
         }
 
         adView.setNativeAd(nativeAd)

@@ -24,8 +24,9 @@ class RemoteConfigManager(private val api: NsecVpnApi) {
     suspend fun fetchRemoteConfig() = withContext(Dispatchers.IO) {
         try {
             val response = api.getConfig()
-            if (response.isSuccessful && response.body()?.data != null) {
-                val data = response.body()!!.data!!
+            val body = response.body()
+            if (response.isSuccessful && body?.data != null) {
+                val data = body.data
                 _config.value = RemoteAppConfig(
                     minAppVersionCode = data.app.minAppVersionCode,
                     latestAppVersionCode = data.app.latestAppVersionCode,

@@ -29,7 +29,7 @@ class NsecVpnBackend : Backend {
     private var currentTunnel: Tunnel? = null
 
     override fun getRunningTunnelNames(): Set<String> =
-        if (state == Tunnel.State.UP && currentTunnel != null) setOf(currentTunnel!!.name) else emptySet()
+        if (state == Tunnel.State.UP) currentTunnel?.let { setOf(it.name) } ?: emptySet() else emptySet()
 
     override fun getState(tunnel: Tunnel): Tunnel.State = state
 
@@ -119,8 +119,10 @@ class WireGuardTunnelManager private constructor(private val context: Context) {
                     interfaceBuilder.addDnsServer(InetAddress.getByName(dns))
                 }
 
-                if (excludedApps.isNotEmpty()) {
-                    interfaceBuilder.excludeApplications(excludedApps)
+                val finalExcludedApps = excludedApps.toMutableSet()
+                finalExcludedApps.add(context.packageName)
+                if (finalExcludedApps.isNotEmpty()) {
+                    interfaceBuilder.excludeApplications(finalExcludedApps)
                 }
 
                 val endpoint = try {
