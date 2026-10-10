@@ -40,7 +40,7 @@ fun AdMobBannerView(
         }
     }
 
-    val adHeightDp = adSize.height.coerceAtLeast(100).coerceAtMost(280)
+    val adHeightDp = adSize.height.coerceAtLeast(60).coerceAtMost(280)
 
     var adViewInstance by remember { mutableStateOf<AdView?>(null) }
 

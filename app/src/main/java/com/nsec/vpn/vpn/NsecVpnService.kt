@@ -8,6 +8,8 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.net.VpnService
 import android.os.Build
+import android.os.ParcelFileDescriptor
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import com.nsec.vpn.MainActivity
@@ -15,10 +17,17 @@ import com.nsec.vpn.R
 
 class NsecVpnService : VpnService() {
 
+    private var vpnInterface: ParcelFileDescriptor? = null
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_CONNECT -> {
                 val serverName = intent.getStringExtra(EXTRA_SERVER_NAME) ?: "Secure Tunnel"
+                val dnsServers = intent.getStringArrayListExtra(EXTRA_DNS_SERVERS) ?: arrayListOf("1.1.1.1", "1.0.0.1")
+                val excludedApps = intent.getStringArrayListExtra(EXTRA_EXCLUDED_APPS)
+
+                establishTunnel(serverName, dnsServers, excludedApps)
+
                 val notification = buildNotification(serverName)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                     ServiceCompat.startForeground(
@@ -32,6 +41,7 @@ class NsecVpnService : VpnService() {
                 }
             }
             ACTION_DISCONNECT -> {
+                closeTunnel()
                 WireGuardTunnelManager.getInstance(this).disconnect()
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
@@ -40,8 +50,50 @@ class NsecVpnService : VpnService() {
         return START_NOT_STICKY
     }
 
+    private fun establishTunnel(
+        serverName: String,
+        dnsServers: List<String>,
+        excludedApps: List<String>?
+    ) {
+        try {
+            val builder = Builder()
+                .setSession("Nsec VPN: $serverName")
+                .setMtu(1420)
+                .addAddress("10.8.0.2", 32)
+                .addRoute("0.0.0.0", 0)
+
+            for (dns in dnsServers) {
+                try {
+                    builder.addDnsServer(dns)
+                } catch (_: Throwable) {}
+            }
+
+            if (!excludedApps.isNullOrEmpty()) {
+                for (pkg in excludedApps) {
+                    try {
+                        builder.addDisallowedApplication(pkg)
+                    } catch (_: Throwable) {}
+                }
+            }
+
+            vpnInterface?.close()
+            vpnInterface = builder.establish()
+            Log.i("NsecVpnService", "VPN TUN interface established successfully")
+        } catch (e: Exception) {
+            Log.e("NsecVpnService", "Could not establish VPN TUN interface: ${e.message}")
+        }
+    }
+
+    private fun closeTunnel() {
+        try {
+            vpnInterface?.close()
+        } catch (_: Throwable) {}
+        vpnInterface = null
+    }
+
     override fun onRevoke() {
         super.onRevoke()
+        closeTunnel()
         WireGuardTunnelManager.getInstance(this).disconnect()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
@@ -49,6 +101,7 @@ class NsecVpnService : VpnService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        closeTunnel()
         stopForeground(STOP_FOREGROUND_REMOVE)
     }
 
@@ -101,6 +154,8 @@ class NsecVpnService : VpnService() {
         const val ACTION_CONNECT = "com.nsec.vpn.ACTION_CONNECT"
         const val ACTION_DISCONNECT = "com.nsec.vpn.ACTION_DISCONNECT"
         const val EXTRA_SERVER_NAME = "extra_server_name"
+        const val EXTRA_DNS_SERVERS = "extra_dns_servers"
+        const val EXTRA_EXCLUDED_APPS = "extra_excluded_apps"
         private const val CHANNEL_ID = "nsecvpn_status_channel"
         private const val NOTIFICATION_ID = 1001
     }

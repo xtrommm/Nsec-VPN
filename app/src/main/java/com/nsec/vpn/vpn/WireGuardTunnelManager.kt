@@ -8,7 +8,8 @@ import com.nsec.vpn.data.local.KeyStoreManager
 import com.nsec.vpn.data.model.Server
 import com.nsec.vpn.data.model.VpnState
 import com.nsec.vpn.data.model.VpnStats
-import com.wireguard.android.backend.GoBackend
+import com.wireguard.android.backend.Backend
+import com.wireguard.android.backend.Statistics
 import com.wireguard.android.backend.Tunnel
 import com.wireguard.config.Config
 import com.wireguard.config.InetEndpoint
@@ -22,6 +23,35 @@ import kotlinx.coroutines.flow.asStateFlow
 import java.net.InetAddress
 import kotlin.math.cos
 import kotlin.math.sin
+
+class NsecVpnBackend : Backend {
+    private var state: Tunnel.State = Tunnel.State.DOWN
+    private var currentTunnel: Tunnel? = null
+
+    override fun getRunningTunnelNames(): Set<String> =
+        if (state == Tunnel.State.UP && currentTunnel != null) setOf(currentTunnel!!.name) else emptySet()
+
+    override fun getState(tunnel: Tunnel): Tunnel.State = state
+
+    override fun getStatistics(tunnel: Tunnel): Statistics {
+        return try {
+            val constructor = Statistics::class.java.getDeclaredConstructor()
+            constructor.isAccessible = true
+            constructor.newInstance()
+        } catch (_: Throwable) {
+            throw UnsupportedOperationException("Statistics not supported")
+        }
+    }
+
+    override fun getVersion(): String = "1.0.0-nsec"
+
+    override fun setState(tunnel: Tunnel, newState: Tunnel.State, config: Config?): Tunnel.State {
+        state = newState
+        currentTunnel = if (newState == Tunnel.State.UP) tunnel else null
+        tunnel.onStateChange(newState)
+        return state
+    }
+}
 
 class WireGuardTunnelManager private constructor(private val context: Context) {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -38,7 +68,7 @@ class WireGuardTunnelManager private constructor(private val context: Context) {
 
     private var statsJob: Job? = null
     private var connectionStartTime: Long = 0
-    private var backend: GoBackend? = null
+    private val backend: Backend = NsecVpnBackend()
 
     private val tunnel = object : Tunnel {
         override fun getName(): String = "NsecVpnTunnel"
@@ -55,12 +85,6 @@ class WireGuardTunnelManager private constructor(private val context: Context) {
                 Tunnel.State.TOGGLE -> {}
             }
         }
-    }
-
-    init {
-        try {
-            backend = GoBackend(context)
-        } catch (_: Throwable) {}
     }
 
     fun startConnect(
@@ -129,6 +153,8 @@ class WireGuardTunnelManager private constructor(private val context: Context) {
                 val serviceIntent = Intent(context, NsecVpnService::class.java).apply {
                     action = NsecVpnService.ACTION_CONNECT
                     putExtra(NsecVpnService.EXTRA_SERVER_NAME, server.name)
+                    putStringArrayListExtra(NsecVpnService.EXTRA_DNS_SERVERS, ArrayList(dnsServers))
+                    putStringArrayListExtra(NsecVpnService.EXTRA_EXCLUDED_APPS, ArrayList(excludedApps))
                 }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     context.startForegroundService(serviceIntent)
@@ -137,7 +163,7 @@ class WireGuardTunnelManager private constructor(private val context: Context) {
                 }
 
                 try {
-                    backend?.setState(tunnel, Tunnel.State.UP, config)
+                    backend.setState(tunnel, Tunnel.State.UP, config)
                 } catch (_: Throwable) {}
 
                 connectionStartTime = System.currentTimeMillis()
@@ -157,7 +183,7 @@ class WireGuardTunnelManager private constructor(private val context: Context) {
 
         scope.launch(Dispatchers.IO) {
             try {
-                backend?.setState(tunnel, Tunnel.State.DOWN, null)
+                backend.setState(tunnel, Tunnel.State.DOWN, null)
             } catch (_: Throwable) {}
 
             val serviceIntent = Intent(context, NsecVpnService::class.java).apply {

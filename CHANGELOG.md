@@ -11,6 +11,9 @@ All notable changes to the Nsec VPN project are documented in this file followin
 - **Executable Gradle Wrapper**: Added executable `gradlew` and `gradlew.bat` in repository root for standardized CI and local builds.
 
 ### Fixed
+- **WireGuard UAPIOpen Permission Denied (`/data/data/com.wireguard.android`)**: Resolved by establishing the TUN interface via Android's `VpnService.Builder` in `NsecVpnService` with custom `NsecVpnBackend`, bypassing the broken hardcoded UAPIOpen directory path in `libwg-go.so`.
+- **AdMob AdServices Binder Crash**: Added `@xml/gma_ad_services_config.xml` and manifest properties to disable unneeded measurement service bindings on emulators.
+- **SurfaceSyncGroup / AdActivity Synchronization**: Configured hardware acceleration and window flags for `com.google.android.gms.ads.AdActivity`.
 - **GitHub Dependabot Security Vulnerabilities**: Added package overrides and lockfile remediation for High-severity transitive dependency alerts (`braces`).
 - **CI Test Teardown / Hanging**: Configured `--detectOpenHandles --forceExit` and test environment flags for Jest test runs in GitHub Actions.
 - **Repository Hygiene (.gitignore)**: Added `node_modules/`, `dist/`, `.build-outputs/`, and logs to `.gitignore` to prevent repository bloat and GitHub push rejections.
