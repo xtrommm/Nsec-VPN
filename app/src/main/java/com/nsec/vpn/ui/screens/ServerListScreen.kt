@@ -105,10 +105,13 @@ fun ServerListScreen(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground
             )
-            IconButton(onClick = onRefreshPings) {
+            IconButton(
+                onClick = onRefreshPings,
+                modifier = Modifier.testTag("refresh_servers_button")
+            ) {
                 Icon(
                     imageVector = Icons.Default.Refresh,
-                    contentDescription = "Refresh Latencies",
+                    contentDescription = "Refresh Servers & Latencies",
                     tint = PrimaryBlue
                 )
             }

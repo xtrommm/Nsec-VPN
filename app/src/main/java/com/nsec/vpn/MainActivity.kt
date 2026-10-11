@@ -141,6 +141,7 @@ class MainActivity : ComponentActivity() {
 
                 LaunchedEffect(Unit) {
                     remoteConfigManager.fetchRemoteConfig()
+                    vpnRepo.refreshServers()
                     adMobManager.preloadInterstitial(this@MainActivity)
                     adMobManager.preloadRewarded(this@MainActivity)
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -149,6 +150,12 @@ class MainActivity : ComponentActivity() {
                     vpnRepo.checkRewardedPassExpiry()
                     if (autoConnectEnabled && vpnState is VpnState.Disconnected) {
                         triggerConnectSequence(isUserInitiated = false)
+                    }
+                }
+
+                LaunchedEffect(currentTab) {
+                    if (currentTab == Screen.Servers) {
+                        vpnRepo.refreshServers()
                     }
                 }
 
@@ -290,7 +297,7 @@ class MainActivity : ComponentActivity() {
                                             },
                                             onToggleFavorite = { vpnRepo.toggleFavorite(it) },
                                             onRefreshPings = {
-                                                coroutineScope.launch { vpnRepo.measurePings() }
+                                                coroutineScope.launch { vpnRepo.refreshServers() }
                                             },
                                             onUpgradeRequired = { showVipModal = true }
                                         )

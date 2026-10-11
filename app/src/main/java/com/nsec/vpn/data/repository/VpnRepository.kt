@@ -92,39 +92,47 @@ class VpnRepository(
         checkRewardedPassExpiry()
         try {
             var token = keyStoreManager.getAccessToken() ?: authenticateDevice()
-            var response = api.getServers("Bearer $token", grouped = true)
+            var response = api.getServers("Bearer $token", grouped = false)
 
             // Handle 401 Unauthorized by attempting token refresh
             if (response.code() == 401) {
                 val newToken = tryRefreshToken()
                 if (newToken != null) {
                     token = newToken
-                    response = api.getServers("Bearer $token", grouped = true)
+                    response = api.getServers("Bearer $token", grouped = false)
                 }
             }
 
             val body = response.body()
             if (response.isSuccessful && body?.data?.servers != null) {
                 val dtos = body.data.servers
-                val favs = _favoriteServerIds.value
-                val mapped = dtos.map { dto ->
-                    Server(
-                        id = dto.id,
-                        name = dto.name,
-                        countryCode = dto.countryCode,
-                        countryName = dto.countryName,
-                        city = dto.city,
-                        flagEmoji = dto.flagEmoji,
-                        currentLoad = dto.currentLoad,
-                        isPremiumOnly = dto.isPremiumOnly,
-                        isRecommended = dto.isRecommended,
-                        isFavorite = favs.contains(dto.id),
-                        totalNodes = dto.totalNodes
-                    )
+                if (dtos.isNotEmpty()) {
+                    val favs = _favoriteServerIds.value
+                    val mapped = dtos.map { dto ->
+                        Server(
+                            id = dto.id,
+                            name = dto.name,
+                            countryCode = dto.countryCode,
+                            countryName = dto.countryName,
+                            city = dto.city,
+                            flagEmoji = dto.flagEmoji,
+                            currentLoad = dto.currentLoad,
+                            isPremiumOnly = dto.isPremiumOnly,
+                            isRecommended = dto.isRecommended,
+                            isFavorite = favs.contains(dto.id),
+                            totalNodes = dto.totalNodes
+                        )
+                    }
+                    _servers.value = mapped
+
+                    val currentSelected = _selectedServer.value
+                    if (currentSelected == null || !mapped.any { it.id == currentSelected.id }) {
+                        _selectedServer.value = mapped.firstOrNull { it.isRecommended } ?: mapped.firstOrNull()
+                    }
                 }
-                _servers.value = groupServersByLocation(mapped)
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            android.util.Log.e("VpnRepository", "Failed to refresh live servers", e)
             if (_servers.value.isEmpty()) {
                 val favs = _favoriteServerIds.value
                 _servers.value = groupServersByLocation(getFallbackServers().map { s ->
