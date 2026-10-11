@@ -216,15 +216,26 @@ router.post(
         return res.status(404).json({ success: false, error: 'NOT_FOUND', message: 'Server not found' });
       }
 
-      const health = await AgentClient.getNodeHealth(server.agentUrl, server.agentSecretHash);
-      if (health.online) {
-        await prisma.serverNode.update({
-          where: { id },
-          data: { currentLoad: health.loadPercent }
+      try {
+        const health = await AgentClient.getNodeHealth(server.agentUrl, server.agentSecretHash);
+        if (health.online) {
+          await prisma.serverNode.update({
+            where: { id },
+            data: { currentLoad: health.loadPercent }
+          });
+        }
+        return res.json({ success: true, health });
+      } catch (agentErr: any) {
+        return res.json({
+          success: true,
+          health: {
+            online: false,
+            peerCount: 0,
+            loadPercent: server.currentLoad,
+            error: agentErr.message || 'Gateway agent unreachable'
+          }
         });
       }
-
-      return res.json({ success: true, health });
     } catch (err: any) {
       return res.status(500).json({ success: false, error: 'HEALTH_CHECK_FAILED', message: err.message });
     }
@@ -347,8 +358,39 @@ router.put(
 
 // 5. Remote Configuration Management
 router.get('/config', authenticateAdmin(), async (_req, res: Response) => {
-  const config = await prisma.appConfig.findUnique({ where: { id: 'global_config' } });
-  return res.json({ success: true, config });
+  try {
+    let config = await prisma.appConfig.findUnique({ where: { id: 'global_config' } });
+    if (!config) {
+      config = await prisma.appConfig.create({
+        data: {
+          id: 'global_config',
+          minAppVersionCode: 1,
+          latestAppVersionCode: 1,
+          forceUpdate: false,
+          maintenanceMode: false,
+          announcementActive: false,
+          announcementTitle: null,
+          announcementBody: null,
+          bannerAdsEnabled: true,
+          interstitialAdsEnabled: true,
+          interstitialIntervalSeconds: 120,
+          rewardedAdsEnabled: true
+        }
+      });
+    }
+    return res.json({
+      success: true,
+      config,
+      data: config,
+      lastUpdated: config.updatedAt
+    });
+  } catch (err: any) {
+    return res.status(500).json({
+      success: false,
+      error: 'DB_ERROR',
+      message: err.message || 'Failed to fetch configuration'
+    });
+  }
 });
 
 router.put(
@@ -357,22 +399,31 @@ router.put(
   validateBody(UpdateConfigSchema),
   async (req: AuthenticatedAdminRequest, res: Response) => {
     try {
+      const sanitized = { ...req.body };
+      if (sanitized.announcementTitle === '') sanitized.announcementTitle = null;
+      if (sanitized.announcementBody === '') sanitized.announcementBody = null;
+
       const updated = await prisma.appConfig.upsert({
         where: { id: 'global_config' },
-        update: req.body,
-        create: { id: 'global_config', ...req.body }
+        update: sanitized,
+        create: { id: 'global_config', ...sanitized }
       });
 
-      // Invalidate in-memory cache so clients immediately see updates
+      // Invalidate in-memory cache so mobile clients immediately see updates
       invalidateConfigCache();
 
-      await logAudit(req.admin!.adminId, 'UPDATE_CONFIG', 'APP_CONFIG', 'global_config', req.body);
-      return res.json({ success: true, config: updated });
+      await logAudit(req.admin!.adminId, 'UPDATE_CONFIG', 'APP_CONFIG', 'global_config', sanitized);
+      return res.json({
+        success: true,
+        config: updated,
+        data: updated,
+        lastUpdated: updated.updatedAt
+      });
     } catch (err: any) {
       return res.status(500).json({
         success: false,
         error: 'DB_ERROR',
-        message: err.message
+        message: err.message || 'Failed to update configuration'
       });
     }
   }

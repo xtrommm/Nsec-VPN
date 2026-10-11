@@ -55,6 +55,7 @@ class ServiceLocator(context: Context) {
     val vpnRepository by lazy { VpnRepository(appContext, NetworkModule.api, keyStoreManager) }
     val tunnelManager by lazy { WireGuardTunnelManager.getInstance(appContext) }
     val adMobManager by lazy { AdMobManager(appContext) }
+    val remoteConfigManager by lazy { com.nsec.vpn.data.config.RemoteConfigManager(NetworkModule.api, adMobManager) }
 
     companion object {
         @Volatile

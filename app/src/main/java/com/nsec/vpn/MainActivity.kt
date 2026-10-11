@@ -51,10 +51,12 @@ class MainActivity : ComponentActivity() {
         val vpnRepo = serviceLocator.vpnRepository
         val tunnelManager = serviceLocator.tunnelManager
         val adMobManager = serviceLocator.adMobManager
+        val remoteConfigManager = serviceLocator.remoteConfigManager
 
         setContent {
             val themeMode by vpnRepo.themeMode.collectAsStateWithLifecycle()
             val adMobConfig by adMobManager.config.collectAsStateWithLifecycle()
+            val remoteConfig by remoteConfigManager.config.collectAsStateWithLifecycle()
 
             NsecVpnTheme(themeMode = themeMode) {
                 val coroutineScope = rememberCoroutineScope()
@@ -128,6 +130,7 @@ class MainActivity : ComponentActivity() {
                 }
 
                 LaunchedEffect(Unit) {
+                    remoteConfigManager.fetchRemoteConfig()
                     adMobManager.preloadInterstitial(this@MainActivity)
                     adMobManager.preloadRewarded(this@MainActivity)
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -252,6 +255,8 @@ class MainActivity : ComponentActivity() {
                                             userTier = userTier,
                                             adMobConfig = adMobConfig,
                                             nativeAdManager = adMobManager.nativeAdManager,
+                                            announcementTitle = if (remoteConfig.announcementActive) remoteConfig.announcementTitle else null,
+                                            announcementBody = if (remoteConfig.announcementActive) remoteConfig.announcementBody else null,
                                             onToggleVpn = { triggerConnectSequence() },
                                             onNavigateToServers = { currentTab = Screen.Servers },
                                             onNavigateToConnected = { activeSubScreen = "connected" },
