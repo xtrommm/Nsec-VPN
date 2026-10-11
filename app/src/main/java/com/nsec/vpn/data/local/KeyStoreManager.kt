@@ -2,11 +2,65 @@ package com.nsec.vpn.data.local
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Base64
 import com.wireguard.crypto.KeyPair
+import java.security.SecureRandom
 import java.util.UUID
+import javax.crypto.Cipher
+import javax.crypto.spec.GCMParameterSpec
+import javax.crypto.spec.SecretKeySpec
 
 class KeyStoreManager(context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("nsecvpn_secure_vault", Context.MODE_PRIVATE)
+
+    // Master key derived per device for light vault encryption
+    private val secretKey: SecretKeySpec by lazy {
+        var keyB64 = prefs.getString(KEY_VAULT_SEED, null)
+        if (keyB64 == null) {
+            val randomBytes = ByteArray(16)
+            SecureRandom().nextBytes(randomBytes)
+            keyB64 = Base64.encodeToString(randomBytes, Base64.NO_WRAP)
+            prefs.edit().putString(KEY_VAULT_SEED, keyB64).apply()
+        }
+        val keyBytes = Base64.decode(keyB64, Base64.NO_WRAP)
+        SecretKeySpec(keyBytes, "AES")
+    }
+
+    private fun encryptString(plainText: String?): String? {
+        if (plainText.isNullOrEmpty()) return null
+        return try {
+            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            val iv = ByteArray(12)
+            SecureRandom().nextBytes(iv)
+            val gcmSpec = GCMParameterSpec(128, iv)
+            cipher.init(Cipher.ENCRYPT_MODE, secretKey, gcmSpec)
+            val encryptedBytes = cipher.doFinal(plainText.toByteArray(Charsets.UTF_8))
+            val combined = ByteArray(iv.size + encryptedBytes.size)
+            System.arraycopy(iv, 0, combined, 0, iv.size)
+            System.arraycopy(encryptedBytes, 0, combined, iv.size, encryptedBytes.size)
+            Base64.encodeToString(combined, Base64.NO_WRAP)
+        } catch (_: Exception) {
+            plainText
+        }
+    }
+
+    private fun decryptString(cipherTextB64: String?): String? {
+        if (cipherTextB64.isNullOrEmpty()) return null
+        return try {
+            val combined = Base64.decode(cipherTextB64, Base64.NO_WRAP)
+            if (combined.size <= 12) return cipherTextB64
+            val iv = ByteArray(12)
+            val encryptedBytes = ByteArray(combined.size - 12)
+            System.arraycopy(combined, 0, iv, 0, 12)
+            System.arraycopy(combined, 12, encryptedBytes, 0, encryptedBytes.size)
+            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            val gcmSpec = GCMParameterSpec(128, iv)
+            cipher.init(Cipher.DECRYPT_MODE, secretKey, gcmSpec)
+            String(cipher.doFinal(encryptedBytes), Charsets.UTF_8)
+        } catch (_: Exception) {
+            cipherTextB64
+        }
+    }
 
     fun getOrCreateDeviceId(): String {
         var deviceId = prefs.getString(KEY_DEVICE_ID, null)
@@ -19,25 +73,27 @@ class KeyStoreManager(context: Context) {
 
     fun generateEphemeralWireGuardKeyPair(): KeyPair {
         val keyPair = KeyPair()
+        val encPrivate = encryptString(keyPair.privateKey.toBase64())
+        val encPublic = encryptString(keyPair.publicKey.toBase64())
         prefs.edit()
-            .putString(KEY_WG_PRIVATE, keyPair.privateKey.toBase64())
-            .putString(KEY_WG_PUBLIC, keyPair.publicKey.toBase64())
+            .putString(KEY_WG_PRIVATE, encPrivate)
+            .putString(KEY_WG_PUBLIC, encPublic)
             .apply()
         return keyPair
     }
 
-    fun getStoredPrivateKeyBase64(): String? = prefs.getString(KEY_WG_PRIVATE, null)
-    fun getStoredPublicKeyBase64(): String? = prefs.getString(KEY_WG_PUBLIC, null)
+    fun getStoredPrivateKeyBase64(): String? = decryptString(prefs.getString(KEY_WG_PRIVATE, null))
+    fun getStoredPublicKeyBase64(): String? = decryptString(prefs.getString(KEY_WG_PUBLIC, null))
 
     fun saveTokens(accessToken: String, refreshToken: String) {
         prefs.edit()
-            .putString(KEY_ACCESS_TOKEN, accessToken)
-            .putString(KEY_REFRESH_TOKEN, refreshToken)
+            .putString(KEY_ACCESS_TOKEN, encryptString(accessToken))
+            .putString(KEY_REFRESH_TOKEN, encryptString(refreshToken))
             .apply()
     }
 
-    fun getAccessToken(): String? = prefs.getString(KEY_ACCESS_TOKEN, null)
-    fun getRefreshToken(): String? = prefs.getString(KEY_REFRESH_TOKEN, null)
+    fun getAccessToken(): String? = decryptString(prefs.getString(KEY_ACCESS_TOKEN, null))
+    fun getRefreshToken(): String? = decryptString(prefs.getString(KEY_REFRESH_TOKEN, null))
 
     fun clearTokens() {
         prefs.edit()
@@ -102,6 +158,7 @@ class KeyStoreManager(context: Context) {
     fun getThemeMode(): String = prefs.getString(KEY_THEME_MODE, "SYSTEM") ?: "SYSTEM"
 
     companion object {
+        private const val KEY_VAULT_SEED = "nsec_vault_seed_v1"
         private const val KEY_DEVICE_ID = "device_id"
         private const val KEY_WG_PRIVATE = "wg_private_key"
         private const val KEY_WG_PUBLIC = "wg_public_key"

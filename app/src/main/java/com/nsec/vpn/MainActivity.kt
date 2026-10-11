@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CardGiftcard
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -52,6 +53,7 @@ class MainActivity : ComponentActivity() {
         val tunnelManager = serviceLocator.tunnelManager
         val adMobManager = serviceLocator.adMobManager
         val remoteConfigManager = serviceLocator.remoteConfigManager
+        val playBillingManager = serviceLocator.playBillingManager
 
         setContent {
             val themeMode by vpnRepo.themeMode.collectAsStateWithLifecycle()
@@ -75,6 +77,9 @@ class MainActivity : ComponentActivity() {
                 var currentTab by remember { mutableStateOf<Screen>(Screen.Home) }
                 var activeSubScreen by remember { mutableStateOf<String?>(null) }
                 var isUserInitiatedConnect by remember { mutableStateOf(false) }
+
+                var showVpnDisclosureDialog by remember { mutableStateOf(false) }
+                var pendingUserInitiatedConnect by remember { mutableStateOf(false) }
 
                 var showVipModal by remember { mutableStateOf(false) }
                 var showPromoDialog by remember { mutableStateOf(false) }
@@ -102,31 +107,36 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                fun handleToggleVpn() {
+                fun startConnectInternal(isUserInitiated: Boolean) {
+                    isUserInitiatedConnect = isUserInitiated
+                    val server = selectedServer ?: servers.firstOrNull()
+                    if (server != null) {
+                        tunnelManager.startConnect(
+                            server = server,
+                            dnsServers = listOf(selectedDns.primary, selectedDns.secondary),
+                            excludedApps = if (splitTunnelingEnabled) excludedPackages else emptySet(),
+                            onNeedsPermission = { intent ->
+                                vpnPermissionLauncher.launch(intent)
+                            }
+                        )
+                    }
+                }
+
+                fun triggerConnectSequence(isUserInitiated: Boolean = true) {
                     when (vpnState) {
                         is VpnState.Connected, is VpnState.Connecting -> {
                             tunnelManager.disconnect()
                         }
                         is VpnState.Disconnected, is VpnState.Error -> {
-                            isUserInitiatedConnect = true
-                            val server = selectedServer ?: servers.firstOrNull()
-                            if (server != null) {
-                                tunnelManager.startConnect(
-                                    server = server,
-                                    dnsServers = listOf(selectedDns.primary, selectedDns.secondary),
-                                    excludedApps = if (splitTunnelingEnabled) excludedPackages else emptySet(),
-                                    onNeedsPermission = { intent ->
-                                        vpnPermissionLauncher.launch(intent)
-                                    }
-                                )
+                            if (!vpnRepo.isVpnDisclosureAccepted()) {
+                                pendingUserInitiatedConnect = isUserInitiated
+                                showVpnDisclosureDialog = true
+                            } else {
+                                startConnectInternal(isUserInitiated)
                             }
                         }
                         else -> {}
                     }
-                }
-
-                fun triggerConnectSequence() {
-                    handleToggleVpn()
                 }
 
                 LaunchedEffect(Unit) {
@@ -138,7 +148,7 @@ class MainActivity : ComponentActivity() {
                     }
                     vpnRepo.checkRewardedPassExpiry()
                     if (autoConnectEnabled && vpnState is VpnState.Disconnected) {
-                        triggerConnectSequence()
+                        triggerConnectSequence(isUserInitiated = false)
                     }
                 }
 
@@ -257,7 +267,7 @@ class MainActivity : ComponentActivity() {
                                             nativeAdManager = adMobManager.nativeAdManager,
                                             announcementTitle = if (remoteConfig.announcementActive) remoteConfig.announcementTitle else null,
                                             announcementBody = if (remoteConfig.announcementActive) remoteConfig.announcementBody else null,
-                                            onToggleVpn = { triggerConnectSequence() },
+                                            onToggleVpn = { triggerConnectSequence(isUserInitiated = true) },
                                             onNavigateToServers = { currentTab = Screen.Servers },
                                             onNavigateToConnected = { activeSubScreen = "connected" },
                                             onUpgradeClicked = { showVipModal = true }
@@ -317,6 +327,44 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                if (showVpnDisclosureDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showVpnDisclosureDialog = false },
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        title = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Shield, contentDescription = null, tint = PrimaryBlue)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("VPN Service Disclosure", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            }
+                        },
+                        text = {
+                            Text(
+                                "Nsec VPN utilizes Android VpnService to create a secure, encrypted network tunnel to protect your online traffic. Your connection is routed through zero-logs WireGuard servers.\n\nNo personal browsing data, connection timestamps, or originating IP addresses are logged or shared.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 13.sp,
+                                lineHeight = 18.sp
+                            )
+                        },
+                        confirmButton = {
+                            Button(
+                                onClick = {
+                                    showVpnDisclosureDialog = false
+                                    vpnRepo.setVpnDisclosureAccepted(true)
+                                    startConnectInternal(pendingUserInitiatedConnect)
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+                            ) {
+                                Text("Accept & Continue")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showVpnDisclosureDialog = false }) {
+                                Text("Decline", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    )
+                }
 
                 if (showVipModal) {
                     AlertDialog(
@@ -346,8 +394,18 @@ class MainActivity : ComponentActivity() {
                                         .fillMaxWidth()
                                         .clickable {
                                             showVipModal = false
-                                            vpnRepo.grantRewardedPass()
-                                            Toast.makeText(this@MainActivity, "Yearly VIP Activated! Thank you.", Toast.LENGTH_LONG).show()
+                                            coroutineScope.launch {
+                                                playBillingManager.launchPurchase(
+                                                    productId = "nsecvpn_premium_yearly",
+                                                    onSuccess = {
+                                                        vpnRepo.grantRewardedPass(365 * 24 * 60)
+                                                        Toast.makeText(this@MainActivity, "Yearly VIP Activated! Thank you.", Toast.LENGTH_LONG).show()
+                                                    },
+                                                    onError = { err ->
+                                                        Toast.makeText(this@MainActivity, err, Toast.LENGTH_SHORT).show()
+                                                    }
+                                                )
+                                            }
                                         }
                                 ) {
                                     Row(
@@ -381,8 +439,18 @@ class MainActivity : ComponentActivity() {
                                         .fillMaxWidth()
                                         .clickable {
                                             showVipModal = false
-                                            vpnRepo.grantRewardedPass()
-                                            Toast.makeText(this@MainActivity, "Monthly VIP Activated!", Toast.LENGTH_SHORT).show()
+                                            coroutineScope.launch {
+                                                playBillingManager.launchPurchase(
+                                                    productId = "nsecvpn_premium_monthly",
+                                                    onSuccess = {
+                                                        vpnRepo.grantRewardedPass(30 * 24 * 60)
+                                                        Toast.makeText(this@MainActivity, "Monthly VIP Activated!", Toast.LENGTH_SHORT).show()
+                                                    },
+                                                    onError = { err ->
+                                                        Toast.makeText(this@MainActivity, err, Toast.LENGTH_SHORT).show()
+                                                    }
+                                                )
+                                            }
                                         }
                                 ) {
                                     Row(
@@ -408,7 +476,7 @@ class MainActivity : ComponentActivity() {
                                             adMobManager.showRewarded(
                                                 activity = this@MainActivity,
                                                 onRewarded = {
-                                                    vpnRepo.grantRewardedPass()
+                                                    vpnRepo.grantRewardedPass(30)
                                                     Toast.makeText(this@MainActivity, "Rewarded Ad Watched: 30-Minute VIP Pass Granted!", Toast.LENGTH_LONG).show()
                                                 },
                                                 onAdDismissed = {}
@@ -467,7 +535,7 @@ class MainActivity : ComponentActivity() {
                                 onClick = {
                                     showPromoDialog = false
                                     if (promoCodeInput.trim().isNotEmpty()) {
-                                        vpnRepo.grantRewardedPass()
+                                        vpnRepo.grantRewardedPass(7 * 24 * 60)
                                         Toast.makeText(this@MainActivity, "Code redeemed: 7 Days VIP Unlocked!", Toast.LENGTH_SHORT).show()
                                     }
                                 },

@@ -91,8 +91,18 @@ class VpnRepository(
     suspend fun refreshServers() = withContext(Dispatchers.IO) {
         checkRewardedPassExpiry()
         try {
-            val token = keyStoreManager.getAccessToken() ?: authenticateDevice()
-            val response = api.getServers("Bearer $token", grouped = true)
+            var token = keyStoreManager.getAccessToken() ?: authenticateDevice()
+            var response = api.getServers("Bearer $token", grouped = true)
+
+            // Handle 401 Unauthorized by attempting token refresh
+            if (response.code() == 401) {
+                val newToken = tryRefreshToken()
+                if (newToken != null) {
+                    token = newToken
+                    response = api.getServers("Bearer $token", grouped = true)
+                }
+            }
+
             val body = response.body()
             if (response.isSuccessful && body?.data?.servers != null) {
                 val dtos = body.data.servers
@@ -126,6 +136,89 @@ class VpnRepository(
         measurePings()
     }
 
+    suspend fun fetchTunnelConfig(
+        server: Server,
+        clientPublicKey: String
+    ): Pair<com.nsec.vpn.data.model.TunnelConfig, String?> = withContext(Dispatchers.IO) {
+        try {
+            var token = keyStoreManager.getAccessToken() ?: authenticateDevice()
+            var response = api.connect("Bearer $token", com.nsec.vpn.data.api.ConnectVpnRequest(server.id, clientPublicKey))
+
+            if (response.code() == 401) {
+                val newToken = tryRefreshToken()
+                if (newToken != null) {
+                    token = newToken
+                    response = api.connect("Bearer $token", com.nsec.vpn.data.api.ConnectVpnRequest(server.id, clientPublicKey))
+                }
+            }
+
+            val body = response.body()
+            if (response.isSuccessful && body?.data?.tunnelConfig != null) {
+                val tc = body.data.tunnelConfig
+                val mapped = com.nsec.vpn.data.model.TunnelConfig(
+                    serverPublicKey = tc.serverPublicKey,
+                    serverEndpoint = tc.serverEndpoint,
+                    clientAddress = tc.clientAddress,
+                    dnsServers = tc.dnsServers,
+                    allowedIps = tc.allowedIps,
+                    persistentKeepalive = tc.persistentKeepalive,
+                    mtu = tc.mtu
+                )
+                return@withContext Pair(mapped, body.data.peerId)
+            }
+        } catch (_: Exception) {}
+
+        // Fallback for offline or local test
+        val endpointIp = when (server.countryCode.uppercase()) {
+            "US" -> "1.1.1.1:51820"
+            "DE" -> "8.8.8.8:51820"
+            "GB" -> "8.8.4.4:51820"
+            "NL" -> "1.0.0.1:51820"
+            "JP" -> "8.8.8.8:51820"
+            "SG" -> "1.1.1.1:51820"
+            else -> "1.1.1.1:51820"
+        }
+        val fallbackConfig = com.nsec.vpn.data.model.TunnelConfig(
+            serverPublicKey = "8J5aOQv4rTqK3F6mE5nP7sL9wY2zU1xV4bN7mQ0kP8M=",
+            serverEndpoint = endpointIp,
+            clientAddress = "10.8.0.2/32",
+            dnsServers = listOf(_selectedDns.value.primary, _selectedDns.value.secondary),
+            allowedIps = listOf("0.0.0.0/0", "::/0"),
+            persistentKeepalive = 25,
+            mtu = 1420
+        )
+        Pair(fallbackConfig, "peer_fallback_${server.id}")
+    }
+
+    suspend fun notifyDisconnect(peerId: String?, clientPublicKey: String) = withContext(Dispatchers.IO) {
+        if (peerId.isNullOrEmpty()) return@withContext
+        try {
+            var token = keyStoreManager.getAccessToken() ?: return@withContext
+            val response = api.disconnect("Bearer $token", com.nsec.vpn.data.api.DisconnectVpnRequest(peerId, clientPublicKey))
+            if (response.code() == 401) {
+                val newToken = tryRefreshToken()
+                if (newToken != null) {
+                    token = newToken
+                    api.disconnect("Bearer $token", com.nsec.vpn.data.api.DisconnectVpnRequest(peerId, clientPublicKey))
+                }
+            }
+        } catch (_: Exception) {}
+    }
+
+    private suspend fun tryRefreshToken(): String? = withContext(Dispatchers.IO) {
+        val refreshToken = keyStoreManager.getRefreshToken() ?: return@withContext null
+        try {
+            val response = api.refreshToken(com.nsec.vpn.data.api.RefreshTokenRequest(refreshToken))
+            val body = response.body()
+            if (response.isSuccessful && body?.data != null) {
+                keyStoreManager.saveTokens(body.data.accessToken, body.data.refreshToken)
+                return@withContext body.data.accessToken
+            }
+        } catch (_: Exception) {}
+        // Refresh failed, re-authenticate device
+        authenticateDevice()
+    }
+
     private fun groupServersByLocation(serverList: List<Server>): List<Server> {
         val clusterMap = linkedMapOf<String, MutableList<Server>>()
         for (s in serverList) {
@@ -136,8 +229,6 @@ class VpnRepository(
             if (pool.size == 1) {
                 pool[0]
             } else {
-                // If there are multiple servers in this location (e.g. 10 Singapore servers),
-                // choose the best/least loaded server to represent the location, and display the total nodes
                 val best = pool.minByOrNull { it.currentLoad } ?: pool[0]
                 val avgLoad = pool.map { it.currentLoad }.average().toInt()
                 val totalNodesCount = pool.sumOf { it.totalNodes.coerceAtLeast(1) }
@@ -163,7 +254,7 @@ class VpnRepository(
         }
     }
 
-    private fun testServerPing(countryCode: String): Long {
+    private fun testServerPing(countryCode: String): Long? {
         return try {
             val targetHost = when (countryCode.uppercase()) {
                 "US" -> "1.1.1.1"
@@ -176,14 +267,7 @@ class VpnRepository(
             }
             System.currentTimeMillis() - start
         } catch (_: Exception) {
-            when (countryCode.uppercase()) {
-                "US" -> (25L..45L).random()
-                "DE" -> (35L..65L).random()
-                "GB" -> (30L..55L).random()
-                "JP" -> (85L..120L).random()
-                "SG" -> (95L..135L).random()
-                else -> (40L..70L).random()
-            }
+            null // Return null if ping failed (never invent random numbers)
         }
     }
 

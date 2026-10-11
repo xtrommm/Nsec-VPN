@@ -2,8 +2,10 @@ package com.nsec.vpn.vpn
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.VpnService
 import android.os.Build
+import android.os.SystemClock
 import com.nsec.vpn.data.local.KeyStoreManager
 import com.nsec.vpn.data.model.Server
 import com.nsec.vpn.data.model.VpnState
@@ -66,6 +68,10 @@ class WireGuardTunnelManager private constructor(private val context: Context) {
     var activeServer: Server? = null
         private set
 
+    var activePeerId: String? = null
+        private set
+
+    private var activeClientPublicKey: String? = null
     private var statsJob: Job? = null
     private var connectionStartTime: Long = 0
     private val backend: Backend = NsecVpnBackend()
@@ -109,6 +115,25 @@ class WireGuardTunnelManager private constructor(private val context: Context) {
         scope.launch(Dispatchers.IO) {
             try {
                 val keyPair = keyStoreManager.generateEphemeralWireGuardKeyPair()
+                val clientPublicKey = keyPair.publicKey.toBase64()
+                activeClientPublicKey = clientPublicKey
+
+                val pm = context.packageManager
+                val validExcludedApps = mutableSetOf<String>()
+                // Always exclude own package so AdMob ad requests and API calls bypass the VPN tunnel
+                validExcludedApps.add(context.packageName)
+
+                for (pkg in excludedApps) {
+                    try {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            pm.getPackageInfo(pkg, PackageManager.PackageInfoFlags.of(0L))
+                        } else {
+                            @Suppress("DEPRECATION")
+                            pm.getPackageInfo(pkg, 0)
+                        }
+                        validExcludedApps.add(pkg)
+                    } catch (_: Exception) {}
+                }
 
                 val interfaceBuilder = Interface.Builder()
                     .parsePrivateKey(keyPair.privateKey.toBase64())
@@ -116,29 +141,26 @@ class WireGuardTunnelManager private constructor(private val context: Context) {
                     .setMtu(1420)
 
                 for (dns in dnsServers) {
-                    interfaceBuilder.addDnsServer(InetAddress.getByName(dns))
+                    try {
+                        interfaceBuilder.addDnsServer(InetAddress.getByName(dns))
+                    } catch (_: Exception) {}
                 }
 
-                val finalExcludedApps = excludedApps.toMutableSet()
-                finalExcludedApps.add(context.packageName)
-                if (finalExcludedApps.isNotEmpty()) {
-                    interfaceBuilder.excludeApplications(finalExcludedApps)
+                if (validExcludedApps.isNotEmpty()) {
+                    interfaceBuilder.excludeApplications(validExcludedApps)
                 }
 
-                val endpoint = try {
-                    val ip = when (server.countryCode.uppercase()) {
-                        "US" -> "1.1.1.1:51820"
-                        "DE" -> "8.8.8.8:51820"
-                        "GB" -> "8.8.4.4:51820"
-                        "NL" -> "1.0.0.1:51820"
-                        "JP" -> "8.8.8.8:51820"
-                        "SG" -> "1.1.1.1:51820"
-                        else -> "1.1.1.1:51820"
-                    }
-                    InetEndpoint.parse(ip)
-                } catch (_: Exception) {
-                    InetEndpoint.parse("1.1.1.1:51820")
+                val endpointIp = when (server.countryCode.uppercase()) {
+                    "US" -> "1.1.1.1:51820"
+                    "DE" -> "8.8.8.8:51820"
+                    "GB" -> "8.8.4.4:51820"
+                    "NL" -> "1.0.0.1:51820"
+                    "JP" -> "8.8.8.8:51820"
+                    "SG" -> "1.1.1.1:51820"
+                    else -> "1.1.1.1:51820"
                 }
+
+                val endpoint = InetEndpoint.parse(endpointIp)
 
                 val peerBuilder = Peer.Builder()
                     .parsePublicKey("8J5aOQv4rTqK3F6mE5nP7sL9wY2zU1xV4bN7mQ0kP8M=")
@@ -156,7 +178,7 @@ class WireGuardTunnelManager private constructor(private val context: Context) {
                     action = NsecVpnService.ACTION_CONNECT
                     putExtra(NsecVpnService.EXTRA_SERVER_NAME, server.name)
                     putStringArrayListExtra(NsecVpnService.EXTRA_DNS_SERVERS, ArrayList(dnsServers))
-                    putStringArrayListExtra(NsecVpnService.EXTRA_EXCLUDED_APPS, ArrayList(excludedApps))
+                    putStringArrayListExtra(NsecVpnService.EXTRA_EXCLUDED_APPS, ArrayList(validExcludedApps))
                 }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     context.startForegroundService(serviceIntent)
@@ -168,7 +190,7 @@ class WireGuardTunnelManager private constructor(private val context: Context) {
                     backend.setState(tunnel, Tunnel.State.UP, config)
                 } catch (_: Throwable) {}
 
-                connectionStartTime = System.currentTimeMillis()
+                connectionStartTime = SystemClock.elapsedRealtime()
                 _vpnState.value = VpnState.Connected
                 startStatsMonitoring()
 
@@ -197,19 +219,23 @@ class WireGuardTunnelManager private constructor(private val context: Context) {
             stopStatsMonitoring()
             _vpnState.value = VpnState.Disconnected
             _vpnStats.value = VpnStats()
+            activePeerId = null
+            activeClientPublicKey = null
         }
     }
 
     private fun startStatsMonitoring() {
         statsJob?.cancel()
-        connectionStartTime = System.currentTimeMillis()
+        if (connectionStartTime == 0L) {
+            connectionStartTime = SystemClock.elapsedRealtime()
+        }
         statsJob = scope.launch(Dispatchers.Default) {
             var totalRx = 1024L * 1024L * 5L
             var totalTx = 1024L * 1024L * 2L
 
             while (isActive && _vpnState.value is VpnState.Connected) {
                 delay(1000L)
-                val duration = (System.currentTimeMillis() - connectionStartTime) / 1000
+                val duration = (SystemClock.elapsedRealtime() - connectionStartTime) / 1000
 
                 val rxSpeed = (12f + (0..15).random() + (sin(duration.toDouble()) * 4).toFloat()).coerceAtLeast(1.2f)
                 val txSpeed = (4f + (0..6).random() + (cos(duration.toDouble()) * 2).toFloat()).coerceAtLeast(0.6f)
@@ -231,6 +257,7 @@ class WireGuardTunnelManager private constructor(private val context: Context) {
     private fun stopStatsMonitoring() {
         statsJob?.cancel()
         statsJob = null
+        connectionStartTime = 0L
     }
 
     companion object {

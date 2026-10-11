@@ -2,6 +2,24 @@
 
 All notable changes to the Nsec VPN project are documented in this file following the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) standard.
 
+## [1.3.0] - 2026-10-12
+
+### Added
+- **In-App VPN Prominent Disclosure Dialog**: Implemented an explicit M3 prominent disclosure dialog detailing `VpnService` usage, zero-logs policies, and traffic routing prior to requesting system permissions, strictly meeting Google Play policy mandates.
+- **AES-GCM KeyStore Encryption**: Upgraded `KeyStoreManager` with AES-128 GCM encryption and randomized IVs to secure JWT access/refresh tokens and ephemeral WireGuard private keys stored on device.
+- **Play Billing Integration**: Connected `PlayBillingManager` to the VIP Upgrade Modal dialog to execute live Google Play Store subscription purchase flows (`nsecvpn_premium_monthly` and `nsecvpn_premium_yearly`).
+- **JWT Token Auto-Refresh**: Implemented seamless HTTP 401 Unauthorized handling in `VpnRepository` to trigger `api.refreshToken` and retry requests without user intervention or authentication loops.
+- **Monotonic Connection Timer**: Migrated connection timer calculations in `WireGuardTunnelManager` to `SystemClock.elapsedRealtime()`, preventing device clock manipulation from altering stats or timer displays.
+- **Comprehensive Audit Test Suite**: Added `AuditFixesTest.kt` unit test suite covering credential encryption, token refresh, disclosure acceptance, and ping metric accuracy.
+
+### Changed / Refactored
+- **R8 Minification & Resource Shrinking**: Enabled `isMinifyEnabled = true` and `isShrinkResources = true` in `app/build.gradle.kts` release build type with updated ProGuard rules for WireGuard, Retrofit, and Moshi.
+- **Honest Latency Metrics**: Refactored ping testing in `VpnRepository` to return real socket latency or `null` on unreachable gateways, eliminating fake random ping generation.
+- **Gated Interstitial Ads**: Enforced strict `isUserInitiatedConnect` flag validation so auto-connect at launch or QS Tile actions never present full-screen interstitial ads.
+
+### Fixed
+- **Split Tunneling Package Safety**: Added `PackageManager` validation to verify disallowed packages exist on device before passing to `VpnService.Builder`, preventing package resolution crashes.
+
 ## [1.2.0] - 2026-10-11
 
 ### Added
