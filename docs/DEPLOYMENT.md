@@ -54,11 +54,25 @@ docker-compose ps
 
 ## 3. Deploying WireGuard Server Nodes
 
-Run the automated installer on each server node (e.g. US, Germany, Singapore):
+Run the automated installer on each server node (e.g. US, Germany, Singapore).
 
+### Option A: Public Repository or Local Server Copy
+If the repository is public or already cloned to `/opt/nsec-vpn`:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/your-username/Nsec-VPN/main/deployment/install-wireguard-node.sh | sudo bash
+# If cloned locally on the server:
+sudo bash /opt/nsec-vpn/deployment/install-wireguard-node.sh
+
+# Or via public raw URL:
+curl -fsSL https://raw.githubusercontent.com/xtrommm/Nsec-VPN/main/deployment/install-wireguard-node.sh | sudo bash
 ```
+
+### Option B: Private Repository (Remote Node)
+For remote nodes where the repository is **private**, provide a GitHub Personal Access Token (PAT) with read access to the repo:
+```bash
+curl -fsSL -H "Authorization: token YOUR_GITHUB_PERSONAL_ACCESS_TOKEN" \
+  https://raw.githubusercontent.com/xtrommm/Nsec-VPN/main/deployment/install-wireguard-node.sh | sudo bash
+```
+> **Security Note:** Never hardcode your real GitHub Personal Access Token directly inside public documentation or commit history. Pass it as an environment variable or command argument when executing on the server node.
 
 The script will output:
 ```text
@@ -78,4 +92,3 @@ Agent Shared Secret: 4f8a12e3c09b78d65412a9c8e7b6d5f4
 3. Click **Add New Node**.
 4. Enter the Endpoint, Public Key, Agent URL, and Shared Secret.
 5. Click **Save & Register Node**.
-update
