@@ -167,15 +167,15 @@ fun HomeScreen(
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = if (isConnected) "VIRTUAL IP (PROTECTED)" else "PUBLIC IP (EXPOSED)",
+                    text = if (isConnected) "SECURE TUNNEL (ACTIVE)" else "UNPROTECTED NETWORK",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = if (isConnected) EmeraldGreen else CrimsonError,
                     letterSpacing = 0.8.sp
                 )
                 Text(
-                    text = if (isConnected) "10.8.0.2 • ${selectedServer?.city ?: "New York"}, ${selectedServer?.countryCode ?: "US"}"
-                    else "198.51.100.22 • Unencrypted Connection",
+                    text = if (isConnected) "${selectedServer?.city ?: "New York"}, ${selectedServer?.countryName ?: "United States"} • WireGuard® Secured"
+                    else "Direct ISP Connection • Unencrypted",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface

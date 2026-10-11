@@ -162,7 +162,7 @@ fun ConnectedScreen(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "Virtual IP: 10.8.0.2 • Ping: ${selectedServer?.pingMs ?: 32}ms",
+                    text = "Connected • Ping: ${selectedServer?.pingMs ?: 32}ms",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

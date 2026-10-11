@@ -262,6 +262,11 @@ class MainActivity : ComponentActivity() {
                                     onBack = { activeSubScreen = null }
                                 )
                             }
+                            "debug_diagnostics" -> {
+                                DebugDiagnosticsScreen(
+                                    onBack = { activeSubScreen = null }
+                                )
+                            }
                             else -> {
                                 when (currentTab) {
                                     Screen.Home -> {
@@ -325,7 +330,8 @@ class MainActivity : ComponentActivity() {
                                             onOpenSplitTunnelApps = { activeSubScreen = "split_tunnel" },
                                             onOpenTroubleshooting = { activeSubScreen = "troubleshoot" },
                                             onOpenPrivacyPolicy = { activeSubScreen = "legal" },
-                                            onRedeemPromoCode = { showPromoDialog = true }
+                                            onRedeemPromoCode = { showPromoDialog = true },
+                                            onOpenDebugDiagnostics = { activeSubScreen = "debug_diagnostics" }
                                         )
                                     }
                                 }

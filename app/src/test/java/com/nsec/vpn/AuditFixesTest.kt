@@ -102,6 +102,7 @@ class AuditFixesTest {
         val keyStore = KeyStoreManager(context)
 
         val repo = VpnRepository(context, fakeApi, keyStore)
+        repo.refreshServers()
         repo.measurePings()
 
         val servers = repo.servers.value

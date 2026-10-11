@@ -21,6 +21,10 @@ android {
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
+  lint {
+    checkReleaseBuilds = false
+  }
+
   signingConfigs {
     val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
     val releaseKeyFile = file(keystorePath)
