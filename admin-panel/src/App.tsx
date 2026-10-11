@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import {
-  Server, Shield, Users, Activity, Settings, Radio, Plus, Trash2,
-  LogOut, AlertTriangle, RefreshCw, Download, Ban, Search,
-  ChevronLeft, ChevronRight, FileText, CheckCircle
-} from 'lucide-react';
+import { Server, Activity, Plus, Trash2, RefreshCw, Download, Ban, Search, ChevronLeft, ChevronRight, CheckCircle, AlertTriangle, Shield, Radio } from 'lucide-react';
+import { Sidebar } from './components/Sidebar';
+import { ConfigScreen } from './components/ConfigScreen';
 
 const API_BASE = '/api/v1/admin';
 
@@ -456,91 +454,13 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#000B29] text-slate-100 flex flex-col md:flex-row">
-      {/* Sidebar */}
-      <aside className="w-full md:w-64 bg-[#0A122E] border-r border-slate-800 p-6 flex flex-col justify-between">
-        <div>
-          <div className="flex items-center space-x-3 mb-8">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#2563EB] to-[#00E5FF] flex items-center justify-center font-black text-xl text-white shadow-lg shadow-cyan-500/20">
-              N
-            </div>
-            <div>
-              <h1 className="font-bold text-lg text-white">Nsec VPN</h1>
-              <p className="text-xs text-[#00E5FF] font-medium tracking-wide">nsecvpn.com Console</p>
-            </div>
-          </div>
-
-          <nav className="space-y-1.5">
-            <button
-              onClick={() => setCurrentTab('servers')}
-              className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition ${
-                currentTab === 'servers'
-                  ? 'bg-[#2563EB] text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-              }`}
-            >
-              <Server className="w-4 h-4" />
-              <span>WireGuard Nodes</span>
-            </button>
-
-            <button
-              onClick={() => setCurrentTab('devices')}
-              className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition ${
-                currentTab === 'devices'
-                  ? 'bg-[#2563EB] text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-              }`}
-            >
-              <Users className="w-4 h-4" />
-              <span>Devices & VIP Tiers</span>
-            </button>
-
-            <button
-              onClick={() => setCurrentTab('config')}
-              className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition ${
-                currentTab === 'config'
-                  ? 'bg-[#2563EB] text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-              }`}
-            >
-              <Settings className="w-4 h-4" />
-              <span>Remote Config & Ads</span>
-            </button>
-
-            {adminRole === 'SUPER_ADMIN' && (
-              <button
-                onClick={() => setCurrentTab('audit')}
-                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition ${
-                  currentTab === 'audit'
-                    ? 'bg-[#2563EB] text-white shadow-sm'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-                }`}
-              >
-                <FileText className="w-4 h-4" />
-                <span>Audit Logs</span>
-              </button>
-            )}
-          </nav>
-        </div>
-
-        <div className="pt-6 border-t border-slate-800 space-y-3">
-          <div className="text-xs text-slate-400 truncate">
-            Logged in as: <br />
-            <strong className="text-white">{adminEmail}</strong>
-            <div className="mt-1">
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-400">
-                {adminRole}
-              </span>
-            </div>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center space-x-2 text-xs font-semibold text-rose-400 hover:text-rose-300 py-1.5 transition"
-          >
-            <LogOut className="w-4 h-4" />
-            <span>Sign Out</span>
-          </button>
-        </div>
-      </aside>
+      <Sidebar 
+        currentTab={currentTab} 
+        setCurrentTab={setCurrentTab} 
+        adminRole={adminRole} 
+        onLogout={handleLogout} 
+        email={adminEmail} 
+      />
 
       {/* Main Content */}
       <main className="flex-1 p-6 md:p-10 overflow-y-auto">
@@ -866,159 +786,7 @@ export default function App() {
 
         {/* Tab 3: Remote Config & AdMob */}
         {currentTab === 'config' && config && (
-          <div className="max-w-3xl space-y-6">
-            <div>
-              <h2 className="text-xl font-bold text-white">Remote App Configuration</h2>
-              <p className="text-sm text-slate-400">
-                Push AdMob, version requirements, and announcement alerts dynamically
-              </p>
-            </div>
-
-            <div className="bg-[#0A122E] border border-slate-800 rounded-2xl p-6 space-y-6">
-              <h3 className="font-semibold text-white text-xs uppercase tracking-wider text-slate-400">
-                Google AdMob Monetization
-              </h3>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-medium text-white text-sm">Banner Ads</div>
-                  <div className="text-xs text-slate-400">
-                    Display banner at bottom of Server List & Settings for Free users
-                  </div>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={config.bannerAdsEnabled}
-                  onChange={(e) =>
-                    setConfig({ ...config, bannerAdsEnabled: e.target.checked })
-                  }
-                  className="w-5 h-5 accent-blue-600 rounded"
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-medium text-white text-sm">
-                    Interstitial Ads (After Disconnect)
-                  </div>
-                  <div className="text-xs text-slate-400">
-                    Frequency capped at {config.interstitialIntervalSeconds}s interval
-                  </div>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={config.interstitialAdsEnabled}
-                  onChange={(e) =>
-                    setConfig({ ...config, interstitialAdsEnabled: e.target.checked })
-                  }
-                  className="w-5 h-5 accent-blue-600 rounded"
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-medium text-white text-sm">Rewarded Video Ads</div>
-                  <div className="text-xs text-slate-400">
-                    Grants 30-minute free VIP access pass to high-speed nodes
-                  </div>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={config.rewardedAdsEnabled}
-                  onChange={(e) =>
-                    setConfig({ ...config, rewardedAdsEnabled: e.target.checked })
-                  }
-                  className="w-5 h-5 accent-blue-600 rounded"
-                />
-              </div>
-
-              <div className="pt-4 border-t border-slate-800">
-                <h3 className="font-semibold text-white text-xs uppercase tracking-wider text-slate-400 mb-4">
-                  Version Policy & Force Update
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs text-slate-400 block mb-1">
-                      MINIMUM APP VERSION CODE
-                    </label>
-                    <input
-                      type="number"
-                      value={config.minAppVersionCode}
-                      onChange={(e) =>
-                        setConfig({
-                          ...config,
-                          minAppVersionCode: parseInt(e.target.value, 10) || 1
-                        })
-                      }
-                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-slate-400 block mb-1">FORCE UPDATE ACTIVE</label>
-                    <select
-                      value={config.forceUpdate ? 'true' : 'false'}
-                      onChange={(e) =>
-                        setConfig({ ...config, forceUpdate: e.target.value === 'true' })
-                      }
-                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white"
-                    >
-                      <option value="false">Optional Update</option>
-                      <option value="true">Mandatory Force Update</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-slate-800">
-                <h3 className="font-semibold text-white text-xs uppercase tracking-wider text-slate-400 mb-4">
-                  Network Emergency Announcement
-                </h3>
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="announcementActive"
-                      checked={config.announcementActive}
-                      onChange={(e) =>
-                        setConfig({ ...config, announcementActive: e.target.checked })
-                      }
-                      className="w-4 h-4 accent-blue-600"
-                    />
-                    <label htmlFor="announcementActive" className="text-xs text-white font-medium">
-                      Display Announcement Banner on Mobile Home Screen
-                    </label>
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Announcement Title"
-                    value={config.announcementTitle || ''}
-                    onChange={(e) =>
-                      setConfig({ ...config, announcementTitle: e.target.value })
-                    }
-                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white"
-                  />
-                  <textarea
-                    placeholder="Announcement Body..."
-                    value={config.announcementBody || ''}
-                    onChange={(e) =>
-                      setConfig({ ...config, announcementBody: e.target.value })
-                    }
-                    rows={2}
-                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-slate-800">
-                <button
-                  onClick={handleSaveConfig}
-                  className="w-full bg-[#2563EB] hover:bg-blue-600 py-3 rounded-xl text-sm font-semibold text-white transition shadow-lg shadow-blue-500/20"
-                >
-                  Save & Publish Remote Config
-                </button>
-              </div>
-            </div>
-          </div>
+          <ConfigScreen config={config} onSave={handleSaveConfig} />
         )}
 
         {/* Tab 4: Audit Logs (Super Admin only) */}
