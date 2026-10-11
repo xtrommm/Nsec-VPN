@@ -59,7 +59,15 @@ class VpnRepository(
         val savedThemeName = keyStoreManager.getThemeMode()
         _themeMode.value = ThemeMode.entries.find { it.name == savedThemeName } ?: ThemeMode.SYSTEM
 
-        _servers.value = emptyList()
+        val cached = keyStoreManager.getCachedServers()
+        if (cached.isNotEmpty()) {
+            val favs = _favoriteServerIds.value
+            _servers.value = groupServersByLocation(cached.map { s ->
+                s.copy(isFavorite = favs.contains(s.id))
+            })
+        } else {
+            _servers.value = emptyList()
+        }
 
         val savedServerId = keyStoreManager.getSelectedServerId()
         _selectedServer.value = _servers.value.firstOrNull { it.id == savedServerId }
@@ -120,7 +128,9 @@ class VpnRepository(
                         totalNodes = dto.totalNodes
                     )
                 }
-                _servers.value = mapped
+                val grouped = groupServersByLocation(mapped)
+                _servers.value = grouped
+                keyStoreManager.saveCachedServers(mapped)
 
                 val currentSelected = _selectedServer.value
                 if (currentSelected == null || !mapped.any { it.id == currentSelected.id }) {

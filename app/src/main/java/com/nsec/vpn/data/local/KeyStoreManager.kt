@@ -3,6 +3,10 @@ package com.nsec.vpn.data.local
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Base64
+import com.nsec.vpn.data.model.Server
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.Types
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import com.wireguard.crypto.KeyPair
 import java.security.SecureRandom
 import java.util.UUID
@@ -12,6 +16,12 @@ import javax.crypto.spec.SecretKeySpec
 
 class KeyStoreManager(context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("nsecvpn_secure_vault", Context.MODE_PRIVATE)
+
+    private val moshi = Moshi.Builder()
+        .add(KotlinJsonAdapterFactory())
+        .build()
+    private val serverListType = Types.newParameterizedType(List::class.java, Server::class.java)
+    private val serverListAdapter = moshi.adapter<List<Server>>(serverListType)
 
     // Master key derived per device for light vault encryption
     private val secretKey: SecretKeySpec by lazy {
@@ -157,6 +167,24 @@ class KeyStoreManager(context: Context) {
     }
     fun getThemeMode(): String = prefs.getString(KEY_THEME_MODE, "SYSTEM") ?: "SYSTEM"
 
+    // Server List Caching Persistence
+    fun saveCachedServers(servers: List<Server>) {
+        try {
+            val json = serverListAdapter.toJson(servers)
+            prefs.edit().putString(KEY_CACHED_SERVERS, encryptString(json)).apply()
+        } catch (_: Exception) {}
+    }
+
+    fun getCachedServers(): List<Server> {
+        return try {
+            val encJson = prefs.getString(KEY_CACHED_SERVERS, null)
+            val json = decryptString(encJson) ?: return emptyList()
+            serverListAdapter.fromJson(json) ?: emptyList()
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
     companion object {
         private const val KEY_VAULT_SEED = "nsec_vault_seed_v1"
         private const val KEY_DEVICE_ID = "device_id"
@@ -174,5 +202,6 @@ class KeyStoreManager(context: Context) {
         private const val KEY_REWARDED_EXPIRES_AT = "rewarded_expires_at"
         private const val KEY_FAVORITE_SERVERS = "favorite_server_ids"
         private const val KEY_THEME_MODE = "app_theme_mode"
+        private const val KEY_CACHED_SERVERS = "cached_servers_json"
     }
 }
