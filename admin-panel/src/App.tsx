@@ -206,7 +206,7 @@ export default function App() {
 
       if (statsRes.success) setStats(statsRes.data);
       if (serversRes.success) setServers(serversRes.servers);
-      if (configRes.success) setConfig(configRes.config);
+      if (configRes.success) setConfig(configRes.data);
     } catch (err: any) {
       setErrorMsg(err.message);
     } finally {
