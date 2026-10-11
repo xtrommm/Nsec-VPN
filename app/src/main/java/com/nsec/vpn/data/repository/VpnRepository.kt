@@ -59,9 +59,7 @@ class VpnRepository(
         val savedThemeName = keyStoreManager.getThemeMode()
         _themeMode.value = ThemeMode.entries.find { it.name == savedThemeName } ?: ThemeMode.SYSTEM
 
-        _servers.value = groupServersByLocation(getFallbackServers().map { server ->
-            server.copy(isFavorite = _favoriteServerIds.value.contains(server.id))
-        })
+        _servers.value = emptyList()
 
         val savedServerId = keyStoreManager.getSelectedServerId()
         _selectedServer.value = _servers.value.firstOrNull { it.id == savedServerId }
@@ -106,39 +104,32 @@ class VpnRepository(
             val body = response.body()
             if (response.isSuccessful && body?.data?.servers != null) {
                 val dtos = body.data.servers
-                if (dtos.isNotEmpty()) {
-                    val favs = _favoriteServerIds.value
-                    val mapped = dtos.map { dto ->
-                        Server(
-                            id = dto.id,
-                            name = dto.name,
-                            countryCode = dto.countryCode,
-                            countryName = dto.countryName,
-                            city = dto.city,
-                            flagEmoji = dto.flagEmoji,
-                            currentLoad = dto.currentLoad,
-                            isPremiumOnly = dto.isPremiumOnly,
-                            isRecommended = dto.isRecommended,
-                            isFavorite = favs.contains(dto.id),
-                            totalNodes = dto.totalNodes
-                        )
-                    }
-                    _servers.value = mapped
+                val favs = _favoriteServerIds.value
+                val mapped = dtos.map { dto ->
+                    Server(
+                        id = dto.id,
+                        name = dto.name,
+                        countryCode = dto.countryCode,
+                        countryName = dto.countryName,
+                        city = dto.city,
+                        flagEmoji = dto.flagEmoji,
+                        currentLoad = dto.currentLoad,
+                        isPremiumOnly = dto.isPremiumOnly,
+                        isRecommended = dto.isRecommended,
+                        isFavorite = favs.contains(dto.id),
+                        totalNodes = dto.totalNodes
+                    )
+                }
+                _servers.value = mapped
 
-                    val currentSelected = _selectedServer.value
-                    if (currentSelected == null || !mapped.any { it.id == currentSelected.id }) {
-                        _selectedServer.value = mapped.firstOrNull { it.isRecommended } ?: mapped.firstOrNull()
-                    }
+                val currentSelected = _selectedServer.value
+                if (currentSelected == null || !mapped.any { it.id == currentSelected.id }) {
+                    _selectedServer.value = mapped.firstOrNull { it.isRecommended } ?: mapped.firstOrNull()
                 }
             }
         } catch (e: Exception) {
             android.util.Log.e("VpnRepository", "Failed to refresh live servers", e)
-            if (_servers.value.isEmpty()) {
-                val favs = _favoriteServerIds.value
-                _servers.value = groupServersByLocation(getFallbackServers().map { s ->
-                    s.copy(isFavorite = favs.contains(s.id))
-                })
-            }
+            // No fallback to mock servers. Keep existing servers or empty list.
         }
 
         measurePings()
@@ -148,54 +139,33 @@ class VpnRepository(
         server: Server,
         clientPublicKey: String
     ): Pair<com.nsec.vpn.data.model.TunnelConfig, String?> = withContext(Dispatchers.IO) {
-        try {
-            var token = keyStoreManager.getAccessToken() ?: authenticateDevice()
-            var response = api.connect("Bearer $token", com.nsec.vpn.data.api.ConnectVpnRequest(server.id, clientPublicKey))
+        var token = keyStoreManager.getAccessToken() ?: authenticateDevice()
+        var response = api.connect("Bearer $token", com.nsec.vpn.data.api.ConnectVpnRequest(server.id, clientPublicKey))
 
-            if (response.code() == 401) {
-                val newToken = tryRefreshToken()
-                if (newToken != null) {
-                    token = newToken
-                    response = api.connect("Bearer $token", com.nsec.vpn.data.api.ConnectVpnRequest(server.id, clientPublicKey))
-                }
+        if (response.code() == 401) {
+            val newToken = tryRefreshToken()
+            if (newToken != null) {
+                token = newToken
+                response = api.connect("Bearer $token", com.nsec.vpn.data.api.ConnectVpnRequest(server.id, clientPublicKey))
             }
-
-            val body = response.body()
-            if (response.isSuccessful && body?.data?.tunnelConfig != null) {
-                val tc = body.data.tunnelConfig
-                val mapped = com.nsec.vpn.data.model.TunnelConfig(
-                    serverPublicKey = tc.serverPublicKey,
-                    serverEndpoint = tc.serverEndpoint,
-                    clientAddress = tc.clientAddress,
-                    dnsServers = tc.dnsServers,
-                    allowedIps = tc.allowedIps,
-                    persistentKeepalive = tc.persistentKeepalive,
-                    mtu = tc.mtu
-                )
-                return@withContext Pair(mapped, body.data.peerId)
-            }
-        } catch (_: Exception) {}
-
-        // Fallback for offline or local test
-        val endpointIp = when (server.countryCode.uppercase()) {
-            "US" -> "1.1.1.1:51820"
-            "DE" -> "8.8.8.8:51820"
-            "GB" -> "8.8.4.4:51820"
-            "NL" -> "1.0.0.1:51820"
-            "JP" -> "8.8.8.8:51820"
-            "SG" -> "1.1.1.1:51820"
-            else -> "1.1.1.1:51820"
         }
-        val fallbackConfig = com.nsec.vpn.data.model.TunnelConfig(
-            serverPublicKey = "8J5aOQv4rTqK3F6mE5nP7sL9wY2zU1xV4bN7mQ0kP8M=",
-            serverEndpoint = endpointIp,
-            clientAddress = "10.8.0.2/32",
-            dnsServers = listOf(_selectedDns.value.primary, _selectedDns.value.secondary),
-            allowedIps = listOf("0.0.0.0/0", "::/0"),
-            persistentKeepalive = 25,
-            mtu = 1420
-        )
-        Pair(fallbackConfig, "peer_fallback_${server.id}")
+
+        val body = response.body()
+        if (response.isSuccessful && body?.data?.tunnelConfig != null) {
+            val tc = body.data.tunnelConfig
+            val mapped = com.nsec.vpn.data.model.TunnelConfig(
+                serverPublicKey = tc.serverPublicKey,
+                serverEndpoint = tc.serverEndpoint,
+                clientAddress = tc.clientAddress,
+                dnsServers = tc.dnsServers,
+                allowedIps = tc.allowedIps,
+                persistentKeepalive = tc.persistentKeepalive,
+                mtu = tc.mtu
+            )
+            return@withContext Pair(mapped, body.data.peerId)
+        } else {
+            throw IllegalStateException("Failed to establish tunnel: backend response unsuccessful (${response.code()})")
+        }
     }
 
     suspend fun notifyDisconnect(peerId: String?, clientPublicKey: String) = withContext(Dispatchers.IO) {
@@ -223,9 +193,10 @@ class VpnRepository(
                 return@withContext body.data.accessToken
             }
         } catch (_: Exception) {}
-        // Refresh failed, re-authenticate device
         authenticateDevice()
     }
+
+
 
     private fun groupServersByLocation(serverList: List<Server>): List<Server> {
         val clusterMap = linkedMapOf<String, MutableList<Server>>()
@@ -275,31 +246,29 @@ class VpnRepository(
             }
             System.currentTimeMillis() - start
         } catch (_: Exception) {
-            null // Return null if ping failed (never invent random numbers)
+            null
         }
     }
 
     suspend fun authenticateDevice(): String = withContext(Dispatchers.IO) {
         val deviceId = keyStoreManager.getOrCreateDeviceId()
-        try {
-            val res = api.registerDevice(
-                RegisterDeviceRequest(
-                    deviceId = deviceId,
-                    deviceModel = Build.MODEL,
-                    osVersion = Build.VERSION.RELEASE,
-                    appVersion = "1.0.0",
-                    appVersionCode = 1
-                )
+        val res = api.registerDevice(
+            RegisterDeviceRequest(
+                deviceId = deviceId,
+                deviceModel = Build.MODEL,
+                osVersion = Build.VERSION.RELEASE,
+                appVersion = "1.0.0",
+                appVersionCode = 1
             )
-            val body = res.body()
-            if (res.isSuccessful && body?.data != null) {
-                val data = body.data
-                keyStoreManager.saveTokens(data.accessToken, data.refreshToken)
-                _userTier.value = data.device.tier
-                return@withContext data.accessToken
-            }
-        } catch (_: Exception) {}
-        "offline_demo_token"
+        )
+        val body = res.body()
+        if (res.isSuccessful && body?.data != null) {
+            val data = body.data
+            keyStoreManager.saveTokens(data.accessToken, data.refreshToken)
+            _userTier.value = data.device.tier
+            return@withContext data.accessToken
+        }
+        throw IllegalStateException("Device registration failed")
     }
 
     fun selectServer(server: Server) {
@@ -413,15 +382,13 @@ class VpnRepository(
         }
     }
 
-    private fun getFallbackServers(): List<Server> = listOf(
-        Server("srv_us_nyc", "United States - New York", "US", "United States", "New York", "🇺🇸", 38, isPremiumOnly = false, isRecommended = true, pingMs = 28),
-        Server("srv_us_lax", "United States - Los Angeles", "US", "United States", "Los Angeles", "🇺🇸", 45, isPremiumOnly = false, pingMs = 42),
-        Server("srv_de_fra", "Germany - Frankfurt", "DE", "Germany", "Frankfurt", "🇩🇪", 52, isPremiumOnly = false, pingMs = 35),
-        Server("srv_gb_lon", "United Kingdom - London", "GB", "United Kingdom", "London", "🇬🇧", 49, isPremiumOnly = false, pingMs = 32),
-        Server("srv_nl_ams", "Netherlands - Amsterdam", "NL", "Netherlands", "Amsterdam", "🇳🇱", 29, isPremiumOnly = false, pingMs = 34),
-        Server("srv_jp_tyo", "Japan - Tokyo (High Speed)", "JP", "Japan", "Tokyo", "🇯🇵", 62, isPremiumOnly = true, pingMs = 88),
-        Server("srv_sg_sin", "Singapore - Low Latency", "SG", "Singapore", "Singapore", "🇸🇬", 58, isPremiumOnly = true, pingMs = 95),
-        Server("srv_ca_tor", "Canada - Toronto (P2P Safe)", "CA", "Canada", "Toronto", "🇨🇦", 33, isPremiumOnly = true, pingMs = 39),
-        Server("srv_ch_zrh", "Switzerland - Zurich (Ultra Secure)", "CH", "Switzerland", "Zurich", "🇨🇭", 21, isPremiumOnly = true, pingMs = 41)
-    )
+    fun getNextNodeInSameLocation(currentServer: Server): Server? {
+        val allServers = _servers.value
+        val sameLocation = allServers.filter {
+            it.countryCode.uppercase() == currentServer.countryCode.uppercase() &&
+            it.city.lowercase() == currentServer.city.lowercase() &&
+            it.id != currentServer.id
+        }
+        return sameLocation.firstOrNull() ?: allServers.firstOrNull { it.id != currentServer.id }
+    }
 }

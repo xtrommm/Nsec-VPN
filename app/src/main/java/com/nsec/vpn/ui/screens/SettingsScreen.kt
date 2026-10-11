@@ -44,6 +44,7 @@ fun SettingsScreen(
     onOpenTroubleshooting: () -> Unit,
     onOpenPrivacyPolicy: () -> Unit,
     onRedeemPromoCode: () -> Unit,
+    onOpenDebugDiagnostics: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -179,6 +180,17 @@ fun SettingsScreen(
             subtitle = "Nsec VPN v1.0.0",
             onClick = {}
         )
+
+        if (com.nsec.vpn.BuildConfig.DEBUG) {
+            Spacer(modifier = Modifier.height(20.dp))
+            SectionHeader("DEVELOPER / DEBUG")
+            SettingsClickableItem(
+                icon = Icons.Default.BugReport,
+                title = "WireGuard & Peer Diagnostics",
+                subtitle = "View live handshake, peer API status, and endpoint",
+                onClick = onOpenDebugDiagnostics
+            )
+        }
     }
 
     if (showThemeDialog) {
