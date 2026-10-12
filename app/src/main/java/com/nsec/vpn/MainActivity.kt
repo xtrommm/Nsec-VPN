@@ -59,6 +59,8 @@ class MainActivity : ComponentActivity() {
             val themeMode by vpnRepo.themeMode.collectAsStateWithLifecycle()
             val adMobConfig by adMobManager.config.collectAsStateWithLifecycle()
             val remoteConfig by remoteConfigManager.config.collectAsStateWithLifecycle()
+            val remoteConfigLoaded by remoteConfigManager.loaded.collectAsStateWithLifecycle()
+            val remoteConfigError by remoteConfigManager.error.collectAsStateWithLifecycle()
 
             NsecVpnTheme(themeMode = themeMode) {
                 val coroutineScope = rememberCoroutineScope()
@@ -108,6 +110,18 @@ class MainActivity : ComponentActivity() {
                 }
 
                 fun startConnectInternal(isUserInitiated: Boolean) {
+                    if (!remoteConfigLoaded) {
+                        Toast.makeText(this@MainActivity, "App settings are still loading. Please retry shortly.", Toast.LENGTH_SHORT).show()
+                        return
+                    }
+                    if (remoteConfig.maintenanceMode) {
+                        Toast.makeText(this@MainActivity, "VPN maintenance is in progress. Please try again later.", Toast.LENGTH_LONG).show()
+                        return
+                    }
+                    if (remoteConfig.forceUpdate && BuildConfig.VERSION_CODE < remoteConfig.minAppVersionCode) {
+                        Toast.makeText(this@MainActivity, "Update Nsec VPN before connecting.", Toast.LENGTH_LONG).show()
+                        return
+                    }
                     isUserInitiatedConnect = isUserInitiated
                     val server = selectedServer ?: servers.firstOrNull()
                     if (server != null) {
@@ -140,8 +154,9 @@ class MainActivity : ComponentActivity() {
                 }
 
                 LaunchedEffect(Unit) {
-                    remoteConfigManager.fetchRemoteConfig()
+                    val configRefresh = launch { remoteConfigManager.fetchRemoteConfig() }
                     vpnRepo.refreshServers()
+                    configRefresh.join()
                     vpnRepo.retryPendingReward()
                     adMobManager.preloadInterstitial(this@MainActivity)
                     adMobManager.preloadRewarded(this@MainActivity)
@@ -149,14 +164,13 @@ class MainActivity : ComponentActivity() {
                         notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                     }
                     vpnRepo.checkRewardedPassExpiry()
-                    if (autoConnectEnabled && vpnState is VpnState.Disconnected) {
-                        triggerConnectSequence(isUserInitiated = false)
-                    }
+                    if (autoConnectEnabled && remoteConfigLoaded && vpnState is VpnState.Disconnected) triggerConnectSequence(isUserInitiated = false)
                 }
 
                 LaunchedEffect(Unit) {
                     while (true) {
                         kotlinx.coroutines.delay(30_000)
+                        remoteConfigManager.fetchRemoteConfig()
                         vpnRepo.checkRewardedPassExpiry()
                         vpnRepo.retryPendingReward()
                     }
@@ -166,6 +180,10 @@ class MainActivity : ComponentActivity() {
                     if (currentTab == Screen.Servers) {
                         vpnRepo.refreshServers()
                     }
+                }
+
+                LaunchedEffect(remoteConfigError) {
+                    remoteConfigError?.let { Toast.makeText(this@MainActivity, it, Toast.LENGTH_LONG).show() }
                 }
 
                 LaunchedEffect(vpnState) {

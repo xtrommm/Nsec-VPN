@@ -63,10 +63,15 @@ export const authenticateDevice = async (
     let currentTier = device.tier;
     if ((device.tier === 'REWARDED_PASS' || device.tier === 'VIP') && device.passExpiresAt && device.passExpiresAt < new Date()) {
       currentTier = 'FREE';
-      await prisma.device.update({
-        where: { id: device.id },
+      const downgraded = await prisma.device.updateMany({
+        where: { id: device.id, tier: device.tier, passExpiresAt: device.passExpiresAt },
         data: { tier: 'FREE', passExpiresAt: null }
       });
+      if (!downgraded.count) {
+        const fresh = await prisma.device.findUnique({ where: { id: device.id } });
+        if (!fresh || fresh.isBlocked) return res.status(403).json({ success: false, error: 'DEVICE_BLOCKED' });
+        currentTier = fresh.tier;
+      }
     }
 
     req.device = {

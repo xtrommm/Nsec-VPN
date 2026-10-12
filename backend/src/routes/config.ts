@@ -6,7 +6,7 @@ const router = Router();
 // In-memory cache for high-throughput config queries
 let cachedConfig: any = null;
 let cachedConfigExpiry = 0;
-const CACHE_TTL_MS = 60 * 1000; // 60 seconds
+const CACHE_TTL_MS = 5 * 1000; // 60 seconds
 
 export function invalidateConfigCache() {
   cachedConfig = null;
@@ -14,7 +14,7 @@ export function invalidateConfigCache() {
 }
 
 router.get('/config', async (_req: Request, res: Response) => {
-  res.setHeader('Cache-Control', 'public, max-age=60');
+  res.setHeader('Cache-Control', 'no-store');
 
   const now = Date.now();
   if (cachedConfig && cachedConfigExpiry > now) {
@@ -25,30 +25,11 @@ router.get('/config', async (_req: Request, res: Response) => {
   }
 
   try {
-    let config = await prisma.appConfig.findUnique({
-      where: { id: 'global_config' }
-    });
-
-    if (!config) {
-      config = await prisma.appConfig.create({
-        data: {
-          id: 'global_config',
-          minAppVersionCode: 1,
-          latestAppVersionCode: 1,
-          forceUpdate: false,
-          maintenanceMode: false,
-          announcementActive: false,
-          announcementTitle: null,
-          announcementBody: null,
-          bannerAdsEnabled: true,
-          interstitialAdsEnabled: true,
-          interstitialIntervalSeconds: 120,
-          rewardedAdsEnabled: true
-        }
-      });
-    }
+    const config = await prisma.appConfig.upsert({ where: { id: 'global_config' }, create: { id: 'global_config' }, update: {} });
 
     const formattedData = {
+      updatedAt: config.updatedAt,
+      support: { email: config.supportEmail },
       app: {
         minAppVersionCode: config.minAppVersionCode,
         latestAppVersionCode: config.latestAppVersionCode,
@@ -62,16 +43,17 @@ router.get('/config', async (_req: Request, res: Response) => {
         dismissible: true
       },
       ads: {
-        bannerEnabled: config.bannerAdsEnabled,
-        nativeEnabled: config.nativeAdsEnabled,
+        enabled: config.adsEnabled,
+        bannerEnabled: config.adsEnabled && config.bannerAdsEnabled,
+        nativeEnabled: config.adsEnabled && config.nativeAdsEnabled,
         bannerAdUnitId: config.bannerAdUnitId,
         nativeAdUnitId: config.nativeAdUnitId,
         interstitialAdUnitId: config.interstitialAdUnitId,
         rewardedAdUnitId: config.rewardedAdUnitId,
         rewardedPassMinutes: config.rewardedPassMinutes,
-        interstitialEnabled: config.interstitialAdsEnabled,
+        interstitialEnabled: config.adsEnabled && config.interstitialAdsEnabled,
         interstitialIntervalSeconds: config.interstitialIntervalSeconds,
-        rewardedEnabled: config.rewardedAdsEnabled
+        rewardedEnabled: config.adsEnabled && config.rewardedAdsEnabled
       }
     };
 

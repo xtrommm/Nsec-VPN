@@ -5,7 +5,7 @@ export async function prepareReward(deviceId: string) {
     const device = await tx.device.findUniqueOrThrow({ where: { id: deviceId } });
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`reward:${device.deviceId}`}))`;
     const config = await tx.appConfig.findUnique({ where: { id: 'global_config' } });
-    if (device.isBlocked || config?.rewardedAdsEnabled === false) throw new Error('REWARDED_ADS_DISABLED');
+    if (device.isBlocked || config?.adsEnabled === false || config?.rewardedAdsEnabled === false) throw new Error('REWARDED_ADS_DISABLED');
     const now = new Date();
     const existing = await tx.rewardTicket.findFirst({ where: { deviceId, claimedAt: null, expiresAt: { gt: now } } });
     if (existing) return { ticketId: existing.id };

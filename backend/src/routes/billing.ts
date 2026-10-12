@@ -16,7 +16,7 @@ const rewardLimiter = rateLimit({ windowMs: 3600000, max: 20, standardHeaders: t
   message: { success: false, error: 'REWARD_RATE_LIMIT' } });
 router.post('/rewarded/prepare', authenticateDevice, rewardLimiter, async (req: AuthenticatedDeviceRequest, res) => {
   try { return res.json({ success: true, data: await prepareReward(req.device!.id) }); }
-  catch { return res.status(503).json({ success: false, error: 'REWARD_PREPARATION_UNAVAILABLE' }); }
+  catch (e) { const disabled = e instanceof Error && e.message === 'REWARDED_ADS_DISABLED'; return res.status(disabled ? 409 : 503).json({ success: false, error: disabled ? 'REWARDED_ADS_DISABLED' : 'REWARD_PREPARATION_UNAVAILABLE' }); }
 });
 router.post('/rewarded/claim', authenticateDevice, rewardLimiter,
   validateBody(z.object({ ticketId: z.string().uuid() }).strict()), async (req: AuthenticatedDeviceRequest, res) => {
@@ -74,21 +74,28 @@ router.post(
           const existing = await tx.purchaseClaim.findUnique({ where: { tokenHash } });
           if (existing && existing.deviceId !== device.id) throw new Error('PURCHASE_ALREADY_BOUND');
           await tx.purchaseClaim.upsert({ where: { tokenHash }, create: { tokenHash, deviceId: device.id, expiresAt }, update: { expiresAt } });
+          const current = await tx.device.findUniqueOrThrow({ where: { id: device.id } });
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`reward:${current.deviceId}`}))`;
+          const fresh = await tx.device.findUniqueOrThrow({ where: { id: device.id } });
+          if (fresh.isBlocked) throw new Error('DEVICE_BLOCKED');
+          const grant = await tx.promoRedemption.findFirst({ where: { deviceId: device.id, grantExpiresAt: { gt: expiresAt } }, orderBy: { grantExpiresAt: 'desc' } });
+          const effectiveExpiry = grant?.grantExpiresAt || expiresAt;
           await tx.device.update({
           where: { id: device.id },
           data: {
             tier: 'VIP',
-            passExpiresAt: expiresAt
+            passExpiresAt: fresh.tier === 'VIP' && !fresh.passExpiresAt ? null : effectiveExpiry
           }
         });
         });
 
+        const entitlement = await prisma.device.findUniqueOrThrow({ where: { id: device.id }, select: { tier: true, passExpiresAt: true } });
         return res.json({
           success: true,
           data: {
             tier: 'VIP',
             status: status.state,
-            expiresAt: expiresAt.toISOString()
+            expiresAt: entitlement.passExpiresAt?.toISOString() || null
           }
         });
       }

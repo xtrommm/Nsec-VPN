@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { AppConfigData } from '../types';
 import { ConsoleApi } from './ControlNodes';
+import { Notify } from './ConsoleUI';
+import { configPayload, validateConfig } from '../lib/configForm';
 const idFields=['bannerAdUnitId','nativeAdUnitId','interstitialAdUnitId','rewardedAdUnitId'] as const;
-export function ControlSettings({config,api,onSaved,canWrite}:{config:AppConfigData|null;api:ConsoleApi;onSaved:(c:AppConfigData)=>void;canWrite:boolean}) {
+export function ControlSettings({config,api,onSaved,canWrite,notify}:{config:AppConfigData|null;api:ConsoleApi;onSaved:(c:AppConfigData)=>void;canWrite:boolean;notify:Notify}) {
  const [draft,setDraft]=useState<AppConfigData|null>(config);
  const [busy,setBusy]=useState(false);const [error,setError]=useState('');const [saved,setSaved]=useState(false);
  useEffect(()=>{setDraft(config);setSaved(false);},[config]);
@@ -11,10 +13,9 @@ export function ControlSettings({config,api,onSaved,canWrite}:{config:AppConfigD
  async function save(e:React.FormEvent){
   e.preventDefault();setBusy(true);setError('');setSaved(false);
   try {
-   const {id,updatedAt,...fields}=value;
-   void id;void updatedAt;
-   const payload={...fields,...Object.fromEntries(idFields.map(k=>[k,value[k]?.trim()||null]))};
-   const r=await api('/config',{method:'PUT',body:JSON.stringify(payload)});onSaved(r.config);setSaved(true);
+   const errors=validateConfig(value);if(errors.length)throw new Error(errors.join(' '));
+   const payload=configPayload(value);
+   const r=await api('/config',{method:'PUT',body:JSON.stringify(payload)});onSaved(r.config);setSaved(true);notify('Configuration published');
   }catch(e){setError(e instanceof Error?e.message:'Could not publish configuration');}finally{setBusy(false);}
  }
  return <form onSubmit={save} className="console-section">
@@ -23,7 +24,7 @@ export function ControlSettings({config,api,onSaved,canWrite}:{config:AppConfigD
   {!canWrite&&<p className="hint">Only a Super Admin can publish settings.</p>}
   {error&&<p role="alert" className="error">{error}</p>}{saved&&<p role="status" className="success">Settings published successfully.</p>}
   <fieldset disabled={!canWrite||busy}><div className="settings-grid">
-   <section className="panel"><h3>AdMob ad units</h3><p>These IDs override the ad units used by release builds. Debug builds retain safe Google test ads.</p>
+   <section className="panel"><h3>AdMob ad units</h3><label className="checkbox"><input type="checkbox" checked={value.adsEnabled??true} onChange={e=>setDraft({...value,adsEnabled:e.target.checked})}/>Global ads enabled</label><p className="hint">Turning this off disables every placement and new rewarded-ad preparations.</p><p>These IDs override the ad units used by release builds. Debug builds retain safe Google test ads.</p>
     {idFields.map(k=><label key={k}>{{bannerAdUnitId:'Banner',nativeAdUnitId:'Native',interstitialAdUnitId:'Interstitial',rewardedAdUnitId:'Rewarded'}[k]} ad unit ID
      <input pattern="ca-app-pub-[0-9]{16}/[0-9]{10}" value={value[k]||''} onChange={e=>setDraft({...value,[k]:e.target.value})}/></label>)}
     <p className="hint">Blank units disable the corresponding release placement. The AdMob application ID uses “~” and is embedded in the APK manifest; changing it requires a new build, not a remote override.</p>
@@ -35,7 +36,7 @@ export function ControlSettings({config,api,onSaved,canWrite}:{config:AppConfigD
     <h3>Placement switches</h3>{(['bannerAdsEnabled','nativeAdsEnabled','interstitialAdsEnabled','rewardedAdsEnabled'] as const).map(k=><label className="checkbox" key={k}><input type="checkbox" checked={value[k]??true} onChange={e=>setDraft({...value,[k]:e.target.checked})}/>{{bannerAdsEnabled:'Banner',nativeAdsEnabled:'Native',interstitialAdsEnabled:'Interstitial',rewardedAdsEnabled:'Rewarded'}[k]} enabled</label>)}
     <label>Minimum interstitial interval (seconds)<input type="number" required min="15" max="1800" value={value.interstitialIntervalSeconds} onChange={e=>setDraft({...value,interstitialIntervalSeconds:Number(e.target.value)})}/></label>
    </section>
-   <section className="panel"><h3>Versions & maintenance</h3>
+   <section className="panel"><h3>Support & app controls</h3><label>Support email<input type="email" maxLength={254} value={value.supportEmail||''} onChange={e=>setDraft({...value,supportEmail:e.target.value})}/></label><p className="hint">Shown in updated Android Settings. Leave blank until you configure a real contact address.</p>
     {(['minAppVersionCode','latestAppVersionCode'] as const).map(k=><label key={k}>{k==='minAppVersionCode'?'Minimum supported version code':'Latest version code'}<input type="number" required min="1" value={value[k]} onChange={e=>setDraft({...value,[k]:Number(e.target.value)})}/></label>)}
     {(['forceUpdate','maintenanceMode'] as const).map(k=><label className="checkbox" key={k}><input type="checkbox" checked={value[k]} onChange={e=>setDraft({...value,[k]:e.target.checked})}/>{k==='forceUpdate'?'Require app update':'Show maintenance notice'}</label>)}
    </section>

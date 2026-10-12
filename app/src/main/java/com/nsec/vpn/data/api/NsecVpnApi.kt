@@ -81,8 +81,11 @@ data class ConfigResponse(val success: Boolean, val data: AppRemoteConfigDto?)
 data class AppRemoteConfigDto(
     val app: AppVersionDto,
     val announcement: AnnouncementDto,
-    val ads: AdsDto
+    val ads: AdsDto,
+    val support: SupportDto? = null,
+    val updatedAt: String? = null
 )
+data class SupportDto(val email: String? = null)
 data class AppVersionDto(val minAppVersionCode: Int, val latestAppVersionCode: Int, val forceUpdate: Boolean, val maintenanceMode: Boolean = false)
 data class AnnouncementDto(val active: Boolean, val title: String?, val body: String?, val dismissible: Boolean)
 data class AdsDto(
@@ -95,7 +98,8 @@ data class AdsDto(
     val nativeAdUnitId: String? = null,
     val interstitialAdUnitId: String? = null,
     val rewardedAdUnitId: String? = null,
-    val rewardedPassMinutes: Int = 30
+    val rewardedPassMinutes: Int = 30,
+    val enabled: Boolean? = null
 )
 
 data class LegalResponse(val success: Boolean, val data: LegalDocDto?)
@@ -114,6 +118,7 @@ data class RedeemPromoData(val tier: String, val passExpiresAt: String?)
 data class RedeemPromoResponse(val success: Boolean, val data: RedeemPromoData?)
 
 interface NsecVpnApi {
+
     @POST("billing/rewarded/prepare")
     suspend fun prepareReward(@Header("Authorization") token: String): Response<RewardTicketResponse>
     @POST("billing/rewarded/claim")

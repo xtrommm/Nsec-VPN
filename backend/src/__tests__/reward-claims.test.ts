@@ -40,3 +40,10 @@ it('never shortens a longer paid VIP entitlement', async () => {
   const result = await claimReward('device-test', 'ticket-test');
   expect(result.passExpiresAt).toEqual(until); expect(tx.device.update).not.toHaveBeenCalled();
 });
+
+it('global ads kill switch prevents preparing a new rewarded-ad ticket', async () => {
+  const { prepareReward } = await import('../services/rewardClaims');
+  tx.appConfig.findUnique.mockResolvedValue({ adsEnabled: false, rewardedAdsEnabled: true, rewardedPassMinutes: 30 });
+  await expect(prepareReward('device-test')).rejects.toThrow('REWARDED_ADS_DISABLED');
+  expect(tx.rewardTicket.findFirst).not.toHaveBeenCalled();
+});

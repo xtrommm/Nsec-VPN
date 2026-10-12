@@ -16,6 +16,7 @@ export interface ServerNode {
   publicIpv4?: string | null;
   healthy?: boolean;
   healthCheckedAt?: string | null;
+  sortOrder?: number;
   currentLoad: number;
   isPremiumOnly: boolean;
   isRecommended: boolean;
@@ -64,6 +65,8 @@ export interface AppConfigData {
   interstitialAdUnitId?: string | null;
   rewardedAdUnitId?: string | null;
   rewardedPassMinutes?: number;
+  adsEnabled?: boolean;
+  supportEmail?: string | null;
   updatedAt?: string;
 }
 

@@ -7,6 +7,8 @@ import { EndpointSchema, PublicKeySchema } from '../types';
 
 export async function provisionPeer(deviceId: string, serverId: string, clientPublicKey: string, tier: string) {
   PublicKeySchema.parse(clientPublicKey);
+  const config = await prisma.appConfig.findUnique({ where: { id: 'global_config' } });
+  if (config?.maintenanceMode) throw new Error('MAINTENANCE_MODE');
   const node = await prisma.serverNode.findUnique({ where: { id: serverId } });
   if (!node) throw new Error('SERVER_NOT_FOUND');
   if (!node.active) throw new Error('NODE_DISABLED');

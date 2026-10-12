@@ -46,8 +46,8 @@ export class StatsService {
   static async getDashboardMetrics() {
     const [totalDevices, vipCount, activeTunnels, servers, topCountries] = await Promise.all([
       prisma.device.count(),
-      prisma.device.count({ where: { tier: 'VIP' } }),
-      prisma.peerSession.count({ where: { active: true } }),
+      prisma.device.count({ where: { tier: 'VIP', OR: [{ passExpiresAt: null }, { passExpiresAt: { gt: new Date() } }] } }),
+      prisma.peerSession.count({ where: { active: true, expiresAt: { gt: new Date() } } }),
       prisma.serverNode.findMany({
         select: {
           id: true,

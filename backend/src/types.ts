@@ -66,8 +66,8 @@ export const SubnetSchema = z.string().refine(value => {
 }, 'A private network-aligned IPv4 /24 is required');
 export const DnsSchema = z.array(z.string().ip({ version: 'v4' }).refine(isPublicIpv4, 'A real public DNS resolver is required; private resolvers require a verified resolver deployment')).min(1).max(4);
 export const CreateServerSchema = z.object({
-  name: z.string().min(2).max(64), countryCode: z.string().length(2).toUpperCase(),
-  countryName: z.string().min(2).max(64), city: z.string().min(2).max(64), flagEmoji: z.string().min(1).max(8),
+  name: z.string().trim().min(2).max(64), countryCode: z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/),
+  countryName: z.string().trim().min(2).max(64), city: z.string().trim().min(2).max(64), flagEmoji: z.string().min(1).max(8),
   endpoint: EndpointSchema, publicKey: PublicKeySchema, subnetIpv4: SubnetSchema.default('10.8.0.0/24'),
   dnsServers: DnsSchema.default(['1.1.1.1', '1.0.0.1']), mtu: z.number().int().min(1280).max(1420).default(1420),
   maxPeers: z.number().int().min(1).max(253).default(250),
@@ -77,7 +77,7 @@ export const CreateServerSchema = z.object({
   }, 'Agent URL must be HTTP(S) origin without credentials'),
   agentSecret: z.string().regex(/^env:[A-Z][A-Z0-9_]{2,95}$/, 'Use a backend environment credential reference, not a raw secret'), isPremiumOnly: z.boolean().default(false),
   isRecommended: z.boolean().default(false), active: z.boolean().default(true)
-});
+}).strict();
 export const UpdateServerSchema = CreateServerSchema.partial();
 
 export const AdUnitSchema = z.string().regex(/^ca-app-pub-[0-9]{16}\/[0-9]{10}$/, "Enter a valid AdMob ad unit ID").refine(value => !value.startsWith("ca-app-pub-3940256099942544/"), "Use your production ad unit, not Google sample IDs").nullable();
@@ -99,7 +99,9 @@ export const UpdateConfigSchema = z.object({
   nativeAdUnitId: AdUnitSchema.optional(),
   interstitialAdUnitId: AdUnitSchema.optional(),
   rewardedAdUnitId: AdUnitSchema.optional(),
-  rewardedPassMinutes: z.number().int().min(1).max(1440).optional()
+  rewardedPassMinutes: z.number().int().min(1).max(1440).optional(),
+  adsEnabled: z.boolean().optional(),
+  supportEmail: z.string().trim().email().max(254).nullable().optional()
 }).strict();
 
 export const VerifySubscriptionSchema = z.object({
