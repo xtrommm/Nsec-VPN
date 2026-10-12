@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased — Live load and rewarded VIP
+
+- Refresh foreground server metadata without disconnecting; display the actual failover node and reject stale load.
+- Report timestamped peer capacity from backend health samples, refresh every 30 seconds, and keep cleanup cadence unchanged.
+- Replace VIP dialog with a reward-first bottom sheet and direct Home reward card showing backend-configured duration, ad-free access and VIP servers.
+- Keep paid plans and add clear busy/no-fill/incomplete/pending/active feedback; remove unsupported speed and discount claims.
+- Add regression coverage, 45-minute operator configuration steps, and two-app Google Play signing/release documentation.
+
+
 ## Unreleased — Android CI backup policy repair
 
 - Added explicit Android 12+ and legacy no-backup policies to the speed-test helper, fixing debug/release DataExtractionRules lint failures.
