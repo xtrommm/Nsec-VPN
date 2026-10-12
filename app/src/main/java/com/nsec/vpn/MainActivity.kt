@@ -22,6 +22,8 @@ import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -76,8 +78,8 @@ class MainActivity : ComponentActivity() {
                 val autoConnectEnabled by vpnRepo.autoConnectEnabled.collectAsStateWithLifecycle()
                 val excludedPackages by vpnRepo.excludedPackages.collectAsStateWithLifecycle()
 
-                var currentTab by remember { mutableStateOf<Screen>(Screen.Home) }
-                var activeSubScreen by remember { mutableStateOf<String?>(null) }
+                var currentTab by rememberSaveable(stateSaver = Saver<Screen, String>(save = { it.route }, restore = { route -> listOf(Screen.Home, Screen.Servers, Screen.SpeedTest, Screen.Settings).firstOrNull { it.route == route } ?: Screen.Home })) { mutableStateOf<Screen>(Screen.Home) }
+                var activeSubScreen by rememberSaveable { mutableStateOf<String?>(null) }
                 var isUserInitiatedConnect by remember { mutableStateOf(false) }
 
                 var showVpnDisclosureDialog by remember { mutableStateOf(false) }
@@ -195,10 +197,10 @@ class MainActivity : ComponentActivity() {
                                 val adAllowed = !isPremium && adMobConfig.interstitialEnabled && adMobManager.canShowInterstitial() && adMobManager.isInterstitialReady()
                                 if (adAllowed) {
                                     adMobManager.showInterstitial(this@MainActivity) {
-                                        activeSubScreen = "connected"
+                                        currentTab = Screen.Home; activeSubScreen = "connected"
                                     }
                                 } else {
-                                    activeSubScreen = "connected"
+                                    currentTab = Screen.Home; activeSubScreen = "connected"
                                 }
                             }
                         }
@@ -221,7 +223,7 @@ class MainActivity : ComponentActivity() {
 
                 Scaffold(
                     bottomBar = {
-                        if (activeSubScreen == null) {
+                        if (activeSubScreen == null || activeSubScreen == "connected") {
                             NavigationBar(
                                 containerColor = MaterialTheme.colorScheme.surface,
                                 tonalElevation = 6.dp
@@ -230,7 +232,7 @@ class MainActivity : ComponentActivity() {
                                     val isSelected = currentTab == screen
                                     NavigationBarItem(
                                         selected = isSelected,
-                                        onClick = { currentTab = screen },
+                                        onClick = { activeSubScreen = null; currentTab = screen },
                                         icon = {
                                             Icon(
                                                 imageVector = screen.icon,
@@ -309,7 +311,7 @@ class MainActivity : ComponentActivity() {
                                             announcementBody = if (remoteConfig.announcementActive) remoteConfig.announcementBody else null,
                                             onToggleVpn = { triggerConnectSequence(isUserInitiated = true) },
                                             onNavigateToServers = { currentTab = Screen.Servers },
-                                            onNavigateToConnected = { activeSubScreen = "connected" },
+                                            onNavigateToConnected = { currentTab = Screen.Home; activeSubScreen = "connected" },
                                             onUpgradeClicked = { showVipModal = true }
                                         )
                                     }
