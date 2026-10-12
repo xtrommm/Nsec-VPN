@@ -25,7 +25,7 @@ class VipRewardCardUiTest {
         } }
         compose.onNodeWithText("45 minutes of VIP").assertExists()
         compose.onNodeWithText("Ad-free + VIP servers").assertExists()
-        val height = compose.onNodeWithTag("home_reward_card").getUnclippedBoundsInRoot().height
+        val height = compose.onNodeWithTag("home_reward_card").getUnclippedBoundsInRoot().let { it.bottom - it.top }
         assertTrue("Default Home offer must stay compact", height.value <= 104f)
         compose.onNodeWithTag("watch_vip_reward").performClick()
         assertEquals(1, taps)
