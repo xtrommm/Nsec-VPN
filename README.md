@@ -170,3 +170,7 @@ The Home reward offer uses a compact row. Tap **Watch ad** to request the config
 ### Location pools and compact speed tests
 
 The Android catalog displays one country/city location backed by individual nodes. New clients ask the backend for an eligible node ranked by reserved capacity and measured latency, with transaction-protected capacity fallback and explicit all-full errors. Speed-test history is removed, the gauge/layout is compact, and cold startup includes theme-aware Europe branding. Deploy the updated backend before installing the APK. No database migration or dependency is added. See [APP-POLISH-LOCATION-POOLS.md](docs/APP-POLISH-LOCATION-POOLS.md) for audit evidence, API compatibility and device checks.
+
+### VIP recovery after clearing storage
+
+Use Settings → Device VIP Recovery to configure a private PIN before clearing app data. Save the original Device ID and PIN; restore with both to recover the same backend VIP record and expiry. Device ID alone cannot authorize recovery. The required additive SQL migration and reviewed-schema deployment steps are in [DEVICE-VIP-RECOVERY-NATIVE-SPLASH.md](docs/DEVICE-VIP-RECOVERY-NATIVE-SPLASH.md). Europe branding now appears on the original native launch window; the extra splash page is removed. The disclosure action reads Continue while consent and Android VPN permission remain.

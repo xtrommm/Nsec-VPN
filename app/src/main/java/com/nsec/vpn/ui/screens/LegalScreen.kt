@@ -71,7 +71,7 @@ fun LegalScreen(
 
             PolicySection("2. WireGuard Cryptographic Key Exchange", "Your Curve25519 Private Key Is Generated Locally Inside Your Device's Secure Environment. Only Your Public Key Is Sent To The Server For Tunnel Handshake Configuration.")
 
-            PolicySection("3. Anonymous Device Authentication", "You Do Not Need An Email Address Or Password To Use Nsec VPN. A Randomly Generated Installation ID And A Device-Held Registration Secret Authorize Access. Android Keystore Protects The Local Encryption Key; Hardware-Backed Storage Depends On The Device. Clearing Local App Data Does Not Delete Existing Backend Registration Or Billing Records.")
+            PolicySection("3. Anonymous Device Authentication", "You Do Not Need An Email Address Or Password To Use Nsec VPN. A Randomly Generated Installation ID And A Device-Held Registration Secret Authorize Access. Android Keystore Protects The Local Encryption Key; Hardware-Backed Storage Depends On The Device. Clearing Local App Data Does Not Delete Existing Backend Registration Or Billing Records. Optional Recovery Uses Your Saved Device ID And A Private PIN; The Backend Stores A Salted PIN Hash And Attempt/Lock Metadata, Not The Raw PIN. Set Recovery Before Clearing Data.")
 
             PolicySection("4. Google Play Compliance", "Nsec VPN Strictly Utilizes The Android VpnService API Solely For User-Initiated VPN Tunnel Encapsulation Per nsecvpn.com Policies.")
         }

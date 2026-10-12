@@ -40,14 +40,15 @@ object NetworkModule {
             .build()
     }
 
-    val api: NsecVpnApi by lazy {
+    private val retrofit: Retrofit by lazy {
         Retrofit.Builder()
             .baseUrl(BASE_URL)
             .client(okHttpClient)
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
-            .create(NsecVpnApi::class.java)
     }
+    val api: NsecVpnApi by lazy { retrofit.create(NsecVpnApi::class.java) }
+    val recoveryApi: com.nsec.vpn.data.api.DeviceRecoveryApi by lazy { retrofit.create(com.nsec.vpn.data.api.DeviceRecoveryApi::class.java) }
 }
 
 class ServiceLocator(context: Context) {

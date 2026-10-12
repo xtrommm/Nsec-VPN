@@ -118,6 +118,7 @@ export const VerifySubscriptionSchema = z.object({
 // ==========================================
 
 export interface JwtDevicePayload {
+  authEpoch?: number;
   deviceId: string;
   tier: 'FREE' | 'VIP' | 'REWARDED_PASS';
   iat?: number;

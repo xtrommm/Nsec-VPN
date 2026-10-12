@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased — Device VIP recovery and native splash
+
+- Add authenticated recovery-PIN setup and Device ID + PIN restoration of existing VIP/promo ownership without extending expiry.
+- Add persistent failed-proof locks, credential rotation, auth-epoch enforcement for access/refresh tokens, and safe old-peer lease cleanup.
+- Add a Settings recovery sheet and update the displayed identity after recovery.
+- Move Europe/EU branding onto the original native day/night launch window and remove the extra Compose splash and delay.
+- Rename Accept & Continue to Continue, retaining disclosure and Android VPN permission.
+- Add an additive recovery migration, exact schema-approval helper, privacy disclosures, regression tests and rollout guide.
+
 ## Unreleased — App polish and location pools
 
 - Capitalize source labels and messages while preserving headers, mottos, uppercase copy, timers, units and external content.

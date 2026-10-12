@@ -94,6 +94,16 @@ class KeyStoreManager(context: Context, private val vaultKeyProvider: (() -> jav
         }
     }
 
+    fun restoreDeviceSession(deviceId: String, secret: String, accessToken: String, refreshToken: String) = synchronized(vaultLock) {
+        require(deviceId.length in 2..128 && Regex("[a-f0-9]{64}").matches(secret))
+        editVerified {
+            putString(KEY_DEVICE_ID, deviceId)
+            putString("registration_secret_v2", encryptString(secret))
+            putString(KEY_ACCESS_TOKEN, encryptString(accessToken))
+            putString(KEY_REFRESH_TOKEN, encryptString(refreshToken))
+        }
+    }
+
     fun getAccessToken(): String? = decryptString(prefs.getString(KEY_ACCESS_TOKEN, null))
     fun getRefreshToken(): String? = decryptString(prefs.getString(KEY_REFRESH_TOKEN, null))
 

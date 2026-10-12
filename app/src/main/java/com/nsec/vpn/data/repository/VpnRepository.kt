@@ -41,6 +41,8 @@ class VpnRepository(
     private val refreshMutex = Mutex()
     private val catalogCache = ServerCatalogCache(context)
     private var latencyJob: Job? = null
+    private val _deviceIdentity = MutableStateFlow(keyStoreManager.getOrCreateDeviceId())
+    val deviceIdentity: StateFlow<String> = _deviceIdentity.asStateFlow()
     private val _serversLoading = MutableStateFlow(false)
     val serversLoading: StateFlow<Boolean> = _serversLoading.asStateFlow()
     private val _usingCachedServers = MutableStateFlow(false)
@@ -261,6 +263,58 @@ class VpnRepository(
         _selectedServer.update { selected ->
             selected?.let { previous -> _servers.value.find { it.id == previous.id } ?: previous }
         }
+    }
+
+    private suspend fun <T> recoveryAuthenticated(call: suspend (String) -> retrofit2.Response<T>): retrofit2.Response<T> {
+        val token = keyStoreManager.getAccessToken() ?: authenticateDevice()
+        val response = call("Bearer $token")
+        if (response.code() == 401) {
+            val code = try { org.json.JSONObject(response.errorBody()?.source()?.peek()?.readUtf8().orEmpty()).optString("error") } catch (_: Exception) { "" }
+            if (code in setOf("TOKEN_INVALID", "TOKEN_REVOKED", "UNAUTHORIZED")) {
+                val renewed = tryRefreshToken()
+                if (renewed != null) return call("Bearer $renewed")
+            }
+        }
+        return response
+    }
+
+    private fun recoveryFailure(response: retrofit2.Response<*>): Nothing {
+        val code = try { org.json.JSONObject(response.errorBody()?.string().orEmpty()).optString("error") } catch (_: Exception) { "" }
+        throw IllegalStateException(when (code) {
+            "INVALID_RECOVERY_PROOF" -> "Device ID Or Recovery PIN Is Incorrect. Set A PIN Before Clearing Data."
+            "RECOVERY_LOCKED" -> "Recovery Is Locked. Try Again In 15 Minutes."
+            "VALIDATION_ERROR" -> "Use A Strong Recovery PIN With 8–12 Digits."
+            "AUTH_RATE_LIMIT", "TOO_MANY_REQUESTS" -> "Too Many Attempts. Please Wait And Retry."
+            "TOKEN_INVALID", "TOKEN_REVOKED", "UNAUTHORIZED" -> "Refresh Your Device Session And Retry."
+            else -> "Recovery Unavailable (${response.code()}). Check The Backend Update And Retry."
+        })
+    }
+
+    suspend fun recoveryConfigured(): Boolean = withContext(Dispatchers.IO) {
+        val response = recoveryAuthenticated { token -> com.nsec.vpn.core.network.NetworkModule.recoveryApi.status(token) }
+        val body = response.body()
+        if (!response.isSuccessful || body?.success != true || body.data == null) recoveryFailure(response)
+        body.data.configured
+    }
+
+    suspend fun setRecoveryPin(pin: String, currentPin: String?) = withContext(Dispatchers.IO) {
+        val response = recoveryAuthenticated { token -> com.nsec.vpn.core.network.NetworkModule.recoveryApi.setPin(token,
+            com.nsec.vpn.data.api.SetRecoveryPinRequest(pin, currentPin)) }
+        if (!response.isSuccessful || response.body()?.success != true) recoveryFailure(response)
+    }
+
+    suspend fun recoverDevice(deviceId: String, pin: String) = withContext(Dispatchers.IO) {
+        val bytes = ByteArray(32).also { java.security.SecureRandom().nextBytes(it) }
+        val secret = bytes.joinToString("") { (it.toInt() and 255).toString(16).padStart(2, '0') }
+        val response = com.nsec.vpn.core.network.NetworkModule.recoveryApi.recover(
+            com.nsec.vpn.data.api.RecoverDeviceRequest(deviceId, pin, secret))
+        val body = response.body()
+        if (!response.isSuccessful || body?.success != true || body.data == null) recoveryFailure(response)
+        val data = body.data
+        keyStoreManager.restoreDeviceSession(deviceId, secret, data.accessToken, data.refreshToken)
+        _deviceIdentity.value = deviceId
+        applyVerifiedEntitlement(data.device.tier, data.device.passExpiresAt)
+        refreshServers(refreshLatency = false)
     }
 
     suspend fun authenticateDevice(): String = withContext(Dispatchers.IO) {
