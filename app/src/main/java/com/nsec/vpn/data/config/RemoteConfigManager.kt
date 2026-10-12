@@ -2,7 +2,8 @@ package com.nsec.vpn.data.config
 
 import android.content.Context
 import androidx.core.content.edit
-import com.google.gson.Gson
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import com.nsec.vpn.data.api.AppRemoteConfigDto
 import com.nsec.vpn.data.api.NsecVpnApi
 import com.nsec.vpn.data.monetization.AdMobConfig
@@ -43,7 +44,7 @@ class RemoteConfigManager(
     val error: StateFlow<String?> = _error.asStateFlow()
     private val refreshMutex = Mutex()
     private val prefs = context?.applicationContext?.getSharedPreferences("nsec_real_remote_config", Context.MODE_PRIVATE)
-    private val gson = Gson()
+    private val configJson = Moshi.Builder().addLast(KotlinJsonAdapterFactory()).build().adapter(AppRemoteConfigDto::class.java)
     private var restored = false
 
     suspend fun fetchRemoteConfig() = withContext(Dispatchers.IO) {
@@ -51,7 +52,7 @@ class RemoteConfigManager(
             if (!restored) {
                 restored = true
                 prefs?.getString("validated_response", null)?.let { text ->
-                    try { apply(gson.fromJson(text, AppRemoteConfigDto::class.java)) }
+                    try { apply(requireNotNull(configJson.fromJson(text)) { "Invalid cached settings" }) }
                     catch (e: CancellationException) { throw e }
                     catch (_: Exception) { prefs?.edit { remove("validated_response") } }
                 }
@@ -62,7 +63,7 @@ class RemoteConfigManager(
                 if (!response.isSuccessful || body?.success != true || body.data == null)
                     throw IllegalStateException("Remote settings unavailable (${response.code()})")
                 apply(body.data)
-                prefs?.edit { putString("validated_response", gson.toJson(body.data)) }
+                prefs?.edit { putString("validated_response", configJson.toJson(body.data)) }
                 _error.value = null
             } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
                 _error.value = "Settings refresh timed out. Previously verified settings remain active."
