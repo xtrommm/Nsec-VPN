@@ -14,7 +14,7 @@ jobs:
     name: Deployment Script Checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Check shell scripts
         run: shellcheck deployment/install-wireguard-node.sh scripts/*.sh
       - name: Verify idempotent firewall setup and teardown
@@ -38,9 +38,9 @@ jobs:
       NODE_ENV: test
       DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/nsecvpn_ci?schema=public"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: 'npm'
@@ -78,9 +78,9 @@ jobs:
     name: Admin Panel Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: 'npm'
@@ -101,9 +101,9 @@ jobs:
     name: WireGuard Node Agent Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: 'npm'
@@ -124,9 +124,9 @@ jobs:
     name: Android Client Lint, Test & Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -152,19 +152,22 @@ jobs:
         run: ./gradlew :app:testDebugUnitTest --no-daemon
 
       - name: Android lint
-        run: ./gradlew :app:lintDebug --no-daemon
+        run: ./gradlew :app:lintDebug :app:lintRelease --no-daemon
       - name: Print complete Android lint report
         if: always()
         shell: bash
         run: |
-          report=app/build/reports/lint-results-debug.txt
-          fallback=app/build/intermediates/lint_intermediate_text_report/debug/lintReportDebug/lint-results-debug.txt
-          if [[ -f "$report" ]]; then
-            cat "$report"
-          elif [[ -f "$fallback" ]]; then
-            cat "$fallback"
-          else
-            echo 'No Android lint text report was generated; inspect the preceding Gradle error.'
-          fi
-      - name: Build Debug APK
-        run: ./gradlew :app:assembleDebug --no-daemon
+          for variant in debug release; do
+            report="app/build/reports/lint-results-$variant.txt"
+            fallback="app/build/intermediates/lint_intermediate_text_report/$variant/lintReport${variant^}/lint-results-$variant.txt"
+            if [[ -f "$report" ]]; then
+              cat "$report"
+            elif [[ -f "$fallback" ]]; then
+              cat "$fallback"
+            else
+              echo "No $variant lint text report was generated; inspect the preceding Gradle error."
+            fi
+          done
+      - name: Build debug and validation release APKs
+        # This job has only an ephemeral debug key; its release APK is not for publishing.
+        run: ./gradlew :app:assembleDebug :app:assembleRelease --no-daemon

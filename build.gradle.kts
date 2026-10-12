@@ -2,6 +2,8 @@
 plugins {
   alias(libs.plugins.android.application) apply false
   alias(libs.plugins.kotlin.compose) apply false
+  // Keep AGP built-in Kotlin and the Compose compiler on the same Kotlin version.
+  alias(libs.plugins.kotlin.jvm) apply false
 }
 
 // Automatically ensure debug.keystore exists for local Android Studio builds
