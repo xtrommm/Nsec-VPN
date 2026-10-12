@@ -220,6 +220,10 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
         if (!BuildConfig.DEBUG) return ""
         return "Node: ${activeTunnelConfig?.nodeName.orEmpty()}\nEndpoint: ${activeTunnelConfig?.serverEndpoint.orEmpty()}\nTunnel address: ${activeTunnelConfig?.clientAddress.orEmpty()}\nHandshake age: $latestHandshakeAgeSeconds s\nRX: ${_vpnStats.value.totalBytesReceived}\nTX: ${_vpnStats.value.totalBytesSent}\nAPI status: $lastApiStatusCode\nError: ${lastError.orEmpty()}"
     }
+    fun isApplicationTunneled(packageName: String): Boolean =
+        _vpnState.value is VpnState.Connected && packageName != context.packageName &&
+            packageName !in lastExcludedApps
+
     companion object {
         const val HANDSHAKE_TIMEOUT_MS = 15_000L
         const val HANDSHAKE_POLL_MS = 500L
