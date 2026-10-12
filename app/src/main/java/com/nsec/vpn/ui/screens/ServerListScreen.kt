@@ -115,7 +115,7 @@ fun ServerListScreen(
                 Icon(
                     imageVector = Icons.Default.Refresh,
                     contentDescription = "Refresh Servers & Latencies",
-                    tint = PrimaryBlue
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -140,7 +140,7 @@ fun ServerListScreen(
             colors = OutlinedTextFieldDefaults.colors(
                 focusedContainerColor = MaterialTheme.colorScheme.surface,
                 unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                focusedBorderColor = PrimaryBlue,
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
                 unfocusedBorderColor = MaterialTheme.colorScheme.outline,
                 focusedTextColor = MaterialTheme.colorScheme.onSurface,
                 unfocusedTextColor = MaterialTheme.colorScheme.onSurface
@@ -173,7 +173,7 @@ fun ServerListScreen(
                 Icon(
                     imageVector = Icons.Default.Bolt,
                     contentDescription = null,
-                    tint = PrimaryBlue,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(22.dp)
                 )
             }

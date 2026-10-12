@@ -35,8 +35,6 @@ import android.widget.Toast
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.ContentCopy
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsScreen(
@@ -62,13 +60,7 @@ fun SettingsScreen(
     activeDns: List<String> = emptyList()
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     var showRequestDialog by remember { mutableStateOf(false) }
-    var requestCountry by remember { mutableStateOf("") }
-    var requestCity by remember { mutableStateOf("") }
-    var requestNote by remember { mutableStateOf("") }
-    var requestError by remember { mutableStateOf<String?>(null) }
-    var requesting by remember { mutableStateOf(false) }
     fun copy(value: String) {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboard.setPrimaryClip(ClipData.newPlainText("Nsec VPN", value))
@@ -140,7 +132,7 @@ fun SettingsScreen(
                         text = "MANAGE",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = PrimaryBlue,
+                        color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.clickable { onOpenSplitTunnelApps() }
                     )
                 }
@@ -184,7 +176,7 @@ fun SettingsScreen(
                 catch (_: android.content.ActivityNotFoundException) { Toast.makeText(context, "No email app installed. Use Copy email.", Toast.LENGTH_LONG).show() }
             })
         if (supportEmail != null) TextButton(onClick = { copy(supportEmail) }) { Text("Copy email") }
-        SettingsClickableItem(icon = Icons.Default.Public, title = "Request Server", subtitle = "Suggest a country and city", onClick = { requestError = null; showRequestDialog = true })
+        SettingsClickableItem(icon = Icons.Default.Public, title = "Request Server", subtitle = "Suggest a country and city", onClick = { showRequestDialog = true })
 
         SettingsClickableItem(
             icon = Icons.Default.Language,
@@ -223,7 +215,7 @@ fun SettingsScreen(
             )
         }
         Spacer(modifier = Modifier.height(24.dp))
-        SectionHeader("INSTALLATION ID")
+        SectionHeader("YOUR DEVICE ID")
         Text(deviceId, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         TextButton(enabled = deviceId.isNotBlank(), onClick = { copy(deviceId) }) {
             Icon(Icons.Default.ContentCopy, contentDescription = null)
@@ -243,26 +235,9 @@ fun SettingsScreen(
         }) { Text("Apply DNS") } }, dismissButton = { TextButton(onClick = { showCustomDns = false }) { Text("Cancel") } }
     )
 
-    if (showRequestDialog) AlertDialog(
-        onDismissRequest = { if (!requesting) showRequestDialog = false },
-        title = { Text("Request a VPN server") },
-        text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Your installation ID and app version are attached. One request every 10 minutes.", fontSize = 12.sp)
-            OutlinedTextField(value = requestCountry, onValueChange = { requestCountry = it.take(80) }, label = { Text("Country") }, singleLine = true)
-            OutlinedTextField(value = requestCity, onValueChange = { requestCity = it.take(80) }, label = { Text("City") }, singleLine = true)
-            OutlinedTextField(value = requestNote, onValueChange = { requestNote = it.take(500) }, label = { Text("Note (optional)") }, maxLines = 3)
-            requestError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        } },
-        confirmButton = { TextButton(enabled = !requesting && requestCountry.trim().length >= 2 && requestCity.trim().length >= 2, onClick = {
-            requesting = true; requestError = null
-            scope.launch {
-                try { val result = onRequestServer(requestCountry, requestCity, requestNote); showRequestDialog = false; requestCountry = ""; requestCity = ""; requestNote = ""; Toast.makeText(context, result, Toast.LENGTH_LONG).show() }
-                catch (e: CancellationException) { throw e }
-                catch (e: Exception) { requestError = e.message ?: "Could not submit request. Check your connection." }
-                finally { requesting = false }
-            }
-        }) { Text(if (requesting) "Submitting…" else "Submit request") } },
-        dismissButton = { TextButton(enabled = !requesting, onClick = { showRequestDialog = false }) { Text("Cancel") } }
+    if (showRequestDialog) ServerRequestSheet(
+        onDismiss = { showRequestDialog = false },
+        onSubmit = onRequestServer
     )
 
     if (showThemeDialog) {
@@ -299,7 +274,7 @@ fun SettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showThemeDialog = false }) {
-                    Text("Close", color = PrimaryBlue)
+                    Text("Close", color = MaterialTheme.colorScheme.primary)
                 }
             }
         )
@@ -342,7 +317,7 @@ fun SettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showDnsDialog = false }) {
-                    Text("Close", color = PrimaryBlue)
+                    Text("Close", color = MaterialTheme.colorScheme.primary)
                 }
             }
         )
@@ -413,7 +388,7 @@ private fun SettingsToggleItem(
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(22.dp))
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
@@ -453,7 +428,7 @@ private fun SettingsClickableItem(
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(22.dp))
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)

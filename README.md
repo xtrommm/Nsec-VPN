@@ -148,3 +148,7 @@ Remote settings are refreshed by the Android activity every 30 seconds and cache
 ## Android experience phase 2
 
 Navigation, Settings support/server requests/device ID, persisted DNS reconnect, verified server cache and truthful troubleshooting are covered in [EXPERIENCE-PHASE2.md](docs/EXPERIENCE-PHASE2.md). Speed tests now stay in-app and require the separately installed, matching-signature `speedtest-helper` APK; main app ad traffic remains excluded. Use `scripts/install-android-debug.ps1` in Android Studio Terminal to build/install both APKs. Apply the phase-1 backend migration first, and wait for CI and phone verification before publishing.
+
+## App appearance update
+
+The charcoal dark theme and redesigned Server Request sheet are documented in [APP-RESKIN.md](docs/APP-RESKIN.md), including the admin steps for changing the app support email. No new dependency or database migration is needed.

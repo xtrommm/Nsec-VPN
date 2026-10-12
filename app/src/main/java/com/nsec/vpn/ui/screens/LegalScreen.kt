@@ -81,7 +81,7 @@ fun LegalScreen(
 @Composable
 private fun PolicySection(title: String, content: String) {
     Column(modifier = Modifier.padding(bottom = 16.dp)) {
-        Text(title, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue)
+        Text(title, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
         Spacer(modifier = Modifier.height(6.dp))
         Text(content, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 19.sp)
     }

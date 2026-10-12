@@ -305,7 +305,7 @@ fun ConnectedScreen(
                         Icon(
                             imageVector = Icons.Default.ArrowUpward,
                             contentDescription = "Upload speed",
-                            tint = PrimaryBlue,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
