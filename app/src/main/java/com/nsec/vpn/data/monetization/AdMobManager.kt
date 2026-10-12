@@ -242,10 +242,11 @@ class AdMobManager(private val context: Context) {
         }
     }
 
-    fun showRewarded(activity: Activity, onRewarded: () -> Unit, onAdDismissed: () -> Unit, verificationTicket: String? = null) {
+    fun showRewarded(activity: Activity, onRewarded: () -> Unit, onAdDismissed: () -> Unit, verificationTicket: String? = null, onError: (String) -> Unit = {}) {
         val ad = rewardedAd
         if (ad == null || activity.isFinishing || activity.isDestroyed) {
             rewardedAd = null
+            onError("The reward ad is not ready. Please try again shortly.")
             onAdDismissed()
             preloadRewarded(activity)
             return
@@ -261,6 +262,7 @@ class AdMobManager(private val context: Context) {
 
                 override fun onAdFailedToShowFullScreenContent(adError: AdError) {
                     rewardedAd = null
+                    onError("Could not show the reward ad. Please try again.")
                     onAdDismissed()
                     preloadRewarded(activity)
                 }
@@ -275,6 +277,7 @@ class AdMobManager(private val context: Context) {
             }
         } catch (_: Throwable) {
             rewardedAd = null
+            onError("Could not show the reward ad. Please try again.")
             onAdDismissed()
             preloadRewarded(activity)
         }

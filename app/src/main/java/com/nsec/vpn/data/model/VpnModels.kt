@@ -13,7 +13,8 @@ data class Server(
     val pingMs: Long? = null,
     val isFavorite: Boolean = false,
     val totalNodes: Int = 1,
-    val publicIpv4: String? = null
+    val publicIpv4: String? = null,
+    val loadUpdatedAt: String? = null
 )
 
 data class TunnelConfig(

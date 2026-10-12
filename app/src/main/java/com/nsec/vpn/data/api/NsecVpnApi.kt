@@ -53,7 +53,8 @@ data class ServerItemDto(
     val isPremiumOnly: Boolean,
     val isRecommended: Boolean = false,
     val totalNodes: Int = 1,
-    val publicIpv4: String? = null
+    val publicIpv4: String? = null,
+    val loadUpdatedAt: String? = null
 )
 
 data class ConnectVpnRequest(val serverId: String, val clientPublicKey: String)
