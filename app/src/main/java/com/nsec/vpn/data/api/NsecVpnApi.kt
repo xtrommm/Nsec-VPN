@@ -57,7 +57,10 @@ data class ServerItemDto(
     val loadUpdatedAt: String? = null
 )
 
-data class ConnectVpnRequest(val serverId: String, val clientPublicKey: String)
+data class NodeLatencyDto(val nodeId: String, val pingMs: Long)
+data class ConnectVpnRequest(val serverId: String, val clientPublicKey: String,
+    val locationSelection: Boolean = false, val nodeLatencies: List<NodeLatencyDto> = emptyList(),
+    val excludedNodeIds: List<String> = emptyList())
 data class ConnectVpnResponse(val success: Boolean, val data: ConnectVpnDataDto?)
 data class ConnectVpnDataDto(val tunnelConfig: TunnelConfigDto, val peerId: String)
 
