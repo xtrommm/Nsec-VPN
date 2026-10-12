@@ -22,6 +22,10 @@ import androidx.compose.ui.unit.sp
 fun VipRewardCard(offer: RewardOffer, busy: Boolean, onWatchReward: () -> Unit,
                   onMoreOptions: () -> Unit, modifier: Modifier = Modifier,
                   compact: Boolean = false, showMoreOptions: Boolean = true) {
+    if (compact && showMoreOptions) {
+        CompactVipOffer(offer, busy, onWatchReward, onMoreOptions, modifier)
+        return
+    }
     Card(modifier = modifier.fillMaxWidth().testTag(if (showMoreOptions) "home_reward_card" else "vip_sheet_reward_card"),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
@@ -55,6 +59,40 @@ fun VipRewardCard(offer: RewardOffer, busy: Boolean, onWatchReward: () -> Unit,
             }
             if (showMoreOptions) TextButton(onClick = onMoreOptions, modifier = Modifier.align(Alignment.CenterHorizontally)) {
                 Text("Explore VIP options")
+            }
+        }
+    }
+}
+
+/** Home keeps only the offer and action; the sheet retains the full explanation. */
+@Composable
+private fun CompactVipOffer(offer: RewardOffer, busy: Boolean, onWatchReward: () -> Unit,
+                            onMoreOptions: () -> Unit, modifier: Modifier) {
+    Card(onClick = onMoreOptions,
+        modifier = modifier.fillMaxWidth().testTag("home_reward_card"),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))) {
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(offer.title, fontSize = 16.sp, fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer)
+                Text(if (offer.available) "Ad-free + VIP servers" else offer.detail,
+                    fontSize = 12.sp, color = MaterialTheme.colorScheme.onPrimaryContainer)
+            }
+            if (offer.available || busy) {
+                Button(onClick = onWatchReward, enabled = offer.available && !busy,
+                    modifier = Modifier.heightIn(min = 48.dp).testTag("watch_vip_reward"),
+                    contentPadding = PaddingValues(horizontal = 12.dp), shape = RoundedCornerShape(12.dp)) {
+                    if (busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    else Text("Watch ad", fontWeight = FontWeight.Bold)
+                }
+            } else {
+                TextButton(onClick = onMoreOptions, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text("Details")
+                }
             }
         }
     }

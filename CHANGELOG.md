@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — Compact Home
+
+- Replace the tall Home reward promotion with a compact duration/benefits row and direct Watch ad action. Tap the card for full VIP options.
+- Reduce Home spacing and the connect control footprint so the existing server selector and native ad appear earlier.
+- Keep the full VIP sheet, reward duration, entitlement checks, and ad configuration unchanged.
+
 ## Unreleased — Live load and rewarded VIP
 
 - Refresh foreground server metadata without disconnecting; display the actual failover node and reject stale load.

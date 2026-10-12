@@ -6,6 +6,7 @@ import com.nsec.vpn.ui.components.RewardOffer
 import com.nsec.vpn.ui.components.VipRewardCard
 import com.nsec.vpn.ui.theme.NsecVpnTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -23,10 +24,19 @@ class VipRewardCardUiTest {
             VipRewardCard(RewardOffer.from(true, true, 45, "FREE", false), false, { taps++ }, {}, compact = true)
         } }
         compose.onNodeWithText("45 minutes of VIP").assertExists()
-        compose.onNodeWithText("Ad-free").assertExists()
-        compose.onNodeWithText("VIP servers").assertExists()
+        compose.onNodeWithText("Ad-free + VIP servers").assertExists()
+        val height = compose.onNodeWithTag("home_reward_card").getUnclippedBoundsInRoot().height
+        assertTrue("Default Home offer must stay compact", height.value <= 104f)
         compose.onNodeWithTag("watch_vip_reward").performClick()
         assertEquals(1, taps)
+    }
+    @Test fun compactCardOpensFullOptions() {
+        var opens = 0
+        compose.setContent { NsecVpnTheme {
+            VipRewardCard(RewardOffer.from(true, true, 45, "FREE", false), false, {}, { opens++ }, compact = true)
+        } }
+        compose.onNodeWithTag("home_reward_card").performClick()
+        assertEquals(1, opens)
     }
     @Test fun busyRewardCannotBeRequestedTwice() {
         compose.setContent { NsecVpnTheme {
