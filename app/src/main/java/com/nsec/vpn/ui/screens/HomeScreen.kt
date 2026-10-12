@@ -48,6 +48,8 @@ fun HomeScreen(
     modifier: Modifier = Modifier
 ) {
     val isConnected = vpnState is VpnState.Connected
+    val connectedNode by tunnelManager.connectedNode.collectAsState()
+    val serverListError by com.nsec.vpn.core.network.ServiceLocator.getInstance(androidx.compose.ui.platform.LocalContext.current).vpnRepository.serverListError.collectAsState()
     var announcementDismissed by remember { mutableStateOf(false) }
 
     Column(
@@ -58,6 +60,13 @@ fun HomeScreen(
             .padding(horizontal = 20.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        serverListError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        if (isConnected && connectedNode != null) {
+            Text(connectedNode!!.nodeName.orEmpty(), fontWeight = FontWeight.Bold)
+            Text(connectedNode!!.locationName.orEmpty())
+            Text("VPN server IP: ${connectedNode!!.publicIpv4.orEmpty()}", modifier = Modifier.padding(vertical = 8.dp))
+        }
+
         if (!announcementDismissed && !announcementTitle.isNullOrEmpty()) {
             Row(
                 modifier = Modifier
@@ -174,7 +183,7 @@ fun HomeScreen(
                     letterSpacing = 0.8.sp
                 )
                 Text(
-                    text = if (isConnected) "${selectedServer?.city ?: "New York"}, ${selectedServer?.countryName ?: "United States"} • WireGuard® Secured"
+                    text = if (isConnected) "${connectedNode?.locationName.orEmpty()} • WireGuard® Secured"
                     else "Direct ISP Connection • Unencrypted",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
@@ -258,7 +267,7 @@ fun HomeScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Ping: ${selectedServer.pingMs ?: 32}ms • Load: ${selectedServer.currentLoad}%",
+                            text = "Ping: ${selectedServer.pingMs?.let { "${it}ms" } ?: "Unavailable"} • Load: ${selectedServer.currentLoad}%",
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

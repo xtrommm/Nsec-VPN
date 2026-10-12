@@ -1,10 +1,14 @@
 import rateLimit from 'express-rate-limit';
+import crypto from 'crypto';
+const privacySalt = crypto.randomBytes(32);
+const privateKey = (req: import('express').Request) => crypto.createHmac('sha256', privacySalt).update(req.ip || 'unavailable').digest('hex');
 
 // Global API rate limit: 120 requests per minute per IP
 export const globalLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 120,
   standardHeaders: true,
+  keyGenerator: privateKey,
   legacyHeaders: false,
   message: {
     success: false,
@@ -18,6 +22,7 @@ export const authLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 10,
   standardHeaders: true,
+  keyGenerator: privateKey,
   legacyHeaders: false,
   message: {
     success: false,
@@ -31,6 +36,7 @@ export const adminLoginLimiter = rateLimit({
   windowMs: 5 * 60 * 1000,
   max: 5,
   standardHeaders: true,
+  keyGenerator: privateKey,
   legacyHeaders: false,
   message: {
     success: false,
@@ -44,6 +50,7 @@ export const connectLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 20,
   standardHeaders: true,
+  keyGenerator: req => (req as import('./auth').AuthenticatedDeviceRequest).device?.id || privateKey(req),
   legacyHeaders: false,
   message: {
     success: false,

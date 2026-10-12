@@ -2,11 +2,10 @@ package com.nsec.vpn.vpn
 
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.VpnService
 import android.os.Build
 import android.os.SystemClock
-import android.util.Log
+import com.nsec.vpn.BuildConfig
 import com.nsec.vpn.core.network.ServiceLocator
 import com.nsec.vpn.data.local.KeyStoreManager
 import com.nsec.vpn.data.model.Server
@@ -14,459 +13,255 @@ import com.nsec.vpn.data.model.TunnelConfig
 import com.nsec.vpn.data.model.VpnState
 import com.nsec.vpn.data.model.VpnStats
 import com.wireguard.android.backend.Backend
-import com.wireguard.android.backend.Statistics
+import com.wireguard.android.backend.GoBackend
 import com.wireguard.android.backend.Tunnel
-import com.wireguard.config.Config
 import com.wireguard.config.InetEndpoint
 import com.wireguard.config.InetNetwork
-import com.wireguard.config.Interface
-import com.wireguard.config.Peer
+import com.wireguard.crypto.Key
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.net.Inet4Address
 import java.net.InetAddress
-import kotlin.math.cos
-import kotlin.math.sin
 
-class NsecVpnBackend : Backend {
-    private var state: Tunnel.State = Tunnel.State.DOWN
-    private var currentTunnel: Tunnel? = null
-
-    override fun getRunningTunnelNames(): Set<String> =
-        if (state == Tunnel.State.UP) currentTunnel?.let { setOf(it.name) } ?: emptySet() else emptySet()
-
-    override fun getState(tunnel: Tunnel): Tunnel.State = state
-
-    override fun getStatistics(tunnel: Tunnel): Statistics {
-        return try {
-            val constructor = Statistics::class.java.getDeclaredConstructor()
-            constructor.isAccessible = true
-            constructor.newInstance()
-        } catch (_: Throwable) {
-            throw UnsupportedOperationException("Statistics not supported")
-        }
-    }
-
-    override fun getVersion(): String = "1.0.0-nsec"
-
-    override fun setState(tunnel: Tunnel, newState: Tunnel.State, config: Config?): Tunnel.State {
-        state = newState
-        currentTunnel = if (newState == Tunnel.State.UP) tunnel else null
-        tunnel.onStateChange(newState)
-        return state
-    }
-}
-
-class WireGuardTunnelManager private constructor(private val context: Context) {
-    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+class WireGuardTunnelManager private constructor(private val context: android.app.Application) {
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val keyStoreManager = KeyStoreManager(context)
     private val vpnRepository by lazy { ServiceLocator.getInstance(context).vpnRepository }
-
+    private val backend: Backend by lazy { GoBackend(context) }
     private val _vpnState = MutableStateFlow<VpnState>(VpnState.Disconnected)
     val vpnState: StateFlow<VpnState> = _vpnState.asStateFlow()
-
     private val _vpnStats = MutableStateFlow(VpnStats())
     val vpnStats: StateFlow<VpnStats> = _vpnStats.asStateFlow()
-
+    private val _connectedNode = MutableStateFlow<TunnelConfig?>(null)
+    val connectedNode: StateFlow<TunnelConfig?> = _connectedNode.asStateFlow()
+    // Retained diagnostics API; ads/API traffic always remains excluded.
     private val _includeAppInTunnel = MutableStateFlow(false)
     val includeAppInTunnel: StateFlow<Boolean> = _includeAppInTunnel.asStateFlow()
-
-    var activeServer: Server? = null
-        private set
-
-    var activePeerId: String? = null
-        private set
-
-    var activeClientPublicKey: String? = null
-        private set
-
-    var lastApiResponseSuccess: Boolean = false
-        private set
-
-    var lastApiStatusCode: Int = 0
-        private set
-
-    var lastError: String? = null
-        private set
-
-    var latestHandshakeAgeSeconds: Long = 0
-        private set
-
-    var activeTunnelConfig: TunnelConfig? = null
-        private set
-
+    var activeServer: Server? = null; private set
+    var activePeerId: String? = null; private set
+    var activeClientPublicKey: String? = null; private set
+    var lastApiResponseSuccess = false; private set
+    var lastApiStatusCode = 0; private set
+    var lastError: String? = null; private set
+    var latestHandshakeAgeSeconds = 0L; private set
+    var activeTunnelConfig: TunnelConfig? = null; private set
+    private var connectJob: Job? = null
     private var statsJob: Job? = null
-    private var handshakeJob: Job? = null
-    private var connectionStartTime: Long = 0
-    private val backend: Backend = NsecVpnBackend()
-
+    private var connectionStartTime = 0L
+    private var stopping = false
+    private var reconnectCount = 0
+    private var lastExcludedApps: Set<String> = emptySet()
+    private var lastDns: List<String> = emptyList()
     private val tunnel = object : Tunnel {
-        override fun getName(): String = "NsecVpnTunnel"
+        override fun getName() = "NsecVpnTunnel"
         override fun onStateChange(newState: Tunnel.State) {
-            when (newState) {
-                Tunnel.State.UP -> {}
-                Tunnel.State.DOWN -> {
-                    stopStatsMonitoring()
-                    stopHandshakeMonitoring()
-                    _vpnState.value = VpnState.Disconnected
-                }
-                Tunnel.State.TOGGLE -> {}
+            if (newState == Tunnel.State.DOWN && !stopping && _vpnState.value is VpnState.Connected) {
+                scope.launch { recoverStaleTunnel() }
             }
         }
     }
+    fun setIncludeAppInTunnel(@Suppress("UNUSED_PARAMETER") include: Boolean) { _includeAppInTunnel.value = false }
 
-    fun setIncludeAppInTunnel(include: Boolean) {
-        _includeAppInTunnel.value = include
-    }
-
-    fun startConnect(
-        server: Server,
-        dnsServers: List<String> = listOf("1.1.1.1", "1.0.0.1"),
-        excludedApps: Set<String> = emptySet(),
-        onNeedsPermission: (Intent) -> Unit
-    ) {
-        if (_vpnState.value is VpnState.Connecting || _vpnState.value is VpnState.Connected) {
-            return
-        }
-
-        val prepareIntent = VpnService.prepare(context)
-        if (prepareIntent != null) {
-            onNeedsPermission(prepareIntent)
-            return
-        }
-
-        activeServer = server
+    @Synchronized
+    fun startConnect(server: Server, dnsServers: List<String> = listOf("1.1.1.1", "1.0.0.1"),
+                     excludedApps: Set<String> = emptySet(), onNeedsPermission: (Intent) -> Unit) {
+        if (_vpnState.value is VpnState.Connecting || _vpnState.value is VpnState.Connected || _vpnState.value is VpnState.Disconnecting) return
+        VpnService.prepare(context)?.let { onNeedsPermission(it); return }
+        lastExcludedApps = excludedApps; lastDns = dnsServers
+        reconnectCount = 0
         _vpnState.value = VpnState.Connecting
-        lastError = null
-
-        scope.launch(Dispatchers.IO) {
-            var currentAttemptServer = server
-            var attemptCount = 0
-            val maxAttempts = 3
-
-            while (attemptCount < maxAttempts && isActive) {
-                try {
-                    activeServer = currentAttemptServer
-                    val keyPair = keyStoreManager.generateEphemeralWireGuardKeyPair()
-                    val clientPublicKey = keyPair.publicKey.toBase64()
-                    activeClientPublicKey = clientPublicKey
-
-                    // 1. Request peer creation from backend FIRST (no fake fallback data)
-                    val (tunnelConfig, peerId) = vpnRepository.fetchTunnelConfig(currentAttemptServer, clientPublicKey)
-                    lastApiResponseSuccess = true
-                    lastApiStatusCode = 200
-                    activePeerId = peerId
-
-                    // 2. Validate response fields and reject private/documentation endpoint IPs
-                    val validationResult = validateTunnelConfig(tunnelConfig)
-                    if (!validationResult.isValid) {
-                        throw IllegalArgumentException(validationResult.errorMessage ?: "Invalid server tunnel configuration")
-                    }
-                    activeTunnelConfig = tunnelConfig
-
-                    // 3. Build WireGuard Config
-                    val pm = context.packageManager
-                    val validExcludedApps = mutableSetOf<String>()
-                    
-                    // In release builds or when includeAppInTunnel is false, exclude app package from tunnel
-                    if (!_includeAppInTunnel.value) {
-                        validExcludedApps.add(context.packageName)
-                    }
-
-                    for (pkg in excludedApps) {
-                        if (pkg != context.packageName || _includeAppInTunnel.value) {
-                            try {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                    pm.getPackageInfo(pkg, PackageManager.PackageInfoFlags.of(0L))
-                                } else {
-                                    @Suppress("DEPRECATION")
-                                    pm.getPackageInfo(pkg, 0)
-                                }
-                                validExcludedApps.add(pkg)
-                            } catch (_: Exception) {}
-                        }
-                    }
-
-                    val interfaceBuilder = Interface.Builder()
-                        .parsePrivateKey(keyPair.privateKey.toBase64())
-                        .addAddress(InetNetwork.parse(tunnelConfig.clientAddress))
-                        .setMtu(tunnelConfig.mtu.coerceIn(1280, 1420))
-
-                    val effectiveDns = if (tunnelConfig.dnsServers.isNotEmpty()) tunnelConfig.dnsServers else dnsServers
-                    for (dns in effectiveDns) {
-                        try {
-                            interfaceBuilder.addDnsServer(InetAddress.getByName(dns))
-                        } catch (_: Exception) {}
-                    }
-
-                    if (validExcludedApps.isNotEmpty()) {
-                        interfaceBuilder.excludeApplications(validExcludedApps)
-                    }
-
-                    val endpoint = InetEndpoint.parse(tunnelConfig.serverEndpoint)
-                    val peerBuilder = Peer.Builder()
-                        .parsePublicKey(tunnelConfig.serverPublicKey)
-                        .setEndpoint(endpoint)
-                        .setPersistentKeepalive(tunnelConfig.persistentKeepalive.coerceAtLeast(25))
-
-                    for (ip in tunnelConfig.allowedIps) {
-                        try {
-                            peerBuilder.addAllowedIp(InetNetwork.parse(ip))
-                        } catch (_: Exception) {}
-                    }
-                    if (tunnelConfig.allowedIps.isEmpty()) {
-                        peerBuilder.addAllowedIp(InetNetwork.parse("0.0.0.0/0"))
-                    }
-
-                    val config = Config.Builder()
-                        .setInterface(interfaceBuilder.build())
-                        .addPeer(peerBuilder.build())
-                        .build()
-
-                    // 4. Start foreground service and set backend state UP
-                    val serviceIntent = Intent(context, NsecVpnService::class.java).apply {
-                        action = NsecVpnService.ACTION_CONNECT
-                        putExtra(NsecVpnService.EXTRA_SERVER_NAME, currentAttemptServer.name)
-                        putStringArrayListExtra(NsecVpnService.EXTRA_DNS_SERVERS, ArrayList(effectiveDns))
-                        putStringArrayListExtra(NsecVpnService.EXTRA_EXCLUDED_APPS, ArrayList(validExcludedApps))
-                    }
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        context.startForegroundService(serviceIntent)
-                    } else {
-                        context.startService(serviceIntent)
-                    }
-
-                    backend.setState(tunnel, Tunnel.State.UP, config)
-                    connectionStartTime = SystemClock.elapsedRealtime()
-
-                    // 5. Handshake gating (wait for handshake / traffic confirmation with 15s timeout)
-                    val handshakeSuccess = waitForHandshakeOrTimeout(15000L)
-                    if (handshakeSuccess) {
-                        _vpnState.value = VpnState.Connected
-                        startStatsMonitoring()
-                        return@launch
-                    } else {
-                        backend.setState(tunnel, Tunnel.State.DOWN, null)
-                        throw java.net.SocketTimeoutException("Couldn't reach the server (Handshake timeout)")
-                    }
-
-                } catch (e: Exception) {
-                    lastApiResponseSuccess = false
-                    lastApiStatusCode = 500
-                    lastError = e.message ?: "Connection failed"
-                    Log.e("WireGuardTunnelManager", "Connect attempt $attemptCount failed for ${currentAttemptServer.name}: ${e.message}")
-
+        connectJob = scope.launch { connectWithFailover(server, dnsServers, excludedApps) }
+    }
+    private suspend fun connectWithFailover(initial: Server, dns: List<String>, excludedApps: Set<String>) {
+        val visited = mutableSetOf<String>()
+        var candidate: Server? = initial
+        repeat(MAX_CONNECT_ATTEMPTS) {
+            val server = candidate ?: return@repeat
+            visited.add(server.id)
+            activeServer = server
+            _vpnState.value = VpnState.Connecting
+            _vpnStats.value = VpnStats(); _connectedNode.value = null
+            lastApiResponseSuccess = false; lastError = null
+            try {
+                val keyPair = keyStoreManager.getOrCreateWireGuardKeyPair()
+                val publicKey = keyPair.publicKey.toBase64()
+                activeClientPublicKey = publicKey
+                val tc = TunnelNegotiation.establish(prepare = {
+                val (tc, peerId) = vpnRepository.fetchTunnelConfig(server, publicKey)
+                lastApiResponseSuccess = true; lastApiStatusCode = 200; activePeerId = peerId
+                val result = validateTunnelConfig(tc)
+                require(result.isValid) { result.errorMessage ?: "Invalid server data" }
+                val addresses = InetAddress.getAllByName(tc.serverEndpoint.substringBeforeLast(':'))
+                require(addresses.isNotEmpty() && addresses.all { it is Inet4Address && !isPrivateOrDocumentationIp(it.hostAddress.orEmpty()) }) { "Server endpoint must resolve to public IPv4" }
+                require(addresses.any { it.hostAddress == tc.publicIpv4 }) { "Node public IP does not match endpoint" }
+                activeTunnelConfig = tc
+                tc
+                }, activate = { tc ->
+                val applications = mutableSetOf(context.packageName)
+                excludedApps.forEach { pkg ->
                     try {
-                        backend.setState(tunnel, Tunnel.State.DOWN, null)
-                    } catch (_: Throwable) {}
-
-                    attemptCount++
-                    if (attemptCount < maxAttempts) {
-                        val nextNode = vpnRepository.getNextNodeInSameLocation(currentAttemptServer)
-                        if (nextNode != null && nextNode.id != currentAttemptServer.id) {
-                            currentAttemptServer = nextNode
-                            delay(1000L)
-                            continue
-                        }
-                    }
-
-                    _vpnState.value = VpnState.Error(lastError ?: "Failed to establish tunnel")
-                    stopStatsMonitoring()
-                    stopHandshakeMonitoring()
-                    return@launch
+                        @Suppress("DEPRECATION")
+                        context.packageManager.getPackageInfo(pkg, 0)
+                        applications.add(pkg)
+                    } catch (_: android.content.pm.PackageManager.NameNotFoundException) { /* Removed app. */ }
                 }
+                val config = TunnelConfigBuilder.build(tc, keyPair.privateKey.toBase64(), context.packageName, applications, dns)
+                updateNotification(tc.nodeName ?: server.name)
+                backend.setState(tunnel, Tunnel.State.UP, config)
+                connectionStartTime = SystemClock.elapsedRealtime()
+                }, handshake = { tc -> waitForHandshakeOrTimeout(HANDSHAKE_TIMEOUT_MS, tc.serverPublicKey) })
+                _connectedNode.value = tc
+                activeServer = vpnRepository.servers.value.firstOrNull { it.id == tc.nodeId } ?: server
+                _vpnState.value = VpnState.Connected
+                updateNotification(tc.nodeName ?: server.name)
+                startStatsMonitoring(tc.serverPublicKey)
+                return
+            } catch (cancelled: CancellationException) {
+                withContext(NonCancellable) { teardown() }; throw cancelled
+            } catch (error: Exception) {
+                lastError = when (error) {
+                    is java.net.SocketTimeoutException -> "Couldn't reach the server"
+                    is VpnApiException -> error.message
+                    is IllegalArgumentException -> "Invalid server configuration"
+                    else -> "Couldn't establish the VPN connection"
+                }
+                if (error is VpnApiException) lastApiStatusCode = error.statusCode
+                teardown()
+                candidate = FailoverPolicy.next(initial, visited, vpnRepository.servers.value,
+                    vpnRepository.userTier.value, MAX_CONNECT_ATTEMPTS)
+                if (candidate == null) {
+                    _vpnState.value = VpnState.Error(lastError ?: "Couldn't reach the server"); return
+                }
+                delay(1000L * (it + 1))
             }
         }
+        _vpnState.value = VpnState.Error(lastError ?: "Couldn't reach the server")
     }
-
-    private suspend fun waitForHandshakeOrTimeout(timeoutMs: Long): Boolean = withContext(Dispatchers.Default) {
+    private suspend fun waitForHandshakeOrTimeout(timeoutMs: Long, publicKey: String): Boolean {
         val start = SystemClock.elapsedRealtime()
-        val pollInterval = 500L
         while (SystemClock.elapsedRealtime() - start < timeoutMs) {
-            if (_vpnState.value is VpnState.Disconnected || _vpnState.value is VpnState.Error) {
-                return@withContext false
-            }
-            val stats = _vpnStats.value
-            if (stats.totalBytesReceived > 0 || stats.connectionDurationSeconds >= 1) {
-                latestHandshakeAgeSeconds = 0
-                return@withContext true
-            }
-            delay(pollInterval)
+            currentCoroutineContext().ensureActive()
+            val peer = backend.getStatistics(tunnel).peer(Key.fromBase64(publicKey))
+            if (HandshakeGate.confirmed(peer?.latestHandshakeEpochMillis() ?: 0, System.currentTimeMillis())) return true
+            delay(HANDSHAKE_POLL_MS)
         }
-        true
+        return false
     }
-
-    private fun stopHandshakeMonitoring() {
-        handshakeJob?.cancel()
-        handshakeJob = null
-    }
-
-    fun disconnect() {
-        if (_vpnState.value is VpnState.Disconnected) return
-        _vpnState.value = VpnState.Disconnecting
-
-        scope.launch(Dispatchers.IO) {
-            val peerId = activePeerId
-            val pubKey = activeClientPublicKey
-            if (!peerId.isNullOrEmpty() && !pubKey.isNullOrEmpty()) {
-                vpnRepository.notifyDisconnect(peerId, pubKey)
-            }
-
-            try {
-                backend.setState(tunnel, Tunnel.State.DOWN, null)
-            } catch (_: Throwable) {}
-
-            val serviceIntent = Intent(context, NsecVpnService::class.java).apply {
-                action = NsecVpnService.ACTION_DISCONNECT
-            }
-            context.startService(serviceIntent)
-
-            delay(400L)
-            stopStatsMonitoring()
-            stopHandshakeMonitoring()
-            _vpnState.value = VpnState.Disconnected
-            _vpnStats.value = VpnStats()
-            activePeerId = null
-            activeClientPublicKey = null
-            activeTunnelConfig = null
-        }
-    }
-
-    private fun startStatsMonitoring() {
+    private fun startStatsMonitoring(publicKey: String) {
         statsJob?.cancel()
-        if (connectionStartTime == 0L) {
-            connectionStartTime = SystemClock.elapsedRealtime()
-        }
-        statsJob = scope.launch(Dispatchers.Default) {
-            var totalRx = 1024L * 1024L * 1L
-            var totalTx = 1024L * 1024L * 512L
-
+        statsJob = scope.launch {
+            var previousRx = 0L; var previousTx = 0L
+            var previousTime = SystemClock.elapsedRealtime()
             while (isActive && _vpnState.value is VpnState.Connected) {
-                delay(1000L)
-                val duration = (SystemClock.elapsedRealtime() - connectionStartTime) / 1000
-
-                val rxSpeed = (12f + (0..15).random() + (sin(duration.toDouble()) * 4).toFloat()).coerceAtLeast(1.2f)
-                val txSpeed = (4f + (0..6).random() + (cos(duration.toDouble()) * 2).toFloat()).coerceAtLeast(0.6f)
-
-                totalRx += (rxSpeed * 1024 * 1024 / 8).toLong()
-                totalTx += (txSpeed * 1024 * 1024 / 8).toLong()
-
-                _vpnStats.value = VpnStats(
-                    connectionDurationSeconds = duration,
-                    downloadSpeedMbps = rxSpeed,
-                    uploadSpeedMbps = txSpeed,
-                    totalBytesReceived = totalRx,
-                    totalBytesSent = totalTx
-                )
+                delay(1000)
+                try {
+                    val stats = backend.getStatistics(tunnel)
+                    val peer = stats.peer(Key.fromBase64(publicKey))
+                    val handshake = peer?.latestHandshakeEpochMillis() ?: 0
+                    latestHandshakeAgeSeconds = if (handshake > 0) (System.currentTimeMillis() - handshake).coerceAtLeast(0) / 1000 else Long.MAX_VALUE
+                    if (backend.getState(tunnel) != Tunnel.State.UP || latestHandshakeAgeSeconds > STALE_HANDSHAKE_SECONDS) { recoverStaleTunnel(); return@launch }
+                    val now = SystemClock.elapsedRealtime()
+                    val seconds = (now - previousTime).coerceAtLeast(1) / 1000f
+                    val rx = stats.totalRx(); val tx = stats.totalTx()
+                    val duration = (now - connectionStartTime) / 1000
+                    _vpnStats.value = VpnStats(duration, (rx - previousRx).coerceAtLeast(0) * 8 / seconds / 1_000_000f,
+                        (tx - previousTx).coerceAtLeast(0) * 8 / seconds / 1_000_000f, rx, tx)
+                    previousRx = rx; previousTx = tx; previousTime = now
+                    if (duration >= 300) reconnectCount = 0
+                } catch (cancelled: CancellationException) { throw cancelled }
+                catch (_: Exception) { recoverStaleTunnel(); return@launch }
             }
         }
     }
-
-    private fun stopStatsMonitoring() {
+    @Synchronized
+    private fun recoverStaleTunnel() {
+        if (_vpnState.value !is VpnState.Connected) return
+        val server = activeServer ?: return
+        _connectedNode.value = null
+        _vpnState.value = VpnState.Connecting
         statsJob?.cancel()
-        statsJob = null
-        connectionStartTime = 0L
+        connectJob = scope.launch {
+            teardown()
+            if (reconnectCount >= MAX_RECONNECTS) { _vpnState.value = VpnState.Error("Couldn't reach the server"); return@launch }
+            delay(1000L shl reconnectCount++)
+            connectWithFailover(server, lastDns, lastExcludedApps)
+        }
     }
-
+    private fun updateNotification(name: String) {
+        val intent = Intent(context, NsecVpnService::class.java).apply {
+            action = NsecVpnService.ACTION_CONNECT; putExtra(NsecVpnService.EXTRA_SERVER_NAME, name)
+        }
+        if (Build.VERSION.SDK_INT >= 26) context.startForegroundService(intent) else context.startService(intent)
+    }
+    private suspend fun teardown() {
+        stopping = true
+        try { backend.setState(tunnel, Tunnel.State.DOWN, null) } catch (_: Exception) { /* Already down. */ }
+        stopping = false
+        val id = activePeerId; val key = activeClientPublicKey
+        if (id != null && key != null) vpnRepository.notifyDisconnect(id, key)
+        activePeerId = null; activeTunnelConfig = null; _connectedNode.value = null
+        context.stopService(Intent(context, NsecVpnService::class.java))
+    }
+    @Synchronized
+    fun disconnect() {
+        if (_vpnState.value is VpnState.Disconnected || _vpnState.value is VpnState.Disconnecting) return
+        _vpnState.value = VpnState.Disconnecting
+        statsJob?.cancel()
+        val job = connectJob; connectJob = null
+        scope.launch {
+            job?.cancelAndJoin(); teardown()
+            activeClientPublicKey = null; activeServer = null
+            _vpnStats.value = VpnStats(); _vpnState.value = VpnState.Disconnected
+        }
+    }
     fun getDiagnosticsSummary(): String {
-        val serverName = activeServer?.name ?: "None"
-        val endpoint = activeTunnelConfig?.serverEndpoint ?: "N/A"
-        val serverPubKey = activeTunnelConfig?.serverPublicKey?.take(6) ?: "N/A"
-        val clientPubKey = activeClientPublicKey?.take(6) ?: "N/A"
-        val tunnelAddress = activeTunnelConfig?.clientAddress ?: "N/A"
-        val dns = activeTunnelConfig?.dnsServers?.joinToString(",") ?: "N/A"
-        val mtu = activeTunnelConfig?.mtu ?: 1420
-        val allowedIps = activeTunnelConfig?.allowedIps?.joinToString(",") ?: "N/A"
-        val apiStatus = if (lastApiResponseSuccess) "SUCCESS (200)" else "FAILED ($lastApiStatusCode)"
-        val rxBytes = _vpnStats.value.totalBytesReceived
-        val txBytes = _vpnStats.value.totalBytesSent
-        val err = lastError ?: "None"
-        val appExcluded = !_includeAppInTunnel.value
-
-        return """
-            === NSEC VPN DEBUG DIAGNOSTICS ===
-            Selected Server: $serverName
-            Endpoint Host & Port: $endpoint
-            Server Public Key (first 6): $serverPubKey...
-            Client Public Key (first 6): $clientPubKey...
-            Tunnel Address: $tunnelAddress
-            DNS Servers: $dns
-            MTU: $mtu
-            AllowedIPs: $allowedIps
-            Peer API Status: $apiStatus
-            Dummy/Fallback Used: NO
-            Bytes Received: $rxBytes
-            Bytes Sent: $txBytes
-            App Excluded from Tunnel: $appExcluded
-            Last Error: $err
-            ==================================
-        """.trimIndent()
+        if (!BuildConfig.DEBUG) return ""
+        return "Node: ${activeTunnelConfig?.nodeName.orEmpty()}\nEndpoint: ${activeTunnelConfig?.serverEndpoint.orEmpty()}\nTunnel address: ${activeTunnelConfig?.clientAddress.orEmpty()}\nHandshake age: $latestHandshakeAgeSeconds s\nRX: ${_vpnStats.value.totalBytesReceived}\nTX: ${_vpnStats.value.totalBytesSent}\nAPI status: $lastApiStatusCode\nError: ${lastError.orEmpty()}"
     }
-
     companion object {
-        @Volatile
-        private var instance: WireGuardTunnelManager? = null
-
-        fun getInstance(context: Context): WireGuardTunnelManager {
-            return instance ?: synchronized(this) {
-                instance ?: WireGuardTunnelManager(context.applicationContext).also { instance = it }
-            }
+        const val HANDSHAKE_TIMEOUT_MS = 15_000L
+        const val HANDSHAKE_POLL_MS = 500L
+        const val STALE_HANDSHAKE_SECONDS = 180L
+        const val MAX_CONNECT_ATTEMPTS = 3
+        const val MAX_RECONNECTS = 3
+        @Volatile private var instance: WireGuardTunnelManager? = null
+        fun getInstance(context: Context): WireGuardTunnelManager = instance ?: synchronized(this) {
+            instance ?: WireGuardTunnelManager(context.applicationContext as android.app.Application).also { instance = it }
         }
-
         fun isPrivateOrDocumentationIp(host: String): Boolean {
-            val hostLower = host.lowercase().trim()
-            if (hostLower == "localhost" || hostLower == "127.0.0.1" || hostLower == "::1" || hostLower == "0.0.0.0") {
-                return true
-            }
-            if (hostLower.startsWith("10.") || hostLower.startsWith("127.") || hostLower.startsWith("192.168.")) {
-                return true
-            }
-            if (hostLower.startsWith("172.")) {
-                val parts = hostLower.split(".")
-                if (parts.size >= 2) {
-                    val secondOctet = parts[1].toIntOrNull() ?: 0
-                    if (secondOctet in 16..31) return true
-                }
-            }
-            // Documentation / test ranges (RFC 5737, RFC 3849, etc.)
-            if (hostLower.startsWith("192.0.2.") || hostLower.startsWith("198.51.100.") || hostLower.startsWith("203.0.113.")) {
-                return true
-            }
-            try {
-                val addr = InetAddress.getByName(hostLower)
-                if (addr.isSiteLocalAddress || addr.isLoopbackAddress || addr.isLinkLocalAddress || addr.isAnyLocalAddress) {
-                    return true
-                }
-            } catch (_: Exception) {}
-            return false
+            if (host.lowercase() in setOf("localhost", "::1")) return true
+            val a = host.split('.').map { it.toIntOrNull() ?: return false }
+            if (a.size != 4) return false
+            return a.any { it !in 0..255 } || a[0] in setOf(0, 10, 127) || a[0] >= 224 ||
+                (a[0] == 172 && a[1] in 16..31) || (a[0] == 192 && (a[1] == 168 || a[1] == 0)) ||
+                (a[0] == 169 && a[1] == 254) || (a[0] == 100 && a[1] in 64..127) ||
+                (a[0] == 198 && (a[1] in 18..19 || (a[1] == 51 && a[2] == 100))) || (a[0] == 203 && a[1] == 0 && a[2] == 113)
         }
-
         data class TunnelValidationResult(val isValid: Boolean, val errorMessage: String? = null)
-
-        fun validateTunnelConfig(config: TunnelConfig): TunnelValidationResult {
-            if (config.serverPublicKey.isBlank()) {
-                return TunnelValidationResult(false, "Invalid server data: missing server public key")
-            }
-            val endpoint = config.serverEndpoint
-            if (!endpoint.contains(":")) {
-                return TunnelValidationResult(false, "Invalid server data: malformed endpoint ($endpoint)")
-            }
-            val host = endpoint.substringBeforeLast(":")
-            val port = endpoint.substringAfterLast(":").toIntOrNull()
-            if (port == null || port !in 1..65535) {
-                return TunnelValidationResult(false, "Invalid server data: invalid endpoint port")
-            }
-            if (isPrivateOrDocumentationIp(host)) {
-                return TunnelValidationResult(false, "Invalid server data: private or documentation endpoint IP rejected ($host)")
-            }
-            if (config.clientAddress.isBlank()) {
-                return TunnelValidationResult(false, "Invalid server data: missing client address")
-            }
-            if (config.dnsServers.isEmpty()) {
-                return TunnelValidationResult(false, "Invalid server data: missing DNS servers")
-            }
-            return TunnelValidationResult(true)
-        }
+        fun validateTunnelConfig(tc: TunnelConfig): TunnelValidationResult = try {
+            val key = Key.fromBase64(tc.serverPublicKey)
+            require(key.toBase64() == tc.serverPublicKey && tc.serverPublicKey != "A".repeat(43) + "=")
+            val endpoint = InetEndpoint.parse(tc.serverEndpoint)
+            require(endpoint.port in 1..65535 && endpoint.port != 51821)
+            require(!isPrivateOrDocumentationIp(endpoint.host))
+            val clientParts = tc.clientAddress.substringBefore('/').split('.').map { it.toIntOrNull() ?: -1 }
+            require(tc.clientAddress.endsWith("/32") && clientParts.size == 4 && clientParts.all { it in 0..255 } &&
+                (clientParts[0] == 10 || (clientParts[0] == 172 && clientParts[1] in 16..31) || (clientParts[0] == 192 && clientParts[1] == 168)))
+            InetNetwork.parse(tc.clientAddress)
+            require(tc.dnsServers.isNotEmpty())
+            tc.dnsServers.forEach { require(it.matches(Regex("\\d+\\.\\d+\\.\\d+\\.\\d+"))); InetNetwork.parse("$it/32"); require(!isPrivateOrDocumentationIp(it)) }
+            require(tc.allowedIps == listOf("0.0.0.0/0"))
+            require(tc.mtu in 1280..1420 && tc.persistentKeepalive in 1..120)
+            require(!tc.publicIpv4.isNullOrBlank() && tc.publicIpv4.matches(Regex("\\d+\\.\\d+\\.\\d+\\.\\d+")) && !isPrivateOrDocumentationIp(tc.publicIpv4))
+            require(!tc.nodeId.isNullOrBlank() && !tc.nodeName.isNullOrBlank() && !tc.locationName.isNullOrBlank())
+            TunnelValidationResult(true)
+        } catch (_: Exception) { TunnelValidationResult(false, "Invalid server tunnel configuration") }
     }
 }
+
+object HandshakeGate {
+    fun confirmed(handshakeMillis: Long, nowMillis: Long): Boolean = handshakeMillis > 0 && nowMillis - handshakeMillis in 0..15_000
+}
+class VpnApiException(val statusCode: Int, message: String) : IllegalStateException(message)

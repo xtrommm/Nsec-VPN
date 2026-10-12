@@ -1,38 +1,62 @@
+import { JWT_SECRET } from "../secrets";
 import { Router, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { prisma } from '../db';
 import { validateBody } from '../middleware/validate';
 import { RegisterDeviceSchema, RefreshTokenSchema, JwtDevicePayload } from '../types';
+import { authenticateDevice, AuthenticatedDeviceRequest } from '../middleware/auth';
 import { authLimiter } from '../middleware/rateLimit';
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'nsec_vpn_production_secret_change_me_2026';
+router.get('/me', authenticateDevice, async (req: AuthenticatedDeviceRequest, res) => {
+  const device = await prisma.device.findUnique({ where: { id: req.device!.id }, select: { id: true, tier: true, passExpiresAt: true } });
+  return res.json({ success: true, data: device });
+});
 const ACCESS_TOKEN_TTL = '7d';
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 router.post(
-  '/register-device',
+  ['/register-device', '/register-device-v2'],
   authLimiter,
   validateBody(RegisterDeviceSchema),
   async (req: Request, res: Response) => {
-    const { deviceId, deviceModel, osVersion, appVersion } = req.body;
+    const { deviceId, deviceModel, osVersion, appVersion, registrationSecret, registrationProof } = req.body;
+    if (!registrationSecret) return res.status(426).json({ success: false, error: 'APP_UPDATE_REQUIRED', message: 'Registration v2 requires a device-held credential' });
 
     try {
-      const device = await prisma.device.upsert({
+      const device = await prisma.$transaction(async tx => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${deviceId}))`;
+      const existing = await tx.device.findUnique({ where: { deviceId } });
+      const credentialHash = crypto.createHash('sha256').update(registrationSecret).digest('hex');
+      if (existing) {
+        let valid = existing.registrationSecretHash === credentialHash;
+        if (!existing.registrationSecretHash && registrationProof) {
+          try {
+            const proof = jwt.verify(registrationProof, JWT_SECRET, { algorithms: ['HS256'] }) as JwtDevicePayload;
+            valid = proof.deviceId === deviceId;
+          } catch { valid = false; }
+        }
+        if (!valid) throw new Error('DEVICE_PROOF_REQUIRED');
+      }
+      return await tx.device.upsert({
         where: { deviceId },
         update: {
+          registrationSecretHash: credentialHash,
           deviceModel: deviceModel || undefined,
           osVersion: osVersion || undefined,
           appVersion: appVersion || undefined
         },
         create: {
+          registrationSecretHash: credentialHash,
           deviceId,
           deviceModel,
           osVersion,
           appVersion,
           tier: 'FREE'
         }
+      });
+
       });
 
       if (device.isBlocked) {
@@ -45,7 +69,7 @@ router.post(
 
       // Automatically downgrade expired rewarded pass if present
       let currentTier = device.tier;
-      if (device.tier === 'REWARDED_PASS' && device.passExpiresAt && device.passExpiresAt < new Date()) {
+      if ((device.tier === 'REWARDED_PASS' || device.tier === 'VIP') && device.passExpiresAt && device.passExpiresAt < new Date()) {
         currentTier = 'FREE';
         await prisma.device.update({
           where: { id: device.id },
@@ -84,6 +108,7 @@ router.post(
         }
       });
     } catch (_err) {
+      if (_err instanceof Error && _err.message === 'DEVICE_PROOF_REQUIRED') return res.status(409).json({ success: false, error: 'DEVICE_PROOF_REQUIRED', message: 'Existing identity requires the device credential or a valid legacy access token' });
       return res.status(500).json({
         success: false,
         error: 'DB_ERROR',
@@ -151,7 +176,7 @@ router.post(
 
       await prisma.$transaction([
         prisma.refreshToken.update({
-          where: { id: storedToken.id },
+          where: { id: storedToken.id, revoked: false },
           data: { revoked: true }
         }),
         prisma.refreshToken.create({
@@ -166,7 +191,7 @@ router.post(
       // Downgrade expired rewarded pass if needed
       let currentTier = storedToken.device.tier;
       if (
-        storedToken.device.tier === 'REWARDED_PASS' &&
+        (storedToken.device.tier === 'REWARDED_PASS' || storedToken.device.tier === 'VIP') &&
         storedToken.device.passExpiresAt &&
         storedToken.device.passExpiresAt < new Date()
       ) {

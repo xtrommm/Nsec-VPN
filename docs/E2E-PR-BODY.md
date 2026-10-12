@@ -1,0 +1,5 @@
+The Android tunnel implementation only simulated backend state and byte counters, so it could show Connected without a WireGuard handshake. This change uses the official GoBackend, requires authenticated durable peer provisioning and a fresh handshake, and shows the confirmed node's real public IPv4. It also fixes peer allocation/persistence, unsafe identity registration, credential exposure, simulated billing/rewards and fabricated diagnostics.
+
+All components are in this monorepo. See docs/E2E-REPAIR-REPORT.md for baseline file/line evidence, API rollout, migration and remaining gaps, and scripts/verify-system.md for official-app isolation and real-device tests.
+
+Backend, agent and panel checks and npm audits were run locally. Android and live acceptance status must be taken from the final report; new CI adds Android lint and dedicated PostgreSQL concurrency/rollback tests. No live node/device test is claimed. Keep this PR in draft until Android, database migration/integration, key rotation, restricted agent network, actual billing/SSV and physical-phone DNS/IPv6/exit-IP checks pass.

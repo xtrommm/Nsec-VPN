@@ -23,6 +23,8 @@ class VpnRepository(
     private val api: NsecVpnApi,
     private val keyStoreManager: KeyStoreManager
 ) {
+    private val _serverListError = MutableStateFlow<String?>(null)
+    val serverListError: StateFlow<String?> = _serverListError.asStateFlow()
     private val _servers = MutableStateFlow<List<Server>>(emptyList())
     val servers: StateFlow<List<Server>> = _servers.asStateFlow()
 
@@ -44,6 +46,7 @@ class VpnRepository(
     private val _autoConnectEnabled = MutableStateFlow(false)
     val autoConnectEnabled: StateFlow<Boolean> = _autoConnectEnabled.asStateFlow()
 
+    private var verifiedEntitlementExpiresAtMs: Long? = null
     private val _userTier = MutableStateFlow("FREE")
     val userTier: StateFlow<String> = _userTier.asStateFlow()
 
@@ -76,11 +79,6 @@ class VpnRepository(
         _excludedPackages.value = keyStoreManager.getExcludedPackages()
         _autoConnectEnabled.value = keyStoreManager.isAutoConnectEnabled()
 
-        val rewardedExpiry = keyStoreManager.getRewardedPassExpiry()
-        if (rewardedExpiry > System.currentTimeMillis()) {
-            _userTier.value = "REWARDED_PASS"
-        }
-
         kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
             cleanUninstalledExcludedPackages(context)
         }
@@ -102,7 +100,7 @@ class VpnRepository(
             }
 
             val body = response.body()
-            if (response.isSuccessful && body?.data?.servers != null) {
+            if (response.isSuccessful && body?.success == true && body.data?.servers != null) {
                 val dtos = body.data.servers
                 val favs = _favoriteServerIds.value
                 val mapped = dtos.map { dto ->
@@ -120,15 +118,17 @@ class VpnRepository(
                         totalNodes = dto.totalNodes
                     )
                 }
+                _serverListError.value = null
                 _servers.value = mapped
+                try { refreshVerifiedEntitlement() } catch (_: Exception) { /* Retain only this process's verified entitlement. */ }
 
                 val currentSelected = _selectedServer.value
                 if (currentSelected == null || !mapped.any { it.id == currentSelected.id }) {
                     _selectedServer.value = mapped.firstOrNull { it.isRecommended } ?: mapped.firstOrNull()
                 }
-            }
+            } else { _serverListError.value = "Server list unavailable (${response.code()})" }
         } catch (e: Exception) {
-            android.util.Log.e("VpnRepository", "Failed to refresh live servers", e)
+            _serverListError.value = "Server list unavailable; check your internet connection"
             // No fallback to mock servers. Keep existing servers or empty list.
         }
 
@@ -151,7 +151,7 @@ class VpnRepository(
         }
 
         val body = response.body()
-        if (response.isSuccessful && body?.data?.tunnelConfig != null) {
+        if (response.isSuccessful && body?.success == true && body.data?.tunnelConfig != null) {
             val tc = body.data.tunnelConfig
             val mapped = com.nsec.vpn.data.model.TunnelConfig(
                 serverPublicKey = tc.serverPublicKey,
@@ -160,11 +160,18 @@ class VpnRepository(
                 dnsServers = tc.dnsServers,
                 allowedIps = tc.allowedIps,
                 persistentKeepalive = tc.persistentKeepalive,
-                mtu = tc.mtu
+                mtu = tc.mtu, nodeId = tc.nodeId, nodeName = tc.nodeName, locationName = tc.locationName, publicIpv4 = tc.publicIpv4
             )
             return@withContext Pair(mapped, body.data.peerId)
         } else {
-            throw IllegalStateException("Failed to establish tunnel: backend response unsuccessful (${response.code()})")
+            val code = try { org.json.JSONObject(response.errorBody()?.string().orEmpty()).optString("error") } catch (_: Exception) { "" }
+            throw com.nsec.vpn.vpn.VpnApiException(response.code(), when (code) {
+                "SERVER_FULL" -> "Server is full"
+                "NODE_DISABLED" -> "Server is disabled"
+                "NODE_OFFLINE", "AGENT_UNREACHABLE" -> "Server is offline"
+                "TIER_UPGRADE_REQUIRED" -> "This server requires an active premium pass"
+                else -> "Peer creation failed (${response.code()})"
+            })
         }
     }
 
@@ -223,30 +230,13 @@ class VpnRepository(
 
     suspend fun measurePings() = withContext(Dispatchers.IO) {
         val updated = _servers.value.map { server ->
-            val ping = testServerPing(server.countryCode)
+            val ping: Long? = null
             server.copy(pingMs = ping)
         }
         _servers.value = updated
         val currentSel = _selectedServer.value
         if (currentSel != null) {
             _selectedServer.value = updated.find { it.id == currentSel.id } ?: currentSel
-        }
-    }
-
-    private fun testServerPing(countryCode: String): Long? {
-        return try {
-            val targetHost = when (countryCode.uppercase()) {
-                "US" -> "1.1.1.1"
-                "DE", "GB", "NL" -> "8.8.8.8"
-                else -> "1.0.0.1"
-            }
-            val start = System.currentTimeMillis()
-            Socket().use { socket ->
-                socket.connect(InetSocketAddress(targetHost, 53), 1500)
-            }
-            System.currentTimeMillis() - start
-        } catch (_: Exception) {
-            null
         }
     }
 
@@ -258,14 +248,16 @@ class VpnRepository(
                 deviceModel = Build.MODEL,
                 osVersion = Build.VERSION.RELEASE,
                 appVersion = "1.0.0",
-                appVersionCode = 1
+                appVersionCode = 1,
+                registrationSecret = keyStoreManager.getOrCreateRegistrationSecret(),
+                registrationProof = keyStoreManager.getAccessToken()
             )
         )
         val body = res.body()
-        if (res.isSuccessful && body?.data != null) {
+        if (res.isSuccessful && body?.success == true && body.data != null) {
             val data = body.data
             keyStoreManager.saveTokens(data.accessToken, data.refreshToken)
-            _userTier.value = data.device.tier
+            applyVerifiedEntitlement(data.device.tier, data.device.passExpiresAt)
             return@withContext data.accessToken
         }
         throw IllegalStateException("Device registration failed")
@@ -343,19 +335,24 @@ class VpnRepository(
         keyStoreManager.saveVpnDisclosureAccepted(accepted)
     }
 
-    fun grantRewardedPass(durationMinutes: Long = 30) {
-        val expiryMs = System.currentTimeMillis() + (durationMinutes * 60 * 1000L)
-        keyStoreManager.saveRewardedPassExpiry(expiryMs)
-        _userTier.value = "REWARDED_PASS"
+    suspend fun refreshVerifiedEntitlement(): Boolean = withContext(Dispatchers.IO) {
+        val token = keyStoreManager.getAccessToken() ?: return@withContext false
+        val response = api.getDeviceProfile("Bearer $token")
+        val profile = response.body()
+        if (!response.isSuccessful || profile?.success != true || profile.data == null) return@withContext false
+        applyVerifiedEntitlement(profile.data.tier, profile.data.passExpiresAt)
+        _userTier.value != "FREE"
+    }
+
+    private fun applyVerifiedEntitlement(tier: String, expiresAt: String?) {
+        require(tier in setOf("FREE", "VIP", "REWARDED_PASS")) { "Invalid entitlement response" }
+        verifiedEntitlementExpiresAtMs = expiresAt?.let { java.time.Instant.parse(it).toEpochMilli() }
+        _userTier.value = tier
+        checkRewardedPassExpiry()
     }
 
     fun checkRewardedPassExpiry() {
-        if (_userTier.value == "REWARDED_PASS") {
-            val expiryMs = keyStoreManager.getRewardedPassExpiry()
-            if (expiryMs <= System.currentTimeMillis()) {
-                _userTier.value = "FREE"
-            }
-        }
+        if (verifiedEntitlementExpiresAtMs?.let { it <= System.currentTimeMillis() } == true) _userTier.value = "FREE"
     }
 
     private fun cleanUninstalledExcludedPackages(context: Context) {
@@ -389,6 +386,6 @@ class VpnRepository(
             it.city.lowercase() == currentServer.city.lowercase() &&
             it.id != currentServer.id
         }
-        return sameLocation.firstOrNull() ?: allServers.firstOrNull { it.id != currentServer.id }
+        return sameLocation.firstOrNull { !it.isPremiumOnly || _userTier.value != "FREE" }
     }
 }

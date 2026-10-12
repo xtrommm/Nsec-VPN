@@ -65,11 +65,11 @@ class MainActivity : ComponentActivity() {
 
                 val vpnState by tunnelManager.vpnState.collectAsStateWithLifecycle()
                 val vpnStats by tunnelManager.vpnStats.collectAsStateWithLifecycle()
+                val connectedNode by tunnelManager.connectedNode.collectAsStateWithLifecycle()
                 val servers by vpnRepo.servers.collectAsStateWithLifecycle()
                 val selectedServer by vpnRepo.selectedServer.collectAsStateWithLifecycle()
                 val userTier by vpnRepo.userTier.collectAsStateWithLifecycle()
                 val selectedDns by vpnRepo.selectedDns.collectAsStateWithLifecycle()
-                val killSwitchEnabled by vpnRepo.killSwitchEnabled.collectAsStateWithLifecycle()
                 val splitTunnelingEnabled by vpnRepo.splitTunnelingEnabled.collectAsStateWithLifecycle()
                 val autoConnectEnabled by vpnRepo.autoConnectEnabled.collectAsStateWithLifecycle()
                 val excludedPackages by vpnRepo.excludedPackages.collectAsStateWithLifecycle()
@@ -150,6 +150,13 @@ class MainActivity : ComponentActivity() {
                     vpnRepo.checkRewardedPassExpiry()
                     if (autoConnectEnabled && vpnState is VpnState.Disconnected) {
                         triggerConnectSequence(isUserInitiated = false)
+                    }
+                }
+
+                LaunchedEffect(Unit) {
+                    while (true) {
+                        kotlinx.coroutines.delay(30_000)
+                        vpnRepo.checkRewardedPassExpiry()
                     }
                 }
 
@@ -239,7 +246,8 @@ class MainActivity : ComponentActivity() {
                                 ConnectedScreen(
                                     vpnState = vpnState,
                                     vpnStats = vpnStats,
-                                    selectedServer = selectedServer,
+                                    connectedNode = connectedNode,
+                                    selectedServer = tunnelManager.activeServer ?: selectedServer,
                                     userTier = userTier,
                                     onDisconnect = { tunnelManager.disconnect() },
                                     onBackToHome = { activeSubScreen = null }
@@ -263,7 +271,7 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                             "debug_diagnostics" -> {
-                                DebugDiagnosticsScreen(
+                                if (com.nsec.vpn.BuildConfig.DEBUG) DebugDiagnosticsScreen(
                                     onBack = { activeSubScreen = null }
                                 )
                             }
@@ -273,7 +281,7 @@ class MainActivity : ComponentActivity() {
                                         HomeScreen(
                                             vpnState = vpnState,
                                             tunnelManager = tunnelManager,
-                                            selectedServer = selectedServer,
+                                            selectedServer = tunnelManager.activeServer ?: selectedServer,
                                             userTier = userTier,
                                             adMobConfig = adMobConfig,
                                             nativeAdManager = adMobManager.nativeAdManager,
@@ -288,7 +296,7 @@ class MainActivity : ComponentActivity() {
                                     Screen.Servers -> {
                                         ServerListScreen(
                                             servers = servers,
-                                            selectedServer = selectedServer,
+                                            selectedServer = tunnelManager.activeServer ?: selectedServer,
                                             userTier = userTier,
                                             adMobConfig = adMobConfig,
                                             nativeAdManager = adMobManager.nativeAdManager,
@@ -319,8 +327,6 @@ class MainActivity : ComponentActivity() {
                                         SettingsScreen(
                                             themeMode = themeMode,
                                             onSelectThemeMode = { vpnRepo.setThemeMode(it) },
-                                            killSwitchEnabled = killSwitchEnabled,
-                                            onToggleKillSwitch = { vpnRepo.setKillSwitch(it) },
                                             selectedDns = selectedDns,
                                             onSelectDns = { vpnRepo.setDns(it) },
                                             splitTunnelingEnabled = splitTunnelingEnabled,
@@ -353,7 +359,7 @@ class MainActivity : ComponentActivity() {
                         },
                         text = {
                             Text(
-                                "Nsec VPN utilizes Android VpnService to create a secure, encrypted network tunnel to protect your online traffic. Your connection is routed through zero-logs WireGuard servers.\n\nNo personal browsing data, connection timestamps, or originating IP addresses are logged or shared.",
+                                "Nsec VPN utilizes Android VpnService to create a secure, encrypted network tunnel to protect your online traffic. Your connection is routed through zero-logs WireGuard servers.\n\nNo browsing data, DNS queries or originating IP addresses are logged. Device credentials and expiring public-key/address leases are stored to authorize and operate the VPN. Ads and billing providers process data under their own policies.",
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 13.sp,
                                 lineHeight = 18.sp
@@ -409,9 +415,13 @@ class MainActivity : ComponentActivity() {
                                             showVipModal = false
                                             coroutineScope.launch {
                                                 playBillingManager.launchPurchase(
+                                                    activity = this@MainActivity,
                                                     productId = "nsecvpn_premium_yearly",
                                                     onSuccess = {
-                                                        vpnRepo.grantRewardedPass(365 * 24 * 60)
+                                                        coroutineScope.launch {
+                                                            try { vpnRepo.refreshVerifiedEntitlement() }
+                                                            catch (_: Exception) { Toast.makeText(this@MainActivity, "Purchase verified; entitlement refresh pending", Toast.LENGTH_LONG).show() }
+                                                        }
                                                         Toast.makeText(this@MainActivity, "Yearly VIP Activated! Thank you.", Toast.LENGTH_LONG).show()
                                                     },
                                                     onError = { err ->
@@ -438,7 +448,7 @@ class MainActivity : ComponentActivity() {
                                                     modifier = Modifier.background(MaterialTheme.colorScheme.emeraldBadgeContainer, RoundedCornerShape(4.dp)).padding(horizontal = 4.dp, vertical = 2.dp)
                                                 )
                                             }
-                                            Text("$29.99 / year ($2.50/mo)", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            Text("Exact price shown by Google Play before purchase", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
                                         Icon(Icons.Default.Star, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(20.dp))
                                     }
@@ -454,9 +464,13 @@ class MainActivity : ComponentActivity() {
                                             showVipModal = false
                                             coroutineScope.launch {
                                                 playBillingManager.launchPurchase(
+                                                    activity = this@MainActivity,
                                                     productId = "nsecvpn_premium_monthly",
                                                     onSuccess = {
-                                                        vpnRepo.grantRewardedPass(30 * 24 * 60)
+                                                        coroutineScope.launch {
+                                                            try { vpnRepo.refreshVerifiedEntitlement() }
+                                                            catch (_: Exception) { Toast.makeText(this@MainActivity, "Purchase verified; entitlement refresh pending", Toast.LENGTH_LONG).show() }
+                                                        }
                                                         Toast.makeText(this@MainActivity, "Monthly VIP Activated!", Toast.LENGTH_SHORT).show()
                                                     },
                                                     onError = { err ->
@@ -473,7 +487,7 @@ class MainActivity : ComponentActivity() {
                                     ) {
                                         Column {
                                             Text("Monthly VIP Plan", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                                            Text("$4.99 / month • Cancel anytime", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            Text("Exact price shown by Google Play before purchase", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
                                     }
                                 }
@@ -489,16 +503,24 @@ class MainActivity : ComponentActivity() {
                                             adMobManager.showRewarded(
                                                 activity = this@MainActivity,
                                                 onRewarded = {
-                                                    vpnRepo.grantRewardedPass(30)
-                                                    Toast.makeText(this@MainActivity, "Rewarded Ad Watched: 30-Minute VIP Pass Granted!", Toast.LENGTH_LONG).show()
+                                                    coroutineScope.launch {
+                                                        var verified = false
+                                                        repeat(15) {
+                                                            if (!verified) {
+                                                                verified = try { vpnRepo.refreshVerifiedEntitlement() } catch (_: Exception) { false }
+                                                                if (!verified) kotlinx.coroutines.delay(1000)
+                                                            }
+                                                        }
+                                                        Toast.makeText(this@MainActivity, if (verified) "Premium pass verified" else "Reward verification pending. Please try again shortly.", Toast.LENGTH_LONG).show()
+                                                    }
                                                 },
                                                 onAdDismissed = {}
                                             )
                                         }
                                 ) {
                                     Column(modifier = Modifier.padding(12.dp)) {
-                                        Text("Watch Rewarded Ad for 30m Free VIP", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue)
-                                        Text("Instantly unlocks all high-speed servers for 30 minutes without credit card.", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text("Watch Rewarded Ad for a Premium Pass", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue)
+                                        Text("Unlocks premium servers after server verification.", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                 }
                             }
@@ -548,8 +570,7 @@ class MainActivity : ComponentActivity() {
                                 onClick = {
                                     showPromoDialog = false
                                     if (promoCodeInput.trim().isNotEmpty()) {
-                                        vpnRepo.grantRewardedPass(7 * 24 * 60)
-                                        Toast.makeText(this@MainActivity, "Code redeemed: 7 Days VIP Unlocked!", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(this@MainActivity, "Promo redemption is not configured", Toast.LENGTH_SHORT).show()
                                     }
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)

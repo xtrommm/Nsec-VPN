@@ -6,7 +6,6 @@ import android.content.Intent
 import android.os.Build
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
-import androidx.annotation.RequiresApi
 import com.nsec.vpn.MainActivity
 import com.nsec.vpn.data.model.VpnState
 import com.nsec.vpn.vpn.WireGuardTunnelManager
@@ -15,7 +14,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
-@RequiresApi(Build.VERSION_CODES.N)
 class VpnTileService : TileService() {
     private val scope = CoroutineScope(Dispatchers.Main)
     private var listenJob: Job? = null
@@ -55,6 +53,8 @@ class VpnTileService : TileService() {
                     )
                     startActivityAndCollapse(pendingIntent)
                 } else {
+                    // Required compatibility API below Android 14; replacement is guarded above.
+                    @Suppress("DEPRECATION")
                     startActivityAndCollapse(intent)
                 }
             }

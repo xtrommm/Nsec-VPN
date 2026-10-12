@@ -1,0 +1,8 @@
+#!/usr/bin/env python3
+import os,sys
+if 'route' in sys.argv:
+    print('1.1.1.1 via 172.30.148.1 dev eth0 src 172.30.148.192')
+elif os.environ.get('FIREWALL_TEST_INTERFACE_GONE'):
+    raise SystemExit(1)
+else:
+    print('2: wg0 inet 10.8.0.1/24 scope global wg0')

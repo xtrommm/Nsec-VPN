@@ -1,41 +1,30 @@
-# Nsec VPN Strict Zero-Logs Privacy Policy
+# Privacy policy review draft
 
-**Effective Date:** October 2026  
-**Website:** https://nsecvpn.com  
-**Contact:** privacy@nsecvpn.com  
+This draft describes the repair candidate. Review provider practices, retention,
+deletion and actual deployment before publishing a policy or Play declaration.
 
----
+The app, backend and agent do not persist browsing history, DNS queries, traffic
+content or originating client IP addresses. Current WireGuard endpoints,
+handshakes and transfer counters necessarily exist in kernel memory while a
+peer is active. Request and proxy access logging is disabled in the supplied
+configuration; external CDN/cloud/provider behavior requires separate review.
 
-### 1. Introduction & Zero-Logs Principle
-At **Nsec VPN**, we believe privacy is a fundamental human right. Our systems are deliberately engineered from the ground up to operate without collecting or storing your online activity.
+A random installation ID, hashed registration proof, hashed refresh tokens,
+entitlements and operational peer records are persisted. Peer records contain
+the public key, assigned private tunnel address, node and lease expiry; node
+configuration and protected agent lease metadata persist across reboots.
+These service records are not browsing logs. Do not claim peers exist only in RAM.
 
-**We do NOT store or log:**
-- Browsing history or visited domain names.
-- Traffic content or data payload.
-- Originating client IP addresses.
-- VPN server IP connections correlated to personal identities.
-- DNS queries or network requests.
+The device generates its WireGuard private key locally and never sends it to the
+backend or node. Android Keystore protects the vault encryption key; hardware
+backing varies by device. An installation ID is not a hardware UUID or a promise
+that records can never be associated with an individual.
 
----
+Google Play handles payment information; the backend verifies purchases and
+stores hashed purchase ownership and entitlement expiry. Google AdMob supplies
+ads and its signed reward confirmations. Review their data practices and consent
+requirements separately. Ad traffic from this app intentionally bypasses the VPN.
 
-### 2. Information We Process
-To maintain continuous service reliability, we process only the bare minimum technical data:
-- **Cryptographic Device UUID**: Generated randomly inside your device's Android hardware Keystore. This ID contains no personal information and cannot be linked to your identity.
-- **Aggregated Performance Metrics**: Anonymous statistics (e.g., total active handshakes per region, app crash logs) to optimize gateway bandwidth.
-
----
-
-### 3. WireGuard® Key Exchange
-When establishing a VPN connection, your device generates a private/public keypair using Curve25519 cryptography. Only the public key and an assigned private subnet address (e.g. `10.8.0.x`) are sent to our gateway node. These values reside exclusively in the volatile RAM of the gateway kernel and are purged immediately upon disconnection.
-
----
-
-### 4. Third-Party Services & Monetization
-- **Google Play In-App Billing**: Subscriptions are processed directly by Google. We never receive or store credit card details.
-- **Google AdMob**: Optional advertising for Free tier users is served via Google Mobile Ads SDK. Free users can upgrade to VIP or redeem Rewarded Passes to disable ads.
-
----
-
-### 5. Data Deletion
-Users can delete their device registration at any time by clearing application data in Android System Settings or selecting **Reset Keystore Vault** within the app.
-update
+Clearing local data resets local credentials; it does not delete backend device,
+billing or audit records. A tested server-side deletion process, support contact
+and explicit retention policy must be established before publication.

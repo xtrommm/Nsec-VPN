@@ -35,6 +35,7 @@ model AdminUser {
 model Device {
   id            String           @id @default(uuid())
   deviceId      String           @unique
+  registrationSecretHash String?
   deviceModel   String?
   osVersion     String?
   appVersion    String?
@@ -73,8 +74,14 @@ model ServerNode {
   endpoint        String        // e.g. "us.nsecvpn.com:51820"
   publicKey       String        // WireGuard server public key
   subnetIpv4      String        @default("10.8.0.0/24")
-  agentUrl        String        // e.g. "http://198.51.100.24:51821"
-  agentSecretHash String
+  agentUrl        String        // Management origin restricted to backend access
+  agentSecretHash String        // Legacy column name: stores env:VARIABLE reference only
+  publicIpv4      String?
+  dnsServers      String[]      @default(["1.1.1.1", "1.0.0.1"])
+  mtu             Int           @default(1420)
+  maxPeers        Int           @default(250)
+  healthy         Boolean       @default(false)
+  healthCheckedAt DateTime?
   currentLoad     Int           @default(0)
   isPremiumOnly   Boolean       @default(false)
   isRecommended   Boolean       @default(false)
@@ -103,7 +110,7 @@ model PeerSession {
 
   @@index([serverId, active])
   @@index([deviceId])
-  @@unique([serverId, allocatedIp, active])
+  // Active-only uniqueness is enforced by the SQL partial indexes.
 }
 
 model AppConfig {
@@ -147,4 +154,15 @@ model AnonymousStat {
 
   @@index([date])
   @@index([countryCode])
+}
+
+model RewardGrant {
+  transactionId String @id
+  createdAt DateTime @default(now())
+}
+
+model PurchaseClaim {
+  tokenHash String @id
+  deviceId String
+  expiresAt DateTime
 }

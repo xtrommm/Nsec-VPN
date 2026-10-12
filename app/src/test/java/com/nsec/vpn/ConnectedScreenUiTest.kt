@@ -5,6 +5,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import com.nsec.vpn.data.model.Server
 import com.nsec.vpn.data.model.VpnState
 import com.nsec.vpn.data.model.VpnStats
+import com.nsec.vpn.data.model.TunnelConfig
 import com.nsec.vpn.ui.screens.ConnectedScreen
 import com.nsec.vpn.ui.theme.NsecVpnTheme
 import org.junit.Rule
@@ -49,11 +50,15 @@ class ConnectedScreenUiTest {
                     vpnStats = sampleStats,
                     selectedServer = sampleServer,
                     userTier = "FREE",
+                    connectedNode = TunnelConfig(com.wireguard.crypto.KeyPair().publicKey.toBase64(),"47.85.109.170:51820","10.8.0.2/32",nodeId="test-node",nodeName="Test",locationName="Test",publicIpv4="47.85.109.170"),
                     onDisconnect = { disconnectedClicked = true },
                     onBackToHome = { backClicked = true }
                 )
             }
         }
+
+        composeTestRule.onNodeWithTag("vpn_server_ip").assertTextEquals("VPN server IP: 47.85.109.170")
+        composeTestRule.onNodeWithText("10.8.0.2/32", substring = true).assertDoesNotExist()
 
         // Verify timer is displayed ("02:05")
         composeTestRule.onNodeWithTag("connection_timer_text").assertExists().assertTextEquals("02:05")

@@ -1,3 +1,4 @@
+import { JWT_SECRET } from "../secrets";
 import { Router, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -14,10 +15,11 @@ import {
 import { adminLoginLimiter } from '../middleware/rateLimit';
 import { StatsService } from '../services/stats';
 import { AgentClient } from '../services/agentClient';
+import { verifyConfiguredTotp } from '../services/totp';
+import { testNode } from '../services/nodeHealth';
 import { invalidateConfigCache } from './config';
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'nsec_vpn_production_secret_change_me_2026';
 
 // Helper to record audit trail
 async function logAudit(
@@ -69,6 +71,7 @@ router.post(
         });
       }
 
+      if (admin.totpEnabled && (!verifyConfiguredTotp(admin.totpSecret, req.body.totpCode || ''))) return res.status(401).json({ success: false, error: 'TOTP_REQUIRED', message: 'Valid authenticator code required' });
       const payload: JwtAdminPayload = {
         adminId: admin.id,
         email: admin.email,
@@ -118,7 +121,7 @@ router.get('/servers', authenticateAdmin(), async (_req, res: Response) => {
     const servers = await prisma.serverNode.findMany({
       orderBy: { createdAt: 'desc' }
     });
-    return res.json({ success: true, servers });
+    return res.json({ success: true, servers: servers.map(({ agentSecretHash, ...node }) => node) });
   } catch (_err) {
     return res.status(500).json({
       success: false,
@@ -143,12 +146,15 @@ router.post(
       });
 
       await logAudit(req.admin!.adminId, 'CREATE_SERVER', 'SERVER', server.id, { name: server.name });
-      return res.status(201).json({ success: true, server });
+      await testNode(server);
+      const checked = await prisma.serverNode.findUniqueOrThrow({ where: { id: server.id } });
+      const { agentSecretHash, ...safeServer } = checked;
+      return res.status(201).json({ success: true, server: safeServer });
     } catch (err: any) {
       return res.status(500).json({
         success: false,
         error: 'DB_ERROR',
-        message: err.message || 'Failed to create server'
+        message: 'Failed to create server'
       });
     }
   }
@@ -168,13 +174,16 @@ router.put(
         dataToUpdate.agentSecretHash = agentSecret;
       }
 
-      const server = await prisma.serverNode.update({
-        where: { id },
-        data: dataToUpdate
+      const server = await prisma.$transaction(async tx => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${id}))`;
+        return tx.serverNode.update({ where: { id }, data: dataToUpdate });
       });
 
-      await logAudit(req.admin!.adminId, 'UPDATE_SERVER', 'SERVER', id, req.body);
-      return res.json({ success: true, server });
+      await logAudit(req.admin!.adminId, 'UPDATE_SERVER', 'SERVER', id, { fields: Object.keys(req.body).filter(k => k !== 'agentSecret') });
+      await testNode(server);
+      const checked = await prisma.serverNode.findUniqueOrThrow({ where: { id: server.id } });
+      const { agentSecretHash, ...safeServer } = checked;
+      return res.json({ success: true, server: safeServer });
     } catch (_err) {
       return res.status(404).json({
         success: false,
@@ -191,6 +200,8 @@ router.delete(
   async (req: AuthenticatedAdminRequest, res: Response) => {
     const { id } = req.params;
     try {
+      const node = await prisma.serverNode.findUniqueOrThrow({ where: { id }, include: { peerSessions: true } });
+      for (const peer of node.peerSessions) if (peer.active) await AgentClient.removePeer(node.agentUrl, node.agentSecretHash, { publicKey: peer.clientPublicKey });
       await prisma.serverNode.delete({ where: { id } });
       await logAudit(req.admin!.adminId, 'DELETE_SERVER', 'SERVER', id);
       return res.json({ success: true, message: 'Server node deleted' });
@@ -216,31 +227,23 @@ router.post(
         return res.status(404).json({ success: false, error: 'NOT_FOUND', message: 'Server not found' });
       }
 
-      try {
-        const health = await AgentClient.getNodeHealth(server.agentUrl, server.agentSecretHash);
-        if (health.online) {
-          await prisma.serverNode.update({
-            where: { id },
-            data: { currentLoad: health.loadPercent }
-          });
-        }
-        return res.json({ success: true, health });
-      } catch (agentErr: any) {
-        return res.json({
-          success: true,
-          health: {
-            online: false,
-            peerCount: 0,
-            loadPercent: server.currentLoad,
-            error: agentErr.message || 'Gateway agent unreachable'
-          }
-        });
-      }
+      const health = await testNode(server);
+      return res.json({ success: true, health });
     } catch (err: any) {
-      return res.status(500).json({ success: false, error: 'HEALTH_CHECK_FAILED', message: err.message });
+      return res.status(500).json({ success: false, error: 'HEALTH_CHECK_FAILED', message: 'Operation failed' });
     }
   }
 );
+
+router.post('/servers/:id/sync-public-key', authenticateAdmin('SUPER_ADMIN'), async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const node = await prisma.serverNode.findUnique({ where: { id: req.params.id } });
+    if (!node) return res.status(404).json({ success: false, error: 'NOT_FOUND' });
+    const health = await testNode(node, true);
+    await logAudit(req.admin!.adminId, 'SYNC_NODE_PUBLIC_KEY', 'SERVER', node.id);
+    return res.status(health.agentOnline ? 200 : 502).json({ success: health.agentOnline, health });
+  } catch { return res.status(502).json({ success: false, error: 'AGENT_UNREACHABLE' }); }
+});
 
 // 4. Device Management
 router.get('/devices', authenticateAdmin(), async (req, res: Response) => {
@@ -334,10 +337,20 @@ router.put(
     const { isBlocked } = req.body;
 
     try {
-      const updated = await prisma.device.update({
-        where: { id },
-        data: { isBlocked: Boolean(isBlocked) }
+      if (typeof isBlocked !== 'boolean') return res.status(400).json({ success: false, error: 'INVALID_INPUT' });
+      const updated = await prisma.$transaction(async tx => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`device:${id}`}))`;
+        return tx.device.update({ where: { id }, data: { isBlocked } });
       });
+      if (isBlocked) {
+        const peers = await prisma.peerSession.findMany({ where: { deviceId: id, active: true }, include: { server: true } });
+        for (const peer of peers) {
+          try {
+            await AgentClient.removePeer(peer.server.agentUrl, peer.server.agentSecretHash, { publicKey: peer.clientPublicKey });
+            await prisma.peerSession.delete({ where: { id: peer.id } });
+          } catch { return res.status(502).json({ success: false, error: 'DEVICE_BLOCKED_PEER_REMOVAL_PENDING', message: 'Device blocked; live peer removal needs agent recovery or manual removal' }); }
+        }
+      }
 
       await logAudit(
         req.admin!.adminId,
@@ -388,7 +401,7 @@ router.get('/config', authenticateAdmin(), async (_req, res: Response) => {
     return res.status(500).json({
       success: false,
       error: 'DB_ERROR',
-      message: err.message || 'Failed to fetch configuration'
+      message: 'Failed to fetch configuration'
     });
   }
 });
@@ -423,7 +436,7 @@ router.put(
       return res.status(500).json({
         success: false,
         error: 'DB_ERROR',
-        message: err.message || 'Failed to update configuration'
+        message: 'Failed to update configuration'
       });
     }
   }

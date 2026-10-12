@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { validateNode } from '../lib/nodeValidation';
 import {
   Server,
   Plus,
@@ -22,6 +23,7 @@ interface NodesScreenProps {
   onCreateServer: (serverData: any) => Promise<boolean>;
   onToggleServer: (server: ServerNode) => Promise<boolean>;
   onDeleteServer: (id: string) => Promise<boolean>;
+  onSyncKey: (server: ServerNode) => Promise<void>;
   onPingServer: (server: ServerNode) => Promise<{ online: boolean; peerCount?: number; loadPercent?: number; error?: string }>;
 }
 
@@ -33,7 +35,8 @@ export const NodesScreen = ({
   onCreateServer,
   onToggleServer,
   onDeleteServer,
-  onPingServer
+  onPingServer,
+  onSyncKey
 }: NodesScreenProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterTier, setFilterTier] = useState<'ALL' | 'FREE' | 'VIP' | 'ACTIVE' | 'DISABLED'>('ALL');
@@ -43,15 +46,13 @@ export const NodesScreen = ({
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Health ping feedback cache: serverId -> health status
-  const [pingResults, setPingResults] = useState<Record<string, { online: boolean; peerCount: number; loadPercent: number; timestamp: number }>>({});
+  const [pingResults, setPingResults] = useState<Record<string, { online: boolean; peerCount: number | null; loadPercent: number | null; timestamp: number }>>({});
 
   // Add Server Form State
   const [newServer, setNewServer] = useState({
     name: '',
-    countryCode: 'US',
-    countryName: 'United States',
-    city: 'New York',
-    flagEmoji: '🇺🇸',
+    countryCode: '', countryName: '', city: '', flagEmoji: '',
+    subnetIpv4: '10.8.0.0/24', dnsServers: ['1.1.1.1', '1.0.0.1'],
     endpoint: '',
     publicKey: '',
     agentUrl: 'http://',
@@ -102,8 +103,8 @@ export const NodesScreen = ({
         ...prev,
         [server.id]: {
           online: Boolean(res.online),
-          peerCount: res.peerCount ?? 0,
-          loadPercent: res.loadPercent ?? server.currentLoad,
+          peerCount: res.peerCount ?? null,
+          loadPercent: res.loadPercent ?? null,
           timestamp: Date.now()
         }
       }));
@@ -114,7 +115,7 @@ export const NodesScreen = ({
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const errors: string[] = [];
+    const errors: string[] = validateNode(newServer);
 
     if (!newServer.name.trim()) errors.push('Server name is required.');
     if (!/^([a-zA-Z0-9.-]+):(\d+)$/.test(newServer.endpoint.trim())) {
@@ -126,8 +127,8 @@ export const NodesScreen = ({
     if (!newServer.agentUrl.startsWith('http://') && !newServer.agentUrl.startsWith('https://')) {
       errors.push('Agent URL must be a valid http:// or https:// URL.');
     }
-    if (newServer.agentSecret.trim().length < 16) {
-      errors.push('Agent secret must be at least 16 characters.');
+    if (!/^env:[A-Z][A-Z0-9_]{2,95}$/.test(newServer.agentSecret.trim())) {
+      errors.push('Use a backend environment credential reference.');
     }
 
     if (errors.length > 0) {
@@ -143,10 +144,8 @@ export const NodesScreen = ({
         setShowAddModal(false);
         setNewServer({
           name: '',
-          countryCode: 'US',
-          countryName: 'United States',
-          city: 'New York',
-          flagEmoji: '🇺🇸',
+          countryCode: '', countryName: '', city: '', flagEmoji: '',
+          subnetIpv4: '10.8.0.0/24', dnsServers: ['1.1.1.1', '1.0.0.1'],
           endpoint: '',
           publicKey: '',
           agentUrl: 'http://',
@@ -199,7 +198,7 @@ export const NodesScreen = ({
             <Shield className="w-4 h-4 text-amber-400" />
           </div>
           <div className="text-2xl font-black text-white">{vipServers}</div>
-          <div className="text-xs text-amber-400 mt-1">10Gbps Dedicated</div>
+          <div className="text-xs text-amber-400 mt-1">Premium Nodes</div>
         </div>
 
         <div className="bg-[#0B132B] border border-slate-800 p-5 rounded-2xl shadow-lg">
@@ -372,7 +371,7 @@ export const NodesScreen = ({
                               <span>Daemon Online</span>
                             </div>
                             <div className="text-[10px] text-slate-400 font-mono">
-                              {ping.peerCount} peers • {ping.loadPercent}% CPU
+                              {ping.peerCount ?? 'Unknown'} peers • {ping.loadPercent !== null ? `${ping.loadPercent}% CPU` : 'CPU unavailable'}
                             </div>
                           </div>
                         ) : (
@@ -409,11 +408,12 @@ export const NodesScreen = ({
                         onClick={() => handlePing(server)}
                         disabled={isPinging}
                         className="p-1.5 text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 rounded-lg transition"
-                        title="Query Node Health via Daemon"
+                        title="Test node: key, endpoint, public IP and agent health"
                       >
-                        <Activity className={`w-4 h-4 ${isPinging ? 'animate-spin text-cyan-400' : ''}`} />
+                        <span className="text-xs">Test node</span><Activity className={`w-4 h-4 ${isPinging ? 'animate-spin text-cyan-400' : ''}`} />
                       </button>
 
+                      {adminRole === 'SUPER_ADMIN' && <button className="text-xs text-cyan-400" onClick={() => onSyncKey(server)}>Sync public key from node</button>}
                       {adminRole === 'SUPER_ADMIN' && (
                         <button
                           onClick={() => setDeleteTargetId(server.id)}
@@ -536,6 +536,12 @@ export const NodesScreen = ({
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <label className="text-xs">Tunnel subnet (private IPv4 /24)</label>
+                <input className="w-full bg-slate-900 p-2" value={newServer.subnetIpv4} onChange={e => setNewServer({ ...newServer, subnetIpv4: e.target.value })} />
+                <label className="text-xs">DNS IPv4 addresses, comma separated</label>
+                <input className="w-full bg-slate-900 p-2" value={newServer.dnsServers.join(',')} onChange={e => setNewServer({ ...newServer, dnsServers: e.target.value.split(',').map(v => v.trim()) })} />
+              </div>
               <div>
                 <label className="text-xs font-semibold text-slate-300 block mb-1">
                   WIREGUARD ENDPOINT (HOST:PORT)
@@ -556,7 +562,7 @@ export const NodesScreen = ({
                 </label>
                 <input
                   type="text"
-                  placeholder="8J5aOQv4rTqK3F6mE5nP7sL9wY2zU1xV4bN7mQ0kP8M="
+                  placeholder="Paste the current node public key"
                   value={newServer.publicKey}
                   onChange={(e) => setNewServer({ ...newServer, publicKey: e.target.value.trim() })}
                   required
@@ -568,7 +574,7 @@ export const NodesScreen = ({
                 <label className="text-xs font-semibold text-slate-300 block mb-1">NODE AGENT URL</label>
                 <input
                   type="text"
-                  placeholder="http://198.51.100.24:51821"
+                  placeholder="Agent management origin"
                   value={newServer.agentUrl}
                   onChange={(e) => setNewServer({ ...newServer, agentUrl: e.target.value.trim() })}
                   required
@@ -578,11 +584,11 @@ export const NodesScreen = ({
 
               <div>
                 <label className="text-xs font-semibold text-slate-300 block mb-1">
-                  AGENT SHARED HMAC SECRET
+                  BACKEND CREDENTIAL REFERENCE
                 </label>
                 <input
                   type="password"
-                  placeholder="Generated by install-wireguard-node.sh"
+                  placeholder="Backend environment credential reference"
                   value={newServer.agentSecret}
                   onChange={(e) => setNewServer({ ...newServer, agentSecret: e.target.value.trim() })}
                   required

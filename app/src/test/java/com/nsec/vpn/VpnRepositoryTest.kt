@@ -15,7 +15,9 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import retrofit2.Response
 
-class FakeNsecVpnApi : NsecVpnApi {
+open class FakeNsecVpnApi : NsecVpnApi {
+    override suspend fun getDeviceProfile(token: String): Response<DeviceProfileResponse> = Response.success(DeviceProfileResponse(false, null))
+    override suspend fun verifyPurchase(token: String, request: VerifyPurchaseRequest): Response<VerifyPurchaseResponse> = Response.success(VerifyPurchaseResponse(false))
     override suspend fun registerDevice(request: RegisterDeviceRequest): Response<RegisterDeviceResponse> {
         return Response.success(RegisterDeviceResponse(true, AuthDataDto("token", "refresh", DeviceInfoDto("1", "FREE", null))))
     }
@@ -64,9 +66,57 @@ class FakeNsecVpnApi : NsecVpnApi {
 class VpnRepositoryTest {
 
     @Test
+    fun legacyLocalRewardExpiryCannotGrantAnEntitlement() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val vault = TestVault.create(context)
+        vault.saveRewardedPassExpiry(System.currentTimeMillis() + 3600000)
+        val repository = VpnRepository(context, FakeNsecVpnApi(), vault)
+        assertEquals("FREE", repository.userTier.value)
+    }
+
+    @Test
+    fun paidTierComesFromTheServerAndExpiresWithoutLocalGrants() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        var expired = false
+        val api = object : FakeNsecVpnApi() {
+            override suspend fun getDeviceProfile(token: String): Response<DeviceProfileResponse> =
+                Response.success(DeviceProfileResponse(true, DeviceInfoDto("test-device", "VIP",
+                    java.time.Instant.now().plusSeconds(if (expired) -60 else 3600).toString())))
+        }
+        val repository = VpnRepository(context, api, TestVault.create(context))
+        repository.refreshServers()
+        assertEquals("VIP", repository.userTier.value)
+        expired = true
+        repository.refreshVerifiedEntitlement()
+        assertEquals("FREE", repository.userTier.value)
+    }
+
+    @Test
+    fun failedServerApiNeverInventsDataAndRetainsOnlyThePriorApiList() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        var unavailable = true
+        val api = object : FakeNsecVpnApi() {
+            override suspend fun getServers(token: String, grouped: Boolean): Response<ServerListResponse> {
+                if (unavailable) throw java.io.IOException("test outage")
+                return super.getServers(token, grouped)
+            }
+        }
+        val repository = VpnRepository(context, api, TestVault.create(context))
+        repository.refreshServers()
+        assertTrue(repository.servers.value.isEmpty())
+        assertNotNull(repository.serverListError.value)
+        unavailable = false
+        repository.refreshServers()
+        val prior = repository.servers.value
+        unavailable = true
+        repository.refreshServers()
+        assertEquals(prior, repository.servers.value)
+    }
+
+    @Test
     fun init_populatesServersAndSelectsDefault() = runBlocking {
         val fakeApi = FakeNsecVpnApi()
-        val keyStoreManager = KeyStoreManager(ApplicationProvider.getApplicationContext())
+        val keyStoreManager = TestVault.create(ApplicationProvider.getApplicationContext())
         val repository = VpnRepository(ApplicationProvider.getApplicationContext(), fakeApi, keyStoreManager)
         repository.refreshServers()
 
@@ -82,7 +132,7 @@ class VpnRepositoryTest {
     @Test
     fun selectBestServer_selectsLowestLatencyServer() = runBlocking {
         val fakeApi = FakeNsecVpnApi()
-        val keyStoreManager = KeyStoreManager(ApplicationProvider.getApplicationContext())
+        val keyStoreManager = TestVault.create(ApplicationProvider.getApplicationContext())
         val repository = VpnRepository(ApplicationProvider.getApplicationContext(), fakeApi, keyStoreManager)
         repository.refreshServers()
 
@@ -94,7 +144,7 @@ class VpnRepositoryTest {
     fun toggleFavorite_persistsFavoritesAcrossRepositoryReinitialization() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         val fakeApi = FakeNsecVpnApi()
-        val keyStoreManager = KeyStoreManager(context)
+        val keyStoreManager = TestVault.create(context)
         val repository1 = VpnRepository(context, fakeApi, keyStoreManager)
         repository1.refreshServers()
 
@@ -117,7 +167,7 @@ class VpnRepositoryTest {
     fun setThemeMode_persistsThemeModeSetting() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         val fakeApi = FakeNsecVpnApi()
-        val keyStoreManager = KeyStoreManager(context)
+        val keyStoreManager = TestVault.create(context)
         val repository1 = VpnRepository(context, fakeApi, keyStoreManager)
 
         repository1.setThemeMode(ThemeMode.DARK)

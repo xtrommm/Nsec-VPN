@@ -78,7 +78,7 @@ describe('Validation Schemas (Zod)', () => {
         publicKey: '8J5aOQv4rTqK3F6mE5nP7sL9wY2zU1xV4bN7mQ0kP8M=',
         subnetIpv4: '10.8.0.0/24',
         agentUrl: 'http://198.51.100.24:51821',
-        agentSecret: 'very_secure_secret_key_123',
+        agentSecret: 'env:NSEC_TEST_AGENT_KEY',
         isPremiumOnly: false,
         isRecommended: true,
         active: true
@@ -96,7 +96,7 @@ describe('Validation Schemas (Zod)', () => {
         endpoint: 'us.nsecvpn.com', // missing port
         publicKey: '8J5aOQv4rTqK3F6mE5nP7sL9wY2zU1xV4bN7mQ0kP8M=',
         agentUrl: 'http://198.51.100.24:51821',
-        agentSecret: 'very_secure_secret_key_123'
+        agentSecret: 'env:NSEC_TEST_AGENT_KEY'
       };
       expect(() => CreateServerSchema.parse(invalid)).toThrow();
     });

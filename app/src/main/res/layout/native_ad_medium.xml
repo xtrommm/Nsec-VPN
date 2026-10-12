@@ -34,9 +34,9 @@
                     android:layout_height="16.dp"
                     android:background="#FFC107"
                     android:gravity="center"
-                    android:text="Ad"
+                    android:text="@string/ad_label"
                     android:textColor="#000000"
-                    android:textSize="9sp"
+                    android:textSize="11sp"
                     android:textStyle="bold" />
             </FrameLayout>
 

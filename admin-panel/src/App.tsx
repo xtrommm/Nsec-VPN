@@ -26,6 +26,7 @@ export default function App() {
   // Auth Form State
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [totpCode, setTotpCode] = useState('');
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
@@ -51,14 +52,7 @@ export default function App() {
   }, []);
 
   // Data States
-  const [stats, setStats] = useState<StatsData>({
-    activeTunnels: 0,
-    totalDevices: 0,
-    vipSubscribers: 0,
-    totalServers: 0,
-    avgServerLoad: 0,
-    topCountries: []
-  });
+  const [stats, setStats] = useState<StatsData | null>(null);
   const [servers, setServers] = useState<ServerNode[]>([]);
   const [devices, setDevices] = useState<DeviceUser[]>([]);
   const [deviceSearch, setDeviceSearch] = useState('');
@@ -111,7 +105,7 @@ export default function App() {
       const res = await fetch(`${API_BASE}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: loginEmail, password: loginPassword })
+        body: JSON.stringify({ email: loginEmail, password: loginPassword, totpCode: totpCode || undefined })
       });
 
       const data = await res.json();
@@ -264,6 +258,10 @@ export default function App() {
   const handlePingServer = async (server: ServerNode) => {
     try {
       const res = await apiFetch(`/servers/${server.id}/ping`, { method: 'POST' });
+      if (res.health?.agentOnline) {
+        const h = res.health;
+        window.alert(`Node test: ${h.online ? 'PASS' : 'FAIL'}\nEndpoint: ${h.endpoint}\nPublic IPv4: ${h.publicIpv4 || 'Unavailable'}\nPublic key matches: ${h.keyMatches}\nUDP port matches: ${h.portMatches}\nDNS: ${(h.dnsServers || []).join(', ')}\nMTU: ${h.mtu}\nLocation: ${h.locationName}`);
+      }
       if (res.health?.online) {
         showToast(
           'success',
@@ -426,6 +424,8 @@ export default function App() {
                     className="w-full bg-slate-900/90 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition font-mono"
                   />
                 </div>
+                <input aria-label="Authenticator code" autoComplete="one-time-code" placeholder="Authenticator code (if enabled)" value={totpCode} onChange={e => setTotpCode(e.target.value)} className="w-full bg-slate-900 p-2 rounded" />
+
               </div>
 
               <button
@@ -466,7 +466,7 @@ export default function App() {
         setCurrentTab={setCurrentTab}
         adminRole={adminRole}
         serverCount={servers.length}
-        deviceCount={stats.totalDevices}
+        deviceCount={stats?.totalDevices ?? null}
         adminEmail={adminEmail}
         onLogout={handleLogout}
         mobileOpen={mobileMenuOpen}
@@ -480,7 +480,7 @@ export default function App() {
           adminEmail={adminEmail}
           adminRole={adminRole}
           loading={loading}
-          activeTunnels={stats.activeTunnels}
+          activeTunnels={stats?.activeTunnels ?? null}
           totalServers={servers.length}
           onRefresh={refreshData}
           onLogout={handleLogout}
@@ -499,6 +499,13 @@ export default function App() {
               onToggleServer={handleToggleServer}
               onDeleteServer={handleDeleteServer}
               onPingServer={handlePingServer}
+            onSyncKey={async server => {
+              try {
+                const res = await apiFetch(`/servers/${server.id}/sync-public-key`, { method: 'POST' });
+                showToast(res.health?.online ? 'success' : 'warning', 'Public key synchronized; existing clients must reconnect.');
+                await refreshData();
+              } catch { showToast('error', 'Public key sync failed'); }
+            }}
             />
           )}
 
@@ -506,8 +513,8 @@ export default function App() {
           {currentTab === 'devices' && (
             <DevicesScreen
               devices={devices}
-              totalDevices={stats.totalDevices}
-              vipCount={stats.vipSubscribers}
+              totalDevices={stats?.totalDevices ?? null}
+              vipCount={stats?.vipSubscribers ?? null}
               loading={loading}
               page={devicePage}
               totalPages={deviceTotalPages}

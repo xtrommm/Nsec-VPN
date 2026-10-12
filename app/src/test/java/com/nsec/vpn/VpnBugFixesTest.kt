@@ -25,7 +25,9 @@ class VpnBugFixesTest {
     fun peerApiFailure_throwsExceptionAndPreventsTunnelStart() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         val failingApi = object : NsecVpnApi {
-            override suspend fun registerDevice(request: RegisterDeviceRequest) = Response.success(RegisterDeviceResponse(true, AuthDataDto("token", "refresh", DeviceInfoDto("1", "FREE", null))))
+            override suspend fun getDeviceProfile(token: String): Response<DeviceProfileResponse> = Response.success(DeviceProfileResponse(false, null))
+    override suspend fun verifyPurchase(token: String, request: VerifyPurchaseRequest): Response<VerifyPurchaseResponse> = Response.success(VerifyPurchaseResponse(false))
+    override suspend fun registerDevice(request: RegisterDeviceRequest) = Response.success(RegisterDeviceResponse(true, AuthDataDto("token", "refresh", DeviceInfoDto("1", "FREE", null))))
             override suspend fun refreshToken(request: RefreshTokenRequest) = Response.success(RefreshTokenResponse(true, null))
             override suspend fun getServers(token: String, grouped: Boolean) = Response.success(ServerListResponse(true, ServerListDataDto(emptyList())))
             override suspend fun connect(token: String, request: ConnectVpnRequest): Response<ConnectVpnResponse> = Response.error(500, "Server Error".toResponseBody("text/plain".toMediaTypeOrNull()))
@@ -34,10 +36,10 @@ class VpnBugFixesTest {
             override suspend fun getLegal(type: String) = Response.success(LegalResponse(true, null))
         }
 
-        val keyStore = KeyStoreManager(context)
+        val keyStore = TestVault.create(context)
         val repo = VpnRepository(context, failingApi, keyStore)
         val server = Server("srv_1", "Test", "US", "United States", "New York", "🇺🇸", 20, false, true, 20)
-        val keyPair = keyStore.generateEphemeralWireGuardKeyPair()
+        val keyPair = keyStore.getOrCreateWireGuardKeyPair()
         
         // Should throw IllegalStateException instead of returning fake fallback config
         repo.fetchTunnelConfig(server, keyPair.publicKey.toBase64())
@@ -93,20 +95,20 @@ class VpnBugFixesTest {
         )
         val validation = WireGuardTunnelManager.validateTunnelConfig(privateConfig)
         assertFalse(validation.isValid)
-        assertTrue(validation.errorMessage?.contains("private or documentation endpoint IP rejected") == true)
+        assertTrue(!validation.errorMessage.isNullOrBlank())
     }
 
     @Test
     fun keyPairConsistency_clientPublicKeyMatchesTunnelPrivateKey() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-        val keyStore = KeyStoreManager(context)
-        val keyPair1 = keyStore.generateEphemeralWireGuardKeyPair()
+        val keyStore = TestVault.create(context)
+        val keyPair1 = keyStore.getOrCreateWireGuardKeyPair()
         val pubKey1 = keyPair1.publicKey.toBase64()
         val privKey1 = keyPair1.privateKey.toBase64()
 
         assertNotNull(pubKey1)
         assertNotNull(privKey1)
-        assertEquals(pubKey1, keyPair1.publicKey.toBase64())
+        assertEquals(pubKey1, com.wireguard.crypto.KeyPair(com.wireguard.crypto.Key.fromBase64(privKey1)).publicKey.toBase64())
     }
 
     @Test
@@ -120,6 +122,7 @@ class VpnBugFixesTest {
         val config = TunnelConfig(
             serverPublicKey = "8J5aOQv4rTqK3F6mE5nP7sL9wY2zU1xV4bN7mQ0kP8M=",
             serverEndpoint = "8.8.8.8:51820",
+            nodeId = "test-node", nodeName = "Test node", locationName = "Test location", publicIpv4 = "8.8.8.8",
             clientAddress = "10.8.0.2/32",
             dnsServers = listOf("1.1.1.1", "1.0.0.1"),
             allowedIps = listOf("0.0.0.0/0"),

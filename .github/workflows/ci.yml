@@ -10,21 +10,43 @@ permissions:
   contents: read
 
 jobs:
+  deployment:
+    name: Deployment Script Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check shell scripts
+        run: shellcheck deployment/install-wireguard-node.sh scripts/*.sh
+      - name: Verify idempotent firewall setup and teardown
+        run: python3 tests/deployment/firewall_test.py
+
   backend:
     name: Backend Lint, Test & Build
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: nsecvpn_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       NODE_ENV: test
       DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/nsecvpn_ci?schema=public"
-      JWT_SECRET: "ci_pipeline_test_jwt_secret_nsec_vpn_2026"
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
+      - name: Generate ephemeral test signing key
+        run: node -e "process.stdout.write('JWT_SECRET='+require('crypto').randomBytes(32).toString('hex')+'\n')" >> "$GITHUB_ENV"
       - name: Install Dependencies
         run: |
           cd backend
@@ -33,17 +55,24 @@ jobs:
         run: |
           cd backend
           npx prisma generate
+      - name: Type check
+        working-directory: backend
+        run: npm run lint
       - name: Run Tests
         working-directory: backend
         env:
           NODE_OPTIONS: --max-old-space-size=4096
-        run: npm test -- --runInBand --detectOpenHandles --forceExit
+        run: npm test -- --runInBand --detectOpenHandles
 
       - name: Build TypeScript
         working-directory: backend
         env:
           NODE_OPTIONS: --max-old-space-size=4096
         run: npm run build
+
+      - name: Database migrations and concurrency integration
+        working-directory: backend
+        run: npx prisma migrate deploy && npm run test:integration
 
   admin-panel:
     name: Admin Panel Build
@@ -53,13 +82,16 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
           cache-dependency-path: admin-panel/package-lock.json
       - name: Install Dependencies
         run: |
           cd admin-panel
           npm ci
+      - name: Validate and test panel
+        working-directory: admin-panel
+        run: npm run lint && npm test
       - name: Build React Vite Bundle
         run: |
           cd admin-panel
@@ -73,13 +105,16 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
           cache-dependency-path: agent/package-lock.json
       - name: Install Dependencies
         run: |
           cd agent
           npm ci
+      - name: Validate and test agent
+        working-directory: agent
+        run: npm run lint && npm test
       - name: Build Agent
         run: |
           cd agent
@@ -116,5 +151,7 @@ jobs:
       - name: Run Unit & Robolectric Tests
         run: ./gradlew :app:testDebugUnitTest --no-daemon
 
+      - name: Android lint
+        run: ./gradlew :app:lintDebug --no-daemon
       - name: Build Debug APK
         run: ./gradlew :app:assembleDebug --no-daemon

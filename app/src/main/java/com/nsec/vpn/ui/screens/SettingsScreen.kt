@@ -1,5 +1,6 @@
 package com.nsec.vpn.ui.screens
 
+import androidx.core.net.toUri
 import android.content.Intent
 import android.provider.Settings
 import androidx.compose.foundation.background
@@ -32,8 +33,6 @@ import com.nsec.vpn.ui.theme.*
 fun SettingsScreen(
     themeMode: ThemeMode,
     onSelectThemeMode: (ThemeMode) -> Unit,
-    killSwitchEnabled: Boolean,
-    onToggleKillSwitch: (Boolean) -> Unit,
     selectedDns: DnsProvider,
     onSelectDns: (DnsProvider) -> Unit,
     splitTunnelingEnabled: Boolean,
@@ -85,23 +84,16 @@ fun SettingsScreen(
 
         SectionHeader("SECURITY & PROTOCOL")
 
-        SettingsToggleItem(
+        SettingsClickableItem(
             icon = Icons.Default.Shield,
-            title = "Kill Switch",
-            subtitle = "Block all internet traffic if VPN drops unexpectedly",
-            isChecked = killSwitchEnabled,
-            onCheckedChange = { checked ->
-                if (checked) {
-                    showKillSwitchDialog = true
-                } else {
-                    onToggleKillSwitch(false)
-                }
-            }
+            title = "Android VPN Lockdown",
+            subtitle = "Configure Always-on VPN and blocking in Android settings",
+            onClick = { showKillSwitchDialog = true }
         )
 
         SettingsClickableItem(
             icon = Icons.Default.Dns,
-            title = "Encrypted DNS",
+            title = "DNS Resolver Through VPN",
             subtitle = selectedDns.displayName,
             onClick = { showDnsDialog = true }
         )
@@ -161,7 +153,7 @@ fun SettingsScreen(
             subtitle = "nsecvpn.com",
             onClick = {
                 try {
-                    val browserIntent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://nsecvpn.com"))
+                    val browserIntent = Intent(Intent.ACTION_VIEW, "https://nsecvpn.com".toUri())
                     context.startActivity(browserIntent)
                 } catch (_: Exception) {}
             }
@@ -283,7 +275,7 @@ fun SettingsScreen(
             title = { Text("Enable Android System Kill Switch", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
             text = {
                 Text(
-                    "For full hardware-level kill switch protection against packet leaks, Android provides the 'Always-on VPN' and 'Block connections without VPN' system setting.\n\nTap below to open system VPN settings.",
+                    "Android's 'Always-on VPN' and 'Block connections without VPN' settings can block traffic when the VPN is unavailable. Lockdown can also block ads because Nsec stays excluded. Confirm the actual setting in Android; opening this page does not enable protection.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 13.sp,
                     lineHeight = 18.sp
@@ -293,7 +285,6 @@ fun SettingsScreen(
                 Button(
                     onClick = {
                         showKillSwitchDialog = false
-                        onToggleKillSwitch(true)
                         try {
                             context.startActivity(Intent(Settings.ACTION_VPN_SETTINGS))
                         } catch (_: Exception) {}

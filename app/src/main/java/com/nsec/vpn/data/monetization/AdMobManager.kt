@@ -175,7 +175,6 @@ class AdMobManager(private val context: Context) {
         val ad = rewardedAd
         if (ad == null || activity.isFinishing || activity.isDestroyed) {
             rewardedAd = null
-            onRewarded()
             onAdDismissed()
             preloadRewarded(activity)
             return
@@ -196,12 +195,13 @@ class AdMobManager(private val context: Context) {
                 }
             }
 
+            val deviceId = com.nsec.vpn.core.network.ServiceLocator.getInstance(activity).keyStoreManager.getOrCreateDeviceId()
+            ad.setServerSideVerificationOptions(com.google.android.gms.ads.rewarded.ServerSideVerificationOptions.Builder().setUserId(deviceId).build())
             ad.show(activity) { _ ->
                 onRewarded()
             }
         } catch (_: Throwable) {
             rewardedAd = null
-            onRewarded()
             onAdDismissed()
             preloadRewarded(activity)
         }

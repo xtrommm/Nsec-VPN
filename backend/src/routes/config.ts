@@ -93,24 +93,20 @@ router.get('/legal/:type', (req: Request, res: Response) => {
       success: true,
       data: {
         type: 'privacy',
-        version: '1.0.0',
-        contentMarkdown: `# Nsec VPN Zero-Logs Privacy Policy
+        version: '1.1.0',
+        contentMarkdown: `# Nsec VPN Privacy Information
 
-**Effective Date:** October 2026
-**Website:** https://nsecvpn.com
-**Operator:** Nsec Security Systems
+### Operational records
+The service persists a random installation identifier, device authentication records, account entitlements, purchase-token hashes, rewarded-ad verification records, and expiring WireGuard public-key/address leases. The node persists peer configuration and lease metadata to restore authorized peers after reboot. The installation identifier is not a hardware identifier.
 
-### 1. Absolute Zero-Logs Commitment
-Nsec VPN does not track, store, or log any browsing activity, DNS queries, traffic content, origin IP addresses, or destination metadata. We have engineered our WireGuard® infrastructure from the kernel layer up to operate with volatile ephemeral state.
+### Tunnel keys and traffic
+Client private keys remain on the device and are protected using Android Keystore encryption. Server and client public keys and assigned tunnel addresses are operational records, not RAM-only records. WireGuard keeps runtime endpoint, handshake and transfer-counter state in memory. This implementation does not persist originating client IPs, browsing activity, DNS queries or traffic content. Hosting and third-party provider settings require a separate operator review.
 
-### 2. Anonymous Hardware Authentication
-Nsec VPN does not collect emails, passwords, names, or phone numbers. Client authorization relies strictly on an anonymous cryptographic UUID generated inside the Android hardware Keystore.
+### Advertising and billing
+Google Play processes payments. Google AdMob serves advertising and verifies rewarded-ad events. These providers have their own privacy policies. The VPN app is excluded from the tunnel so its advertising traffic uses the ordinary network connection.
 
-### 3. WireGuard Cryptographic Key Exchange
-WireGuard peer Curve25519 public keys and dynamic private IP addresses (e.g. 10.8.0.x) exist only in volatile server kernel RAM for the duration of an active connection and are permanently removed upon disconnection.
-
-### 4. Third-Party Services
-Subscription processing is handled directly by Google Play In-App Billing. Nsec VPN servers never see or store your credit card or financial details. Optional advertising is served through Google AdMob.`
+### Retention and deletion
+Expired peers are removed by lease cleanup; failed node cleanup is retried. Clearing app data removes local data and does not delete backend records. The operator must publish verified retention periods, a deletion contact and its identity before release.`
       }
     });
   }
@@ -119,11 +115,8 @@ Subscription processing is handled directly by Google Play In-App Billing. Nsec 
     success: true,
     data: {
       type: 'terms',
-      version: '1.0.0',
+      version: '1.1.0',
       contentMarkdown: `# Nsec VPN Terms of Service
-
-**Effective Date:** October 2026
-**Website:** https://nsecvpn.com
 
 ### 1. Acceptable Use
 By utilizing the Nsec VPN service, you agree not to use our network infrastructure for:
@@ -132,7 +125,7 @@ By utilizing the Nsec VPN service, you agree not to use our network infrastructu
 - Unauthorized intrusion or port scanning against third-party systems.
 
 ### 2. Service Availability & Bandwidth
-Nsec VPN provides high-speed encrypted tunnels on a best-effort basis. VIP subscriptions unlock unrestricted 10Gbps high-capacity nodes. Free tier users receive access to standard community nodes.`
+Nsec VPN provides high-speed encrypted tunnels on a best-effort basis. Eligible paid or rewarded entitlements permit access to nodes marked premium. Availability and throughput depend on the selected node and network conditions; no fixed bandwidth is guaranteed.`
     }
   });
 });

@@ -50,6 +50,7 @@ fun ConnectedScreen(
     userTier: String,
     onDisconnect: () -> Unit,
     onBackToHome: () -> Unit,
+    connectedNode: com.nsec.vpn.data.model.TunnelConfig? = null,
     modifier: Modifier = Modifier
 ) {
     BackHandler {
@@ -83,6 +84,12 @@ fun ConnectedScreen(
             .testTag("connected_screen"),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        if (vpnState is VpnState.Connected && connectedNode != null) {
+            Text(connectedNode.nodeName.orEmpty(), fontWeight = FontWeight.Bold)
+            Text(connectedNode.locationName.orEmpty())
+            Text("VPN server IP: ${connectedNode.publicIpv4.orEmpty()}", modifier = Modifier.padding(vertical = 8.dp).testTag("vpn_server_ip"))
+        }
+
         // Top Navigation Header
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -101,7 +108,7 @@ fun ConnectedScreen(
             }
 
             Text(
-                text = "VPN CONNECTED",
+                text = if (vpnState is VpnState.Connected) "VPN CONNECTED" else "CONNECTING",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp,
@@ -150,19 +157,19 @@ fun ConnectedScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = selectedServer?.flagEmoji ?: "🇺🇸",
+                text = selectedServer?.flagEmoji.orEmpty(),
                 fontSize = 28.sp,
                 modifier = Modifier.padding(end = 12.dp)
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "${selectedServer?.city ?: "New York"}, ${selectedServer?.countryName ?: "United States"}",
+                    text = "${connectedNode?.locationName.orEmpty()}",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "Connected • Ping: ${selectedServer?.pingMs ?: 32}ms",
+                    text = "${if (vpnState is VpnState.Connected) "Connected" else "Connecting"} • Ping: ${selectedServer?.pingMs?.let { "${it}ms" } ?: "Unavailable"}",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

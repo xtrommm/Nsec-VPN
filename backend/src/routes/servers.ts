@@ -16,7 +16,7 @@ router.get('/', authenticateDevice, async (req: AuthenticatedDeviceRequest, res:
     (hidePremiumForFree && device.tier === 'FREE' && includePremiumParam !== 'true');
 
   try {
-    const whereClause: any = { active: true };
+    const whereClause: any = { active: true, healthy: true, healthCheckedAt: { gt: new Date(Date.now() - 120000) } };
     if (shouldHidePremium) {
       whereClause.isPremiumOnly = false;
     }
@@ -32,7 +32,8 @@ router.get('/', authenticateDevice, async (req: AuthenticatedDeviceRequest, res:
         flagEmoji: true,
         currentLoad: true,
         isPremiumOnly: true,
-        isRecommended: true
+        isRecommended: true,
+        endpoint: true, publicIpv4: true
       },
       orderBy: [{ isRecommended: 'desc' }, { currentLoad: 'asc' }]
     });

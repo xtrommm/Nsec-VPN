@@ -17,8 +17,8 @@ import { ConfirmModal } from '../components/ui/ConfirmModal';
 
 interface DevicesScreenProps {
   devices: DeviceUser[];
-  totalDevices: number;
-  vipCount: number;
+  totalDevices: number | null;
+  vipCount: number | null;
   loading: boolean;
   page: number;
   totalPages: number;
@@ -95,7 +95,7 @@ export const DevicesScreen = ({
             <span>REGISTERED HARDWARE</span>
             <Users className="w-4 h-4 text-cyan-400" />
           </div>
-          <div className="text-2xl font-black text-white">{totalDevices}</div>
+          <div className="text-2xl font-black text-white">{totalDevices ?? 'Unavailable'}</div>
           <div className="text-xs text-cyan-400 mt-1">Unique Keystore UUIDs</div>
         </div>
 
@@ -104,7 +104,7 @@ export const DevicesScreen = ({
             <span>VIP SUBSCRIBERS</span>
             <Shield className="w-4 h-4 text-amber-400" />
           </div>
-          <div className="text-2xl font-black text-white">{vipCount}</div>
+          <div className="text-2xl font-black text-white">{vipCount ?? 'Unavailable'}</div>
           <div className="text-xs text-amber-400 mt-1">Active Paid Licenses</div>
         </div>
 
@@ -113,7 +113,7 @@ export const DevicesScreen = ({
             <span>COMMUNITY USERS</span>
             <Smartphone className="w-4 h-4 text-emerald-400" />
           </div>
-          <div className="text-2xl font-black text-white">{Math.max(0, totalDevices - vipCount)}</div>
+          <div className="text-2xl font-black text-white">{totalDevices !== null && vipCount !== null ? Math.max(0, totalDevices - vipCount) : 'Unavailable'}</div>
           <div className="text-xs text-emerald-400 mt-1">Free Tier Fleet</div>
         </div>
 
@@ -316,7 +316,7 @@ export const DevicesScreen = ({
         {/* Pagination Bar */}
         <div className="p-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
           <span>
-            Showing {filteredDevices.length} of {totalDevices} total registered devices
+            Showing {filteredDevices.length} of {totalDevices ?? 'Unavailable'} total registered devices
           </span>
           <div className="flex items-center space-x-2">
             <button

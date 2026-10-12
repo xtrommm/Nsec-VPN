@@ -38,12 +38,15 @@ import java.util.Locale
 
 @Composable
 fun SpeedTestScreen(
-    currentServer: Server?,
+    @Suppress("UNUSED_PARAMETER") currentServer: Server?,
     userTier: String = "FREE",
     adMobConfig: AdMobConfig = AdMobConfig(),
     nativeAdManager: NativeAdManager,
     modifier: Modifier = Modifier,
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val manager = com.nsec.vpn.vpn.WireGuardTunnelManager.getInstance(context)
+    val tunnelState by manager.vpnState.collectAsState()
     val coroutineScope = rememberCoroutineScope()
     var isTesting by remember { mutableStateOf(value = false) }
     var currentSpeedMbps by remember { mutableFloatStateOf(0f) }
@@ -68,25 +71,14 @@ fun SpeedTestScreen(
         jitterMs = null
 
         coroutineScope.launch {
-            delay(500L)
-            pingMs = (currentServer?.pingMs ?: 28L) + (-3..4).random().toLong()
-            jitterMs = (2..6).random().toLong()
-
-            val targetSpeed = (48..92).random().toFloat()
-            for (step in 1..25) {
-                delay(120L)
-                val noise = (-4..6).random()
-                val progress = step / 25f
-                val speed = (targetSpeed * progress) + noise
-                currentSpeedMbps = speed.coerceAtLeast(0f)
-                if (currentSpeedMbps > peakDownloadMbps) {
-                    peakDownloadMbps = currentSpeedMbps
+            try {
+                repeat(15) {
+                    delay(1000L)
+                    if (manager.vpnState.value !is VpnState.Connected) return@launch
+                    currentSpeedMbps = manager.vpnStats.value.downloadSpeedMbps
+                    peakDownloadMbps = maxOf(peakDownloadMbps, currentSpeedMbps)
                 }
-            }
-
-            delay(400L)
-            currentSpeedMbps = peakDownloadMbps
-            isTesting = false
+            } finally { isTesting = false }
         }
     }
 
@@ -99,14 +91,14 @@ fun SpeedTestScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            text = "Speed Benchmark",
+            text = "Tunnel Throughput",
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground,
         )
 
         Text(
-            text = "Measuring direct network throughput (${currentServer?.name ?: "Global Gateway"})",
+            text = "Measures real WireGuard byte counters for 15 seconds. Download in another tunneled app; this app stays excluded for ads.",
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp),
@@ -176,18 +168,18 @@ fun SpeedTestScreen(
                 .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceAround,
         ) {
-            MetricColumn(label = "PING", value = pingMs?.let { "$it ms" } ?: "--")
+            MetricColumn(label = "PING", value = pingMs?.let { "$it ms" } ?: "Unavailable")
             Box(modifier = Modifier.width(1.dp).height(30.dp).background(MaterialTheme.colorScheme.outline))
-            MetricColumn(label = "JITTER", value = jitterMs?.let { "$it ms" } ?: "--")
+            MetricColumn(label = "JITTER", value = jitterMs?.let { "$it ms" } ?: "Unavailable")
             Box(modifier = Modifier.width(1.dp).height(30.dp).background(MaterialTheme.colorScheme.outline))
-            MetricColumn(label = "PEAK", value = if (peakDownloadMbps > 0) String.format(Locale.US, "%.1f M", peakDownloadMbps) else "--")
+            MetricColumn(label = "PEAK", value = if (peakDownloadMbps > 0) String.format(Locale.US, "%.1f M", peakDownloadMbps) else "No traffic measured")
         }
 
         Spacer(modifier = Modifier.height(36.dp))
 
         Button(
             onClick = { runSpeedTest() },
-            enabled = !isTesting,
+            enabled = !isTesting && tunnelState is VpnState.Connected,
             colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
             shape = RoundedCornerShape(14.dp),
             modifier = Modifier
@@ -198,7 +190,7 @@ fun SpeedTestScreen(
             Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White)
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = if (isTesting) "TESTING IN PROGRESS..." else "START SPEED TEST",
+                text = if (isTesting) "TESTING IN PROGRESS..." else "MEASURE TUNNEL TRAFFIC",
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
             )
@@ -210,7 +202,7 @@ fun SpeedTestScreen(
             nativeAdManager = nativeAdManager,
             adMobConfig = adMobConfig,
             userTier = userTier,
-            vpnState = if (isTesting) VpnState.Connecting else VpnState.Disconnected,
+            vpnState = tunnelState,
             modifier = Modifier.fillMaxWidth()
         )
     }

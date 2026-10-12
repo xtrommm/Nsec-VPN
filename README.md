@@ -1,3 +1,5 @@
+> Repair candidate: see [E2E repair report](docs/E2E-REPAIR-REPORT.md). Production readiness and real-device verification remain pending.
+
 # 🛡️ Nsec VPN — High-Speed WireGuard® Android Client & Management Suite
 
 [![Platform](https://img.shields.io/badge/Platform-Android_14--16_%28API_24--36%29-blue.svg)](https://developer.android.com)
@@ -35,7 +37,7 @@ Official Website: **[nsecvpn.com](https://nsecvpn.com)**
 - **App Split Tunneling**: Exclude banking, local entertainment, or ad SDK apps from the VPN tunnel.
 - **Kill Switch Deep-Link**: Native deep-linking into Android system *Always-On VPN* settings.
 - **Speedometer & Diagnostics**: Real-time throughput graph, MTU clamping (1420), and DNS leak test verification.
-- **Anonymous Authentication**: Hardware-backed Android Keystore UUIDs. No email addresses, phone numbers, or passwords.
+- **Anonymous Authentication**: Random installation IDs with device-held registration proof; Android Keystore protects local encryption. No email addresses, phone numbers, or passwords.
 - **Quick Settings Tile**: Toggle VPN directly from Android notification shade.
 
 ### 🖥️ Web Admin Panel (`/admin-panel`)
