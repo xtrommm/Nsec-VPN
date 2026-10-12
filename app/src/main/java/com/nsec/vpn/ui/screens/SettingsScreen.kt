@@ -43,8 +43,8 @@ fun SettingsScreen(
     onOpenTroubleshooting: () -> Unit,
     onOpenPrivacyPolicy: () -> Unit,
     onRedeemPromoCode: () -> Unit,
-    onOpenDebugDiagnostics: () -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onOpenDebugDiagnostics: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var showThemeDialog by remember { mutableStateOf(false) }

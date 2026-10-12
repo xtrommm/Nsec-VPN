@@ -37,15 +37,15 @@ fun HomeScreen(
     tunnelManager: WireGuardTunnelManager,
     selectedServer: Server?,
     userTier: String,
-    adMobConfig: AdMobConfig = AdMobConfig(),
     nativeAdManager: NativeAdManager,
-    announcementTitle: String? = null,
-    announcementBody: String? = null,
     onToggleVpn: () -> Unit,
     onNavigateToServers: () -> Unit,
-    onNavigateToConnected: () -> Unit = {},
     onUpgradeClicked: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    adMobConfig: AdMobConfig = AdMobConfig(),
+    announcementTitle: String? = null,
+    announcementBody: String? = null,
+    onNavigateToConnected: () -> Unit = {}
 ) {
     val isConnected = vpnState is VpnState.Connected
     val connectedNode by tunnelManager.connectedNode.collectAsState()

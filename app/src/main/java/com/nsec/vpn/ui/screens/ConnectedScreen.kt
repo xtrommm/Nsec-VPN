@@ -50,8 +50,8 @@ fun ConnectedScreen(
     userTier: String,
     onDisconnect: () -> Unit,
     onBackToHome: () -> Unit,
-    connectedNode: com.nsec.vpn.data.model.TunnelConfig? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    connectedNode: com.nsec.vpn.data.model.TunnelConfig? = null
 ) {
     BackHandler {
         onBackToHome()

@@ -28,8 +28,8 @@ fun ServerCard(
     server: Server,
     isSelected: Boolean,
     onSelect: () -> Unit,
-    onToggleFavorite: (() -> Unit)? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onToggleFavorite: (() -> Unit)? = null
 ) {
     val borderColor = if (isSelected) PrimaryBlue else MaterialTheme.colorScheme.outline
     val backgroundColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface

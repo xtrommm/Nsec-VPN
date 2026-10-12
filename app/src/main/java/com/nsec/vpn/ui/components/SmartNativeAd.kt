@@ -53,7 +53,7 @@ fun SmartNativeAd(
     val isAdAllowed = isFreeUser && adMobConfig.nativeEnabled && vpnState !is VpnState.Connecting
 
     var currentAd by remember { mutableStateOf<NativeAd?>(null) }
-    var lastRefreshTime by remember { mutableStateOf(System.currentTimeMillis()) }
+    var lastRefreshTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
     LaunchedEffect(isAdAllowed, adMobConfig.nativeAdUnitId) {
         if (isAdAllowed) {

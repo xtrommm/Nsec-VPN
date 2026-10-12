@@ -41,17 +41,17 @@ fun ServerListScreen(
     servers: List<Server>,
     selectedServer: Server?,
     userTier: String,
-    adMobConfig: AdMobConfig = AdMobConfig(),
     nativeAdManager: NativeAdManager,
     onSelectServer: (Server) -> Unit,
     onAutoSelectBest: () -> Unit,
     onToggleFavorite: (String) -> Unit,
     onRefreshPings: () -> Unit,
     onUpgradeRequired: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    adMobConfig: AdMobConfig = AdMobConfig()
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    var selectedTab by remember { mutableStateOf(0) }
+    var selectedTab by remember { mutableIntStateOf(0) }
 
     val favCount = remember(servers) { servers.count { it.isFavorite } }
     val tabs = remember(favCount) {

@@ -39,10 +39,10 @@ import java.util.Locale
 @Composable
 fun SpeedTestScreen(
     @Suppress("UNUSED_PARAMETER") currentServer: Server?,
-    userTier: String = "FREE",
-    adMobConfig: AdMobConfig = AdMobConfig(),
     nativeAdManager: NativeAdManager,
     modifier: Modifier = Modifier,
+    userTier: String = "FREE",
+    adMobConfig: AdMobConfig = AdMobConfig(),
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val manager = com.nsec.vpn.vpn.WireGuardTunnelManager.getInstance(context)
