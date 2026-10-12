@@ -33,7 +33,7 @@ router.get('/', authenticateDevice, async (req: AuthenticatedDeviceRequest, res:
         currentLoad: true,
         isPremiumOnly: true,
         isRecommended: true,
-        endpoint: true, publicIpv4: true
+        endpoint: true, publicIpv4: true, healthCheckedAt: true
       },
       orderBy: [{ sortOrder: 'asc' }, { isRecommended: 'desc' }, { currentLoad: 'asc' }]
     });
@@ -59,6 +59,7 @@ router.get('/', authenticateDevice, async (req: AuthenticatedDeviceRequest, res:
           city: best.city,
           flagEmoji: best.flagEmoji,
           currentLoad: avgLoad,
+          loadUpdatedAt: new Date(Math.min(...pool.map(item => item.healthCheckedAt!.getTime()))).toISOString(),
           isPremiumOnly: best.isPremiumOnly,
           isRecommended: pool.some(item => item.isRecommended),
           totalNodes: pool.length
@@ -80,8 +81,9 @@ router.get('/', authenticateDevice, async (req: AuthenticatedDeviceRequest, res:
       locationCounts.set(key, (locationCounts.get(key) || 0) + 1);
     }
 
-    const serversWithCount = servers.map(s => ({
+    const serversWithCount = servers.map(({ healthCheckedAt, ...s }) => ({
       ...s,
+      loadUpdatedAt: healthCheckedAt,
       totalNodes: locationCounts.get(`${s.countryCode.toUpperCase()}_${s.city.toLowerCase()}_${s.isPremiumOnly}`) || 1
     }));
 

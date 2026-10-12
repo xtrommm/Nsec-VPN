@@ -3,6 +3,7 @@ import { lookup } from 'dns/promises';
 import { prisma } from '../db';
 import { EndpointSchema, SubnetSchema, isPublicIpv4 } from '../types';
 import { AgentClient } from './agentClient';
+import { peerCapacityPercent } from './nodeLoad';
 
 export async function testNode(node: ServerNode, syncKey = false, adminId?: string) {
   const health = await AgentClient.getNodeHealth(node.agentUrl, node.agentSecretHash);
@@ -21,7 +22,7 @@ export async function testNode(node: ServerNode, syncKey = false, adminId?: stri
   const healthy = health.online && resolves && subnet.success && portMatches && (keyMatches || syncKey);
   const data = {
     healthy, healthCheckedAt: new Date(),
-    ...(health.online ? { currentLoad: Math.min(100, Math.round(health.peerCount / node.maxPeers * 100)) } : {}),
+    ...(health.online ? { currentLoad: peerCapacityPercent(health.peerCount, node.maxPeers) } : {}),
     ...(health.online ? { publicIpv4: health.publicIpv4 } : {}),
     ...(syncKey && health.online ? { publicKey: health.publicKey } : {})
   };

@@ -47,3 +47,12 @@ it('global ads kill switch prevents preparing a new rewarded-ad ticket', async (
   await expect(prepareReward('device-test')).rejects.toThrow('REWARDED_ADS_DISABLED');
   expect(tx.rewardTicket.findFirst).not.toHaveBeenCalled();
 });
+
+it('grants the configured forty-five-minute VIP pass after a completed reward claim', async () => {
+  tx.appConfig.findUnique.mockResolvedValue({ rewardedAdsEnabled: true, rewardedPassMinutes: 45 });
+  const start = Date.now();
+  const result = await claimReward('device-test', 'ticket-test');
+  expect(result.tier).toBe('VIP');
+  expect(result.passExpiresAt!.getTime()).toBeGreaterThanOrEqual(start + 45 * 60000);
+  expect(result.passExpiresAt!.getTime()).toBeLessThanOrEqual(Date.now() + 45 * 60000);
+});
