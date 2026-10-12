@@ -1,5 +1,5 @@
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
 <item android:drawable="@color/splash_background_light" />
-<item android:gravity="center" android:width="192dp" android:height="192dp"><bitmap android:src="@drawable/nsec_launcher_foreground" android:gravity="fill" /></item>
+<item android:gravity="center" android:width="192dp" android:height="192dp"><bitmap android:src="@drawable/splash_logo_padded" android:gravity="fill" /></item>
 <item android:gravity="bottom|center_horizontal" android:bottom="24dp" android:width="200dp" android:height="80dp" android:drawable="@drawable/splash_europe_branding" />
 </layer-list>

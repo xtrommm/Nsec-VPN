@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <size android:width="288dp" android:height="288dp" />
+            <solid android:color="@android:color/transparent" />
+        </shape>
+    </item>
+    <item android:width="86dp" android:height="86dp"
+        android:gravity="center">
+        <bitmap android:src="@mipmap/ic_launcher_round"
+            android:gravity="fill" />
+    </item>
+</layer-list>
