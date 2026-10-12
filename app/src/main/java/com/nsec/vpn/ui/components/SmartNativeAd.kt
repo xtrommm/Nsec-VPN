@@ -168,6 +168,7 @@ fun populateNativeAdView(nativeAd: NativeAd, adView: NativeAdView) {
         adView.callToActionView = adView.findViewById(R.id.ad_call_to_action)
         adView.iconView = adView.findViewById(R.id.ad_app_icon)
         adView.mediaView = adView.findViewById(R.id.ad_media)
+        adView.mediaView?.mediaContent = nativeAd.mediaContent
         adView.advertiserView = adView.findViewById(R.id.ad_advertiser)
         adView.starRatingView = adView.findViewById(R.id.ad_stars)
 

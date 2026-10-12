@@ -361,7 +361,7 @@ class MainActivity : ComponentActivity() {
                                             adMobConfig = adMobConfig,
                                             userTier = userTier,
                                             vpnState = vpnState,
-                                            modifier = Modifier.fillMaxWidth().heightIn(max = 180.dp)
+                                            modifier = Modifier.fillMaxWidth()
                                         )
                                     }
                                 )
