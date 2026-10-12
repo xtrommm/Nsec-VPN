@@ -17,6 +17,10 @@ jobs:
       - uses: actions/checkout@v7
       - name: Check shell scripts
         run: shellcheck deployment/install-wireguard-node.sh scripts/*.sh
+      - name: Check restricted website deployment
+        run: |
+          python3 -m py_compile deployment/deploy-website.py deployment/website-deploy-entry.py deployment/install-website-deployer.py
+          python3 -m unittest discover -s tests/deployment -p 'test_*.py'
       - name: Verify idempotent firewall setup and teardown
         run: python3 tests/deployment/firewall_test.py
 
@@ -73,6 +77,10 @@ jobs:
       - name: Database migrations and concurrency integration
         working-directory: backend
         run: npx prisma migrate deploy && npm run test:integration
+
+      - name: Validate production Docker build
+        run: docker build --build-arg NODE_BUILD_HEAP_MB=4096 -t nsecvpn-backend-ci ./backend
+        working-directory: .
 
   admin-panel:
     name: Admin Panel Build

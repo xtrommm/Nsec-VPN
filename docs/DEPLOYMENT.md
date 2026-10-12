@@ -1,5 +1,10 @@
 # Deployment of the repair candidate
 
+For CloudPanel manually upgraded on 2026-10-12, follow
+[GitHub website deployment](GITHUB-WEBSITE-DEPLOYMENT.md). Its private Compose
+model and encrypted agent channel supersede the old generated deployment files.
+Install the restricted v2 handler before merging into automatic deployment.
+
 Release is NO-GO until the [repair report](E2E-REPAIR-REPORT.md) acceptance gates pass.
 Do not run an unreviewed installer piped from main. Review and check out the repair
 branch or apply the source package to its documented base commit first.

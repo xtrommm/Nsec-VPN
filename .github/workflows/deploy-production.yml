@@ -48,6 +48,8 @@ jobs:
         run: |
           set -euo pipefail
 
+          current=$(gh api "repos/$REPO/git/ref/heads/main" --jq '.object.sha')
+          [[ "$current" == "$SHA" ]] || { echo 'Release superseded; choose current main.'; exit 1; }
           echo "Checking successful CI execution for $SHA"
 
           gh api -X GET \
@@ -57,6 +59,7 @@ jobs:
                 any(.[];
                   .head_sha == $sha and
                   .event == "push" and
+                  .head_branch == "main" and
                   .status == "completed" and
                   .conclusion == "success"
                 )
@@ -129,8 +132,13 @@ jobs:
           DEPLOY_HOST: ${{ secrets.NSEC_DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.NSEC_DEPLOY_USER }}
           RELEASE_SHA: ${{ needs.verify.outputs.sha }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
+
+          current=$(gh api "repos/$REPO/git/ref/heads/main" --jq '.object.sha')
+          [[ "$current" == "$RELEASE_SHA" ]] || { echo 'Release superseded; existing website retained.'; exit 1; }
 
           ssh \
             -i "$HOME/.ssh/nsec_deploy" \
@@ -139,7 +147,7 @@ jobs:
             -o StrictHostKeyChecking=yes \
             -o ConnectTimeout=15 \
             "$DEPLOY_USER@$DEPLOY_HOST" \
-            "deploy $RELEASE_SHA"
+            "deploy-v2 $RELEASE_SHA"
 
       - name: Verify public production endpoints
         shell: bash

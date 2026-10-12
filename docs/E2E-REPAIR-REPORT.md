@@ -1,5 +1,27 @@
 # Nsec VPN repair audit — release remains NO-GO
 
+## Latest verified operational status — 2026-10-12
+
+CI run 39 passed all five jobs at `d77734e5cdb6641949b65ad10448450eb176dc7a`.
+Android debug/release lint reported no issues; an upstream Gradle deprecation
+warning remained. The owner proved the real node using the official WireGuard
+app: Chrome exited through `47.85.109.170`, with a handshake and rising counters.
+The compromised server key was rotated, and the upgraded agent authenticated
+through a pinned SSH channel while listening only on localhost.
+
+The owner applied the additive database migration, corrected the existing
+Virginia record, built both images after fixing Docker's 1536 MB heap limit to
+4096 MB and providing temporary swap, and switched the backend/admin. The live
+API returned READY with its existing database. The weak JWT secret was rotated.
+
+Website automation has now been revised to preserve the private live Compose
+model; see [deployment instructions](GITHUB-WEBSITE-DEPLOYMENT.md). The revised
+handler must be installed and its PR checks completed before merging. No repaired
+Nsec APK/phone exit-IP proof has been supplied, and broader tests were deferred
+by the owner. Publishing remains NO-GO. Earlier build/remote-verification notes
+below describe the initial audit, not these later operational results.
+
+
 This audit reads the public `xtrommm/Nsec-VPN` monorepo at base commit
 `fe277573da260bb31ee9b4652ccf9afca0811950`. Android, backend, admin, agent,
 installer and docs all live here; these are not six independently verified
