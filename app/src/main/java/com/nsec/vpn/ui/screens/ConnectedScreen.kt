@@ -80,14 +80,14 @@ fun ConnectedScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 16.dp)
+            .padding(horizontal = 20.dp, vertical = 12.dp)
             .testTag("connected_screen"),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (vpnState is VpnState.Connected && connectedNode != null) {
-            Text(connectedNode.nodeName.orEmpty(), fontWeight = FontWeight.Bold)
-            Text(connectedNode.locationName.orEmpty())
-            Text("VPN Server IP: ${connectedNode.publicIpv4.orEmpty()}", modifier = Modifier.padding(vertical = 8.dp).testTag("vpn_server_ip"))
+            Text(connectedNode.nodeName.orEmpty(), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Text(connectedNode.locationName.orEmpty(), fontSize = 12.sp)
+            Text("VPN Server IP: ${connectedNode.publicIpv4.orEmpty()}", fontSize = 12.sp, modifier = Modifier.padding(vertical = 6.dp).testTag("vpn_server_ip"))
         }
 
         // Top Navigation Header
@@ -109,7 +109,7 @@ fun ConnectedScreen(
 
             Text(
                 text = if (vpnState is VpnState.Connected) "VPN CONNECTED" else "CONNECTING",
-                fontSize = 16.sp,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp,
                 color = MaterialTheme.colorScheme.onBackground
@@ -153,18 +153,18 @@ fun ConnectedScreen(
                 .clip(RoundedCornerShape(16.dp))
                 .background(MaterialTheme.colorScheme.surface)
                 .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
-                .padding(14.dp),
+                .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = selectedServer?.flagEmoji.orEmpty(),
-                fontSize = 28.sp,
+                fontSize = 24.sp,
                 modifier = Modifier.padding(end = 12.dp)
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "${connectedNode?.locationName.orEmpty()}",
-                    fontSize = 15.sp,
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -182,19 +182,19 @@ fun ConnectedScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(28.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         // Large Circular Timer Box
         Box(
             modifier = Modifier
-                .size(230.dp)
+                .size(170.dp)
                 .semantics {
                     contentDescription = "Connection Duration: $durationText"
                 },
             contentAlignment = Alignment.Center
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
-                val strokeWidth = 14.dp.toPx()
+                val strokeWidth = 10.dp.toPx()
                 val radius = (size.minDimension - strokeWidth) / 2
 
                 // Background track ring
@@ -228,7 +228,7 @@ fun ConnectedScreen(
 
                 Text(
                     text = durationText,
-                    fontSize = 38.sp,
+                    fontSize = 30.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.testTag("connection_timer_text")
@@ -245,12 +245,12 @@ fun ConnectedScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         // Speed Stats Row (Below Circle)
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Download Speed Card
             Surface(
@@ -260,7 +260,7 @@ fun ConnectedScreen(
                 modifier = Modifier.weight(1f)
             ) {
                 Column(
-                    modifier = Modifier.padding(14.dp),
+                    modifier = Modifier.padding(12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -282,7 +282,7 @@ fun ConnectedScreen(
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
                         text = downloadSpeedText,
-                        fontSize = 16.sp,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.testTag("download_speed_text")
@@ -298,7 +298,7 @@ fun ConnectedScreen(
                 modifier = Modifier.weight(1f)
             ) {
                 Column(
-                    modifier = Modifier.padding(14.dp),
+                    modifier = Modifier.padding(12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -320,7 +320,7 @@ fun ConnectedScreen(
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
                         text = uploadSpeedText,
-                        fontSize = 16.sp,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.testTag("upload_speed_text")
@@ -329,7 +329,7 @@ fun ConnectedScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(36.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
         // Disconnect Button
         Button(
@@ -341,7 +341,7 @@ fun ConnectedScreen(
             shape = RoundedCornerShape(16.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(54.dp)
+                .height(48.dp)
                 .testTag("disconnect_button")
         ) {
             Row(
@@ -367,7 +367,7 @@ fun ConnectedScreen(
 
         TextButton(
             onClick = onBackToHome,
-            modifier = Modifier.padding(8.dp)
+            modifier = Modifier.padding(horizontal = 4.dp)
         ) {
             Text(
                 text = "Keep Connected & Back To Home",
