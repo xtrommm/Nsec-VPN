@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased — Android CI backup policy repair
+
+- Added explicit Android 12+ and legacy no-backup policies to the speed-test helper, fixing debug/release DataExtractionRules lint failures.
+- Replaced the main app’s empty/template backup policies with explicit cloud/device storage exclusions.
+- Removed two unnecessary nullable calls reported by the Kotlin compiler.
+- Added an early backup-policy CI guard, six regressions, and reports for both Android modules and build variants.
+- Kept lint strict and all test/build/deployment gates enabled. See docs/ACTIONS-CI-REPAIR.md for evidence and verification limits.
+
+
 ## Unreleased — Charcoal appearance update
 
 - Reskinned dark mode with neutral charcoal surfaces, brighter text and theme-aware navigation/server accents.
