@@ -112,13 +112,13 @@ fun HomeScreen(
         ) {
             Column {
                 Text(
-                    text = "Nsec -VPN",
+                    text = "NSEC -VPN",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
-                    text = "WIREGUARD FOR ANDROID",
+                    text = "MILITARY GRADE",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.primary
