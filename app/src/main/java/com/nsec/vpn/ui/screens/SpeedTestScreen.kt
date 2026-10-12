@@ -142,7 +142,7 @@ fun SpeedTestScreen(
         )
 
         Text(
-            text = "VPN-bound HTTP latency, jitter, download and upload. Ads remain outside the tunnel.",
+            text = "Test your Connected VPN server Speed ",
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp),
@@ -216,9 +216,9 @@ fun SpeedTestScreen(
             Box(modifier = Modifier.width(1.dp).height(30.dp).background(MaterialTheme.colorScheme.outline))
             MetricColumn(label = "JITTER", value = jitterMs?.let { "$it ms" } ?: "N/A")
             Box(modifier = Modifier.width(1.dp).height(30.dp).background(MaterialTheme.colorScheme.outline))
-            MetricColumn(label = "DOWN AVG", value = averageDownloadMbps?.let { String.format(Locale.US, "%.1f M", it) } ?: "—")
+            MetricColumn(label = "DOWN AVG", value = averageDownloadMbps?.let { String.format(Locale.US, "%.1f M", it) } ?: "N/A")
             Box(modifier = Modifier.width(1.dp).height(30.dp).background(MaterialTheme.colorScheme.outline))
-            MetricColumn(label = "UP AVG", value = averageUploadMbps?.let { String.format(Locale.US, "%.1f M", it) } ?: "—")
+            MetricColumn(label = "UP AVG", value = averageUploadMbps?.let { String.format(Locale.US, "%.1f M", it) } ?: "N/A")
         }
 
         Spacer(modifier = Modifier.height(36.dp))

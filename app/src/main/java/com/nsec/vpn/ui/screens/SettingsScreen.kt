@@ -215,7 +215,7 @@ fun SettingsScreen(
             )
         }
         Spacer(modifier = Modifier.height(24.dp))
-        SectionHeader("INSTALLATION ID")
+        SectionHeader("YOUR DEVICE ID")
         Text(deviceId, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         TextButton(enabled = deviceId.isNotBlank(), onClick = { copy(deviceId) }) {
             Icon(Icons.Default.ContentCopy, contentDescription = null)
