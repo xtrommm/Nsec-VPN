@@ -580,7 +580,7 @@ class MainActivity : ComponentActivity() {
                                         }
                                 ) {
                                     Column(modifier = Modifier.padding(12.dp)) {
-                                        Text("Watch Rewarded Ad for a Premium Pass", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue)
+                                        Text("Watch Rewarded Ad for 45 minutes VIP", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue)
                                         Text("Unlocks ad-free VIP and premium servers after successful completion.", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                 }

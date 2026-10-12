@@ -179,7 +179,7 @@ fun HomeScreen(
                 )
                 Text(
                     text = if (isConnected) "${connectedNode?.locationName.orEmpty()} • WireGuard® Secured"
-                    else "Direct ISP Connection • Unencrypted",
+                    else "Direct ISP Connection • UNENCRYPTED",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface
