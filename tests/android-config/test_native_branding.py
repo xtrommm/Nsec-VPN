@@ -25,5 +25,10 @@ class NativeBrandingTest(unittest.TestCase):
         self.assertNotIn('Accept & Continue', source)
         self.assertIn('installSplashScreen()', source)
 
+    def test_branding_paths_stay_below_lint_complexity_limit(self):
+        vector = ET.parse(ROOT / 'app/src/main/res/drawable/splash_europe_branding.xml').getroot()
+        for path in vector.findall('path'):
+            self.assertLessEqual(len(path.attrib[ANDROID + 'pathData']), 3000)
+
 if __name__ == '__main__':
     unittest.main()
