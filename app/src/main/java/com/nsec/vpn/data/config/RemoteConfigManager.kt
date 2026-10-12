@@ -54,7 +54,7 @@ class RemoteConfigManager(
                 prefs?.getString("validated_response", null)?.let { text ->
                     try { apply(requireNotNull(configJson.fromJson(text)) { "Invalid cached settings" }) }
                     catch (e: CancellationException) { throw e }
-                    catch (_: Exception) { prefs?.edit { remove("validated_response") } }
+                    catch (_: Exception) { prefs.edit { remove("validated_response") } }
                 }
             }
             try {
