@@ -16,6 +16,9 @@ import org.robolectric.annotation.Config
 import retrofit2.Response
 
 open class FakeNsecVpnApi : NsecVpnApi {
+    override suspend fun submitServerRequest(token: String, request: com.nsec.vpn.data.api.ServerRequestBody): retrofit2.Response<com.nsec.vpn.data.api.ServerRequestResponse> =
+        retrofit2.Response.success(com.nsec.vpn.data.api.ServerRequestResponse(false, null))
+
     override suspend fun prepareReward(token: String): retrofit2.Response<com.nsec.vpn.data.api.RewardTicketResponse> =
         retrofit2.Response.success(com.nsec.vpn.data.api.RewardTicketResponse(false, null))
     override suspend fun claimReward(token: String, request: com.nsec.vpn.data.api.ClaimRewardRequest): retrofit2.Response<com.nsec.vpn.data.api.RedeemPromoResponse> =

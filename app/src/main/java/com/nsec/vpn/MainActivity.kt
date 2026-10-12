@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nsec.vpn.core.network.ServiceLocator
 import com.nsec.vpn.data.model.VpnState
@@ -57,6 +58,8 @@ class MainActivity : ComponentActivity() {
         val remoteConfigManager = serviceLocator.remoteConfigManager
         val playBillingManager = serviceLocator.playBillingManager
 
+        lifecycleScope.launch { vpnRepo.refreshServers() }
+
         setContent {
             val themeMode by vpnRepo.themeMode.collectAsStateWithLifecycle()
             val adMobConfig by adMobManager.config.collectAsStateWithLifecycle()
@@ -70,12 +73,17 @@ class MainActivity : ComponentActivity() {
                 val vpnState by tunnelManager.vpnState.collectAsStateWithLifecycle()
                 val vpnStats by tunnelManager.vpnStats.collectAsStateWithLifecycle()
                 val connectedNode by tunnelManager.connectedNode.collectAsStateWithLifecycle()
+                val serversLoading by vpnRepo.serversLoading.collectAsStateWithLifecycle()
+                val usingCachedServers by vpnRepo.usingCachedServers.collectAsStateWithLifecycle()
+                val serverListError by vpnRepo.serverListError.collectAsStateWithLifecycle()
                 val servers by vpnRepo.servers.collectAsStateWithLifecycle()
                 val selectedServer by vpnRepo.selectedServer.collectAsStateWithLifecycle()
                 val userTier by vpnRepo.userTier.collectAsStateWithLifecycle()
+                val activeDns by tunnelManager.activeDns.collectAsStateWithLifecycle()
                 val selectedDns by vpnRepo.selectedDns.collectAsStateWithLifecycle()
                 val splitTunnelingEnabled by vpnRepo.splitTunnelingEnabled.collectAsStateWithLifecycle()
                 val autoConnectEnabled by vpnRepo.autoConnectEnabled.collectAsStateWithLifecycle()
+                val installationId = remember { serviceLocator.keyStoreManager.getOrCreateDeviceId() }
                 val excludedPackages by vpnRepo.excludedPackages.collectAsStateWithLifecycle()
 
                 var currentTab by rememberSaveable(stateSaver = Saver<Screen, String>(save = { it.route }, restore = { route -> listOf(Screen.Home, Screen.Servers, Screen.SpeedTest, Screen.Settings).firstOrNull { it.route == route } ?: Screen.Home })) { mutableStateOf<Screen>(Screen.Home) }
@@ -99,9 +107,13 @@ class MainActivity : ComponentActivity() {
                     if (result.resultCode == Activity.RESULT_OK) {
                         val server = selectedServer ?: servers.firstOrNull()
                         if (server != null) {
+                            val dns = try { vpnRepo.dnsServersForConnection() } catch (error: IllegalArgumentException) {
+                                Toast.makeText(this@MainActivity, error.message ?: "Invalid DNS settings.", Toast.LENGTH_LONG).show()
+                                return@rememberLauncherForActivityResult
+                            }
                             tunnelManager.startConnect(
                                 server = server,
-                                dnsServers = listOf(selectedDns.primary, selectedDns.secondary),
+                                dnsServers = dns,
                                 excludedApps = if (splitTunnelingEnabled) excludedPackages else emptySet(),
                                 onNeedsPermission = {}
                             )
@@ -127,9 +139,13 @@ class MainActivity : ComponentActivity() {
                     isUserInitiatedConnect = isUserInitiated
                     val server = selectedServer ?: servers.firstOrNull()
                     if (server != null) {
+                        val dns = try { vpnRepo.dnsServersForConnection() } catch (error: IllegalArgumentException) {
+                            Toast.makeText(this@MainActivity, error.message ?: "Invalid DNS settings.", Toast.LENGTH_LONG).show()
+                            return
+                        }
                         tunnelManager.startConnect(
                             server = server,
-                            dnsServers = listOf(selectedDns.primary, selectedDns.secondary),
+                            dnsServers = dns,
                             excludedApps = if (splitTunnelingEnabled) excludedPackages else emptySet(),
                             onNeedsPermission = { intent ->
                                 vpnPermissionLauncher.launch(intent)
@@ -166,7 +182,7 @@ class MainActivity : ComponentActivity() {
                         notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                     }
                     vpnRepo.checkRewardedPassExpiry()
-                    if (autoConnectEnabled && remoteConfigLoaded && vpnState is VpnState.Disconnected) triggerConnectSequence(isUserInitiated = false)
+
                 }
 
                 LaunchedEffect(Unit) {
@@ -176,6 +192,10 @@ class MainActivity : ComponentActivity() {
                         vpnRepo.checkRewardedPassExpiry()
                         vpnRepo.retryPendingReward()
                     }
+                }
+
+                LaunchedEffect(servers.isNotEmpty(), autoConnectEnabled, remoteConfigLoaded) {
+                    if (servers.isNotEmpty() && autoConnectEnabled && remoteConfigLoaded && vpnState is VpnState.Disconnected) triggerConnectSequence(isUserInitiated = false)
                 }
 
                 LaunchedEffect(currentTab) {
@@ -272,7 +292,7 @@ class MainActivity : ComponentActivity() {
                                     selectedServer = tunnelManager.activeServer ?: selectedServer,
                                     userTier = userTier,
                                     onDisconnect = { tunnelManager.disconnect() },
-                                    onBackToHome = { activeSubScreen = null }
+                                    onBackToHome = { activeSubScreen = null; currentTab = Screen.Home }
                                 )
                             }
                             "split_tunnel" -> {
@@ -318,6 +338,9 @@ class MainActivity : ComponentActivity() {
                                     Screen.Servers -> {
                                         ServerListScreen(
                                             servers = servers,
+                                            isLoading = serversLoading,
+                                            usingCache = usingCachedServers,
+                                            errorMessage = serverListError,
                                             selectedServer = tunnelManager.activeServer ?: selectedServer,
                                             userTier = userTier,
                                             adMobConfig = adMobConfig,
@@ -350,7 +373,13 @@ class MainActivity : ComponentActivity() {
                                             themeMode = themeMode,
                                             onSelectThemeMode = { vpnRepo.setThemeMode(it) },
                                             selectedDns = selectedDns,
-                                            onSelectDns = { vpnRepo.setDns(it) },
+                                            onSelectDns = { provider ->
+                                                try { vpnRepo.setDns(provider); tunnelManager.updateDns(vpnRepo.dnsServersForConnection()); Toast.makeText(this@MainActivity, "DNS saved. Active tunnels reconnect to apply it.", Toast.LENGTH_SHORT).show() }
+                                                catch (e: IllegalArgumentException) { Toast.makeText(this@MainActivity, e.message, Toast.LENGTH_LONG).show() }
+                                            },
+                                            customDns = vpnRepo.customDns(),
+                                            activeDns = activeDns,
+                                            onCustomDns = { raw -> vpnRepo.setCustomDns(raw); tunnelManager.updateDns(vpnRepo.dnsServersForConnection()) },
                                             splitTunnelingEnabled = splitTunnelingEnabled,
                                             onToggleSplitTunneling = { vpnRepo.setSplitTunneling(it) },
                                             autoConnectEnabled = autoConnectEnabled,
@@ -359,6 +388,9 @@ class MainActivity : ComponentActivity() {
                                             onOpenTroubleshooting = { activeSubScreen = "troubleshoot" },
                                             onOpenPrivacyPolicy = { activeSubScreen = "legal" },
                                             onRedeemPromoCode = { showPromoDialog = true },
+                                            supportEmail = remoteConfig.supportEmail,
+                                            deviceId = installationId,
+                                            onRequestServer = { country, city, note -> vpnRepo.requestServer(country, city, note) },
                                             onOpenDebugDiagnostics = { activeSubScreen = "debug_diagnostics" }
                                         )
                                     }

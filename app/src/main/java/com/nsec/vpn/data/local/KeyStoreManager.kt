@@ -159,6 +159,9 @@ class KeyStoreManager(context: Context, private val vaultKeyProvider: (() -> jav
     }
     fun getThemeMode(): String = prefs.getString(KEY_THEME_MODE, "SYSTEM") ?: "SYSTEM"
 
+    fun saveServerRequestCooldown(until: Long) { prefs.edit { putLong("request_cooldown_until", until) } }
+    fun getServerRequestCooldown(): Long = prefs.getLong("request_cooldown_until", 0)
+
     fun savePendingRewardTicket(ticket: String?) {
         prefs.edit { if (ticket == null) remove("pending_reward_ticket") else putString("pending_reward_ticket", ticket) }
     }

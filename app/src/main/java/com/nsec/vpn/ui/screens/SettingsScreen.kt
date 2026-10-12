@@ -28,6 +28,15 @@ import androidx.compose.ui.unit.sp
 import com.nsec.vpn.data.model.DnsProvider
 import com.nsec.vpn.data.model.ThemeMode
 import com.nsec.vpn.ui.theme.*
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.ContentCopy
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsScreen(
@@ -43,11 +52,32 @@ fun SettingsScreen(
     onOpenTroubleshooting: () -> Unit,
     onOpenPrivacyPolicy: () -> Unit,
     onRedeemPromoCode: () -> Unit,
+    onRequestServer: suspend (String, String, String?) -> String,
+    onCustomDns: (String) -> Unit,
     modifier: Modifier = Modifier,
-    onOpenDebugDiagnostics: () -> Unit = {}
+    onOpenDebugDiagnostics: () -> Unit = {},
+    supportEmail: String? = null,
+    deviceId: String = "",
+    customDns: String = "",
+    activeDns: List<String> = emptyList()
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var showRequestDialog by remember { mutableStateOf(false) }
+    var requestCountry by remember { mutableStateOf("") }
+    var requestCity by remember { mutableStateOf("") }
+    var requestNote by remember { mutableStateOf("") }
+    var requestError by remember { mutableStateOf<String?>(null) }
+    var requesting by remember { mutableStateOf(false) }
+    fun copy(value: String) {
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        clipboard.setPrimaryClip(ClipData.newPlainText("Nsec VPN", value))
+        Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
+    }
     var showThemeDialog by remember { mutableStateOf(false) }
+    var showCustomDns by remember { mutableStateOf(false) }
+    var customDnsText by remember(customDns) { mutableStateOf(customDns) }
+    var dnsError by remember { mutableStateOf<String?>(null) }
     var showDnsDialog by remember { mutableStateOf(false) }
     var showKillSwitchDialog by remember { mutableStateOf(false) }
 
@@ -94,7 +124,7 @@ fun SettingsScreen(
         SettingsClickableItem(
             icon = Icons.Default.Dns,
             title = "DNS Resolver Through VPN",
-            subtitle = selectedDns.displayName,
+            subtitle = selectedDns.displayName + if (activeDns.isNotEmpty()) "\nActive: ${activeDns.joinToString()}" else "\nApplied on next connection",
             onClick = { showDnsDialog = true }
         )
 
@@ -132,7 +162,7 @@ fun SettingsScreen(
         SettingsClickableItem(
             icon = Icons.Default.Build,
             title = "Troubleshooting Assistant",
-            subtitle = "Diagnose MTU, handshake timeout, or ISP blocks",
+            subtitle = "Check API access, handshake and tunnel observations",
             onClick = onOpenTroubleshooting
         )
 
@@ -147,6 +177,15 @@ fun SettingsScreen(
             onClick = onRedeemPromoCode
         )
 
+        SettingsClickableItem(icon = Icons.Default.Email, title = "Support Email",
+            subtitle = supportEmail ?: "Support address has not been configured", onClick = {
+                if (supportEmail == null) Toast.makeText(context, "The operator has not configured support email yet.", Toast.LENGTH_LONG).show()
+                else try { context.startActivity(Intent(Intent.ACTION_SENDTO, ("mailto:" + android.net.Uri.encode(supportEmail, "@.")).toUri())) }
+                catch (_: android.content.ActivityNotFoundException) { Toast.makeText(context, "No email app installed. Use Copy email.", Toast.LENGTH_LONG).show() }
+            })
+        if (supportEmail != null) TextButton(onClick = { copy(supportEmail) }) { Text("Copy email") }
+        SettingsClickableItem(icon = Icons.Default.Public, title = "Request Server", subtitle = "Suggest a country and city", onClick = { requestError = null; showRequestDialog = true })
+
         SettingsClickableItem(
             icon = Icons.Default.Language,
             title = "Official Website",
@@ -155,7 +194,7 @@ fun SettingsScreen(
                 try {
                     val browserIntent = Intent(Intent.ACTION_VIEW, "https://nsecvpn.com".toUri())
                     context.startActivity(browserIntent)
-                } catch (_: Exception) {}
+                } catch (_: android.content.ActivityNotFoundException) { Toast.makeText(context, "No browser installed.", Toast.LENGTH_SHORT).show() }
             }
         )
 
@@ -169,8 +208,8 @@ fun SettingsScreen(
         SettingsClickableItem(
             icon = Icons.Default.Info,
             title = "App Version",
-            subtitle = "Nsec VPN v1.0.0",
-            onClick = {}
+            subtitle = "Nsec VPN v${com.nsec.vpn.BuildConfig.VERSION_NAME}",
+            onClick = { Toast.makeText(context, "Version ${com.nsec.vpn.BuildConfig.VERSION_NAME} (${com.nsec.vpn.BuildConfig.VERSION_CODE})", Toast.LENGTH_SHORT).show() }
         )
 
         if (com.nsec.vpn.BuildConfig.DEBUG) {
@@ -183,7 +222,41 @@ fun SettingsScreen(
                 onClick = onOpenDebugDiagnostics
             )
         }
+
     }
+
+    if (showCustomDns) AlertDialog(
+        onDismissRequest = { showCustomDns = false }, title = { Text("Custom DNS") },
+        text = { Column { Text("Enter public DNS IPs separated by commas. IPv4/IPv6 syntax is validated, but this IPv4-only node cannot route IPv6 resolvers.", fontSize = 12.sp)
+            OutlinedTextField(value = customDnsText, onValueChange = { customDnsText = it.take(200); dnsError = null }, label = { Text("DNS IP addresses") })
+            dnsError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        } }, confirmButton = { TextButton(onClick = {
+            try { onCustomDns(customDnsText); showCustomDns = false; Toast.makeText(context, "DNS saved. Reconnecting if active.", Toast.LENGTH_SHORT).show() }
+            catch (e: IllegalArgumentException) { dnsError = e.message ?: "Invalid DNS resolver." }
+        }) { Text("Apply DNS") } }, dismissButton = { TextButton(onClick = { showCustomDns = false }) { Text("Cancel") } }
+    )
+
+    if (showRequestDialog) AlertDialog(
+        onDismissRequest = { if (!requesting) showRequestDialog = false },
+        title = { Text("Request a VPN server") },
+        text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Your installation ID and app version are attached. One request every 10 minutes.", fontSize = 12.sp)
+            OutlinedTextField(value = requestCountry, onValueChange = { requestCountry = it.take(80) }, label = { Text("Country") }, singleLine = true)
+            OutlinedTextField(value = requestCity, onValueChange = { requestCity = it.take(80) }, label = { Text("City") }, singleLine = true)
+            OutlinedTextField(value = requestNote, onValueChange = { requestNote = it.take(500) }, label = { Text("Note (optional)") }, maxLines = 3)
+            requestError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        } },
+        confirmButton = { TextButton(enabled = !requesting && requestCountry.trim().length >= 2 && requestCity.trim().length >= 2, onClick = {
+            requesting = true; requestError = null
+            scope.launch {
+                try { val result = onRequestServer(requestCountry, requestCity, requestNote); showRequestDialog = false; requestCountry = ""; requestCity = ""; requestNote = ""; Toast.makeText(context, result, Toast.LENGTH_LONG).show() }
+                catch (e: CancellationException) { throw e }
+                catch (e: Exception) { requestError = e.message ?: "Could not submit request. Check your connection." }
+                finally { requesting = false }
+            }
+        }) { Text(if (requesting) "Submitting…" else "Submit request") } },
+        dismissButton = { TextButton(enabled = !requesting, onClick = { showRequestDialog = false }) { Text("Cancel") } }
+    )
 
     if (showThemeDialog) {
         AlertDialog(
@@ -229,7 +302,7 @@ fun SettingsScreen(
         AlertDialog(
             onDismissRequest = { showDnsDialog = false },
             containerColor = MaterialTheme.colorScheme.surface,
-            title = { Text("Select Encrypted DNS", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
+            title = { Text("Select DNS resolver", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     DnsProvider.entries.forEach { provider ->
@@ -238,7 +311,7 @@ fun SettingsScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
-                                    onSelectDns(provider)
+                                    if (provider == DnsProvider.CUSTOM) { dnsError = null; showCustomDns = true } else onSelectDns(provider)
                                     showDnsDialog = false
                                 }
                                 .padding(vertical = 8.dp)
@@ -246,7 +319,7 @@ fun SettingsScreen(
                             RadioButton(
                                 selected = selectedDns == provider,
                                 onClick = {
-                                    onSelectDns(provider)
+                                    if (provider == DnsProvider.CUSTOM) { dnsError = null; showCustomDns = true } else onSelectDns(provider)
                                     showDnsDialog = false
                                 },
                                 colors = RadioButtonDefaults.colors(selectedColor = PrimaryBlue)

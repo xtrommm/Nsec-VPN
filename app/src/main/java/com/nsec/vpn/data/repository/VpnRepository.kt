@@ -385,6 +385,33 @@ class VpnRepository(
         _userTier.value != "FREE"
     }
 
+    suspend fun requestServer(country: String, city: String, note: String?): String = withContext(Dispatchers.IO) {
+        val cleanCountry = country.trim()
+        val cleanCity = city.trim()
+        require(cleanCountry.length in 2..80 && cleanCity.length in 2..80 && !Regex("[<>\\p{Cntrl}]").containsMatchIn(cleanCountry + cleanCity)) { "Enter a valid country and city (2–80 characters)." }
+        require((note?.trim()?.length ?: 0) <= 500) { "Your note must be 500 characters or fewer." }
+        val remaining = keyStoreManager.getServerRequestCooldown() - System.currentTimeMillis()
+        if (remaining > 0) throw IllegalStateException("Please wait ${(remaining / 60000) + 1} minutes before another request.")
+        val request = com.nsec.vpn.data.api.ServerRequestBody(cleanCountry, cleanCity, note?.trim()?.takeIf { it.isNotEmpty() })
+        var token = keyStoreManager.getAccessToken() ?: authenticateDevice()
+        var response = api.submitServerRequest("Bearer $token", request)
+        if (response.code() == 401) {
+            token = tryRefreshToken() ?: throw IllegalStateException("Please reopen the app to sign in again.")
+            response = api.submitServerRequest("Bearer $token", request)
+        }
+        val body = response.body()
+        if (response.isSuccessful && body?.success == true && body.data != null) {
+            keyStoreManager.saveServerRequestCooldown(System.currentTimeMillis() + 10 * 60000L)
+            return@withContext "Request submitted: ${body.data.city}, ${body.data.country} (Pending)."
+        }
+        if (response.code() == 429) {
+            val seconds = response.headers()["Retry-After"]?.toLongOrNull()?.coerceIn(1, 600) ?: 600
+            keyStoreManager.saveServerRequestCooldown(System.currentTimeMillis() + seconds * 1000)
+            throw IllegalStateException("Please wait ${(seconds + 59) / 60} minutes before another request.")
+        }
+        throw IllegalStateException(if (response.code() == 403) "This device is blocked. Contact support." else "Could not submit the request (${response.code()}). Try again.")
+    }
+
     suspend fun prepareReward(): String = withContext(Dispatchers.IO) {
         var token = keyStoreManager.getAccessToken() ?: authenticateDevice()
         var response = api.prepareReward("Bearer $token")
