@@ -354,7 +354,16 @@ class MainActivity : ComponentActivity() {
                                     selectedServer = displayedServer,
                                     userTier = userTier,
                                     onDisconnect = { tunnelManager.disconnect() },
-                                    onBackToHome = { activeSubScreen = null; currentTab = Screen.Home }
+                                    onBackToHome = { activeSubScreen = null; currentTab = Screen.Home },
+                                    nativeAdContent = {
+                                        com.nsec.vpn.ui.components.SmartNativeAd(
+                                            nativeAdManager = adMobManager.nativeAdManager,
+                                            adMobConfig = adMobConfig,
+                                            userTier = userTier,
+                                            vpnState = vpnState,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
                                 )
                             }
                             "split_tunnel" -> {
