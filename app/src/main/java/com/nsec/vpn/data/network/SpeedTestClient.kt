@@ -44,9 +44,10 @@ object SpeedTestClient {
         val receiver = Messenger(responseHandler)
         val connection = object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName, binder: IBinder) {
-                remote = Messenger(binder)
+                val messenger = Messenger(binder)
+                remote = messenger
                 try {
-                    remote?.send(Message.obtain(null, 1).apply {
+                    messenger.send(Message.obtain(null, 1).apply {
                         replyTo = receiver; data = Bundle().apply { putString("expectedIp", ip) }
                     })
                 } catch (_: RemoteException) { close(IllegalStateException("The speed helper stopped. Retry the test.")) }

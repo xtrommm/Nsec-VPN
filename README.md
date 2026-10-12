@@ -152,3 +152,7 @@ Navigation, Settings support/server requests/device ID, persisted DNS reconnect,
 ## App appearance update
 
 The charcoal dark theme and redesigned Server Request sheet are documented in [APP-RESKIN.md](docs/APP-RESKIN.md), including the admin steps for changing the app support email. No new dependency or database migration is needed.
+
+## Android CI backup-policy repair
+
+See [Actions CI repair](docs/ACTIONS-CI-REPAIR.md) for the failed run evidence and fix. Run `python3 scripts/check-android-backups.py` before Android builds; both Android modules must explicitly exclude cloud/device backup data. The CI deployment gate remains enabled.

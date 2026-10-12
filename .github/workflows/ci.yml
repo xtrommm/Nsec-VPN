@@ -156,6 +156,11 @@ jobs:
             -validity 10000 \
             -dname "CN=Android Debug,O=Nsec VPN,C=US"
 
+      - name: Validate Android backup policies
+        run: |
+          python3 scripts/check-android-backups.py
+          python3 -m unittest discover -s tests/android-config -p 'test_*.py'
+
       - name: Run Unit & Robolectric Tests
         run: ./gradlew :app:testDebugUnitTest :speedtest-helper:testDebugUnitTest --no-daemon --warning-mode all -Dorg.gradle.deprecation.trace=true
 
@@ -165,16 +170,18 @@ jobs:
         if: always()
         shell: bash
         run: |
-          for variant in debug release; do
-            report="app/build/reports/lint-results-$variant.txt"
-            fallback="app/build/intermediates/lint_intermediate_text_report/$variant/lintReport${variant^}/lint-results-$variant.txt"
-            if [[ -f "$report" ]]; then
-              cat "$report"
-            elif [[ -f "$fallback" ]]; then
-              cat "$fallback"
-            else
-              echo "No $variant lint text report was generated; inspect the preceding Gradle error."
-            fi
+          for module in app speedtest-helper; do
+            for variant in debug release; do
+              report="$module/build/reports/lint-results-$variant.txt"
+              fallback="$module/build/intermediates/lint_intermediate_text_report/$variant/lintReport${variant^}/lint-results-$variant.txt"
+              if [[ -f "$report" ]]; then
+                cat "$report"
+              elif [[ -f "$fallback" ]]; then
+                cat "$fallback"
+              else
+                echo "No $module $variant lint text report was generated; inspect the preceding Gradle error."
+              fi
+            done
           done
       - name: Build debug and validation release APKs
         # This job has only an ephemeral debug key; its release APK is not for publishing.
