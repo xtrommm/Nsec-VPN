@@ -84,7 +84,8 @@ fun SpeedTestScreen(
     fun runSpeedTest() {
         if (isTesting) return
         errorMessage = null
-        val node = manager.connectedNode.value
+        val nodeName = manager.connectedNode.value?.nodeName
+        if (nodeName.isNullOrBlank()) { errorMessage = "The connected node has no verified name. Reconnect and retry."; return }
         isTesting = true
         currentSpeedMbps = 0f; pingMs = null; jitterMs = null
         averageDownloadMbps = null; averageUploadMbps = null
@@ -99,7 +100,7 @@ fun SpeedTestScreen(
                         result.error?.let { errorMessage = it }
                         if (result.completed) {
                             history = historyStore.append(SpeedTestHistory.Result(
-                                node?.nodeName ?: currentServer?.name ?: "Connected node",
+                                nodeName,
                                 System.currentTimeMillis(), result.ping, result.jitter, result.download, result.upload))
                             phase = "Complete"
                         }
