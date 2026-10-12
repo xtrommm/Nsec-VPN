@@ -92,8 +92,6 @@ class MainActivity : ComponentActivity() {
                 var activeSubScreen by rememberSaveable { mutableStateOf<String?>(null) }
                 var isUserInitiatedConnect by remember { mutableStateOf(false) }
 
-                var showVpnDisclosureDialog by remember { mutableStateOf(false) }
-                var pendingUserInitiatedConnect by remember { mutableStateOf(false) }
 
                 var showVipModal by remember { mutableStateOf(false) }
                 var rewardBusy by remember { mutableStateOf(false) }
@@ -168,12 +166,7 @@ class MainActivity : ComponentActivity() {
                             tunnelManager.disconnect()
                         }
                         is VpnState.Disconnected, is VpnState.Error -> {
-                            if (!vpnRepo.isVpnDisclosureAccepted()) {
-                                pendingUserInitiatedConnect = isUserInitiated
-                                showVpnDisclosureDialog = true
-                            } else {
-                                startConnectInternal(isUserInitiated)
-                            }
+                            startConnectInternal(isUserInitiated)
                         }
                         else -> {}
                     }
@@ -477,45 +470,6 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
-                }
-
-                if (showVpnDisclosureDialog) {
-                    AlertDialog(
-                        onDismissRequest = { showVpnDisclosureDialog = false },
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        title = {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Shield, contentDescription = null, tint = PrimaryBlue)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("VPN Service Disclosure", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                            }
-                        },
-                        text = {
-                            Text(
-                                "Nsec VPN utilizes Android VpnService to create a secure, encrypted network tunnel to protect your online traffic. Your connection is routed through zero-logs WireGuard servers.\n\nNo browsing data, DNS queries or originating IP addresses are logged. Device credentials and expiring public-key/address leases are stored to authorize and operate the VPN. Ads and billing providers process data under their own policies.",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = 13.sp,
-                                lineHeight = 18.sp
-                            )
-                        },
-                        confirmButton = {
-                            Button(
-                                onClick = {
-                                    showVpnDisclosureDialog = false
-                                    vpnRepo.setVpnDisclosureAccepted(true)
-                                    startConnectInternal(pendingUserInitiatedConnect)
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
-                            ) {
-                                Text("Continue")
-                            }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { showVpnDisclosureDialog = false }) {
-                                Text("Decline", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
-                    )
                 }
 
                 if (showVipModal) {

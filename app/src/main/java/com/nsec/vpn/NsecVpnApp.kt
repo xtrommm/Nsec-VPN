@@ -9,6 +9,7 @@ class NsecVpnApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        com.nsec.vpn.ui.theme.NativeSplashTheme.initialize(this)
         try {
             serviceLocator = ServiceLocator.getInstance(this)
         } catch (_: Throwable) {
