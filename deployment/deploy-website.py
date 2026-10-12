@@ -137,7 +137,7 @@ def deploy(sha):
     # The channel is already configured separately; a release must never replace it.
     command(['systemctl', 'is-active', '--quiet', 'nsec-agent-channel'], 'AGENT_CHANNEL_OFFLINE')
     baseline = (STATE / 'website-schema.sha256').read_text().strip()
-    current_schema = command(['docker', 'exec', 'nsecvpn-backend', 'cat',
+    current_schema = command(['docker', 'exec', '--user', '0', 'nsecvpn-backend', 'cat',
                              '/app/prisma/schema.prisma'], 'CURRENT_SCHEMA_UNAVAILABLE')
     if hashlib.sha256(current_schema).hexdigest() != baseline:
         raise DeployError('CURRENT_SCHEMA_BASELINE_MISMATCH')
@@ -148,7 +148,7 @@ def deploy(sha):
         metadata = json.loads(command(['docker', 'image', 'inspect', image],
                                       'IMAGE_INSPECTION_FAILED'))[0]
         digests.append(verified_digest(metadata, image, sha))
-    candidate_schema = command(['docker', 'run', '--rm', '--network', 'none',
+    candidate_schema = command(['docker', 'run', '--rm', '--user', '0', '--network', 'none',
         '--entrypoint', 'cat', digests[0], '/app/prisma/schema.prisma'], 'RELEASE_SCHEMA_UNAVAILABLE')
     if hashlib.sha256(candidate_schema).hexdigest() != baseline:
         # Existing production was upgraded manually. Never re-run an absent baseline

@@ -60,7 +60,7 @@ def main():
     model = json.loads(CONFIG.read_text())
     if set(('backend', 'admin-panel', 'postgres')) - set(model.get('services', {})):
         raise SystemExit('Live Compose configuration is incomplete')
-    schema = subprocess.run(['docker', 'exec', 'nsecvpn-backend', 'cat',
+    schema = subprocess.run(['docker', 'exec', '--user', '0', 'nsecvpn-backend', 'cat',
         '/app/prisma/schema.prisma'], capture_output=True, check=False)
     if schema.returncode:
         raise SystemExit('Cannot record the running backend schema')

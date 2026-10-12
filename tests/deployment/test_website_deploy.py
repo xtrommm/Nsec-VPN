@@ -139,7 +139,7 @@ class WebsiteDeploymentTest(unittest.TestCase):
             config.write_text(json.dumps(model()))
             (root / 'website-schema.sha256').write_text('a' * 64)
             def fake_command(args, code, **kwargs):
-                if args[:3] == ['docker', 'exec', 'nsecvpn-backend']:
+                if args[:5] == ['docker', 'exec', '--user', '0', 'nsecvpn-backend']:
                     return b'different schema'
                 return b''
             with patch.object(deploy, 'CONFIG', config), patch.object(deploy, 'STATE', root), \
@@ -160,7 +160,7 @@ class WebsiteDeploymentTest(unittest.TestCase):
             calls = []
             def fake_command(args, code, **kwargs):
                 calls.append(args)
-                if args[:3] == ['docker', 'exec', 'nsecvpn-backend']:
+                if args[:5] == ['docker', 'exec', '--user', '0', 'nsecvpn-backend']:
                     return schema
                 if args[:3] == ['docker', 'image', 'inspect']:
                     image = args[-1]
