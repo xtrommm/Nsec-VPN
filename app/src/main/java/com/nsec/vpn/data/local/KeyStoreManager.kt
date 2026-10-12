@@ -13,6 +13,7 @@ import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
 class KeyStoreManager(context: Context, private val vaultKeyProvider: (() -> javax.crypto.SecretKey)? = null) {
+    private val themeContext = context.applicationContext
     private val prefs: SharedPreferences = context.getSharedPreferences("nsecvpn_secure_vault", Context.MODE_PRIVATE)
 
     private val secretKey: javax.crypto.SecretKey by lazy { synchronized(vaultLock) {
@@ -166,6 +167,7 @@ class KeyStoreManager(context: Context, private val vaultKeyProvider: (() -> jav
     // Theme Preference Persistence
     fun saveThemeMode(mode: String) {
         prefs.edit { putString(KEY_THEME_MODE, mode) }
+        com.nsec.vpn.ui.theme.NativeSplashTheme.apply(themeContext, mode)
     }
     fun getThemeMode(): String = prefs.getString(KEY_THEME_MODE, "SYSTEM") ?: "SYSTEM"
 
