@@ -32,11 +32,14 @@ import com.nsec.vpn.data.monetization.AdMobConfig
 import com.nsec.vpn.data.monetization.NativeAdManager
 import com.nsec.vpn.ui.components.SmartNativeAd
 import com.nsec.vpn.ui.theme.*
-import com.nsec.vpn.data.network.NodeLatencyProbe
-import com.nsec.vpn.data.network.VpnSpeedTest
-import android.os.SystemClock
-import kotlinx.coroutines.delay
+import com.nsec.vpn.data.network.SpeedTestClient
+import com.nsec.vpn.data.local.SpeedTestHistory
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collect
 import java.util.Locale
 
 @Composable
@@ -58,7 +61,17 @@ fun SpeedTestScreen(
     var averageDownloadMbps by remember { mutableStateOf<Float?>(null) }
     var averageUploadMbps by remember { mutableStateOf<Float?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    var confirmBrowserTest by remember { mutableStateOf(false) }
+    var confirmTest by remember { mutableStateOf(false) }
+    var testJob by remember { mutableStateOf<Job?>(null) }
+    var phase by remember { mutableStateOf("Ready") }
+    val historyStore = remember(context) { SpeedTestHistory(context) }
+    var history by remember { mutableStateOf(historyStore.read()) }
+    DisposableEffect(Unit) { onDispose { testJob?.cancel() } }
+    LaunchedEffect(tunnelState) {
+        if (tunnelState !is VpnState.Connected && isTesting) {
+            testJob?.cancel(); errorMessage = "VPN disconnected. Reconnect and retry."
+        }
+    }
 
     val animatedSpeed by animateFloatAsState(
         targetValue = currentSpeedMbps,
@@ -71,72 +84,45 @@ fun SpeedTestScreen(
     fun runSpeedTest() {
         if (isTesting) return
         errorMessage = null
-        if (!VpnSpeedTest.openBrowser(context, manager)) {
-            errorMessage = "No browser included in the VPN is available. Include a browser in split tunneling and reconnect."
-            return
-        }
-        val node = manager.connectedNode.value
-        val start = manager.vpnStats.value
-        val startedAt = SystemClock.elapsedRealtime()
+        val nodeName = manager.connectedNode.value?.nodeName
+        if (nodeName.isNullOrBlank()) { errorMessage = "The connected node has no verified name. Reconnect and retry."; return }
         isTesting = true
-        currentSpeedMbps = 0f
-        averageDownloadMbps = null
-        averageUploadMbps = null
-        pingMs = null
-        jitterMs = null
-        coroutineScope.launch {
-            val latency = launch {
-                val samples = mutableListOf<Long>()
-                repeat(3) {
-                    NodeLatencyProbe.measure(node?.publicIpv4 ?: currentServer?.publicIpv4)?.let(samples::add)
-                    delay(100)
-                }
-                pingMs = samples.takeIf { it.isNotEmpty() }?.average()?.toLong()
-                jitterMs = VpnSpeedTest.jitter(samples)
-            }
+        currentSpeedMbps = 0f; pingMs = null; jitterMs = null
+        averageDownloadMbps = null; averageUploadMbps = null
+        testJob = coroutineScope.launch {
             try {
-                var previous = start
-                var previousTime = startedAt
-                repeat(30) {
-                    delay(1000L)
-                    if (manager.vpnState.value !is VpnState.Connected || manager.connectedNode.value != node) {
-                        errorMessage = "VPN changed or disconnected. Reconnect and run the test again."
-                        return@launch
+                withTimeout(65000) {
+                    SpeedTestClient.measure(context, manager).collect { result ->
+                        phase = result.phase; currentSpeedMbps = result.speed
+                        if (result.ping > 0) { pingMs = result.ping.toLong(); jitterMs = result.jitter.toLong() }
+                        if (result.download > 0) averageDownloadMbps = result.download
+                        if (result.upload > 0) averageUploadMbps = result.upload
+                        result.error?.let { errorMessage = it }
+                        if (result.completed) {
+                            history = historyStore.append(SpeedTestHistory.Result(
+                                nodeName,
+                                System.currentTimeMillis(), result.ping, result.jitter, result.download, result.upload))
+                            phase = "Complete"
+                        }
                     }
-                    val now = SystemClock.elapsedRealtime()
-                    val stats = manager.vpnStats.value
-                    val speed = VpnSpeedTest.megabitsPerSecond(previous.totalBytesReceived,
-                        stats.totalBytesReceived, now - previousTime)
-                    val down = VpnSpeedTest.megabitsPerSecond(start.totalBytesReceived,
-                        stats.totalBytesReceived, now - startedAt)
-                    val up = VpnSpeedTest.megabitsPerSecond(start.totalBytesSent,
-                        stats.totalBytesSent, now - startedAt)
-                    if (speed == null || down == null || up == null) {
-                        errorMessage = "Tunnel counters reset. Run the test again."
-                        return@launch
-                    }
-                    currentSpeedMbps = speed
-                    averageDownloadMbps = down
-                    averageUploadMbps = up
-                    previous = stats
-                    previousTime = now
                 }
-                if (averageDownloadMbps == 0f && averageUploadMbps == 0f)
-                    errorMessage = "No tunnel traffic measured. Start the test in the browser and try again."
-            } finally {
-                latency.cancel()
-                isTesting = false
-            }
+            } catch (_: TimeoutCancellationException) {
+                errorMessage = "Speed test timed out. Retry when the connection is stable."
+            } catch (cancelled: CancellationException) {
+                phase = "Cancelled"; throw cancelled
+            } catch (error: Exception) {
+                errorMessage = error.message ?: "Speed test failed. Please retry."
+            } finally { isTesting = false }
         }
     }
 
-    if (confirmBrowserTest) {
+    if (confirmTest) {
         AlertDialog(
-            onDismissRequest = { confirmBrowserTest = false },
+            onDismissRequest = { confirmTest = false },
             title = { Text("Run VPN speed test") },
-            text = { Text("Opens Cloudflare in a browser included in the VPN. The test uses mobile or Wi-Fi data and shares your VPN exit IP with Cloudflare. Return here to see real tunnel traffic.") },
-            confirmButton = { TextButton(onClick = { confirmBrowserTest = false; runSpeedTest() }) { Text("START") } },
-            dismissButton = { TextButton(onClick = { confirmBrowserTest = false }) { Text("CANCEL") } }
+            text = { Text("Tests inside this app using the separately installed Nsec VPN Speed Helper. Up to 192 MiB of test payload plus network overhead may be used. Cloudflare sees the VPN node's exit IP. Ads remain outside the VPN. HTTP latency includes provider response time.") },
+            confirmButton = { TextButton(onClick = { confirmTest = false; runSpeedTest() }) { Text("START") } },
+            dismissButton = { TextButton(onClick = { confirmTest = false }) { Text("CANCEL") } }
         )
     }
 
@@ -156,7 +142,7 @@ fun SpeedTestScreen(
         )
 
         Text(
-            text = "The browser shows tested download and upload speeds. This gauge measures all tunnel traffic for 30 seconds. Node ping and jitter measure your direct route to the node; ads remain outside the VPN.",
+            text = "VPN-bound HTTP latency, jitter, download and upload. Ads remain outside the tunnel.",
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp),
@@ -238,7 +224,7 @@ fun SpeedTestScreen(
         Spacer(modifier = Modifier.height(36.dp))
 
         Button(
-            onClick = { confirmBrowserTest = true },
+            onClick = { confirmTest = true },
             enabled = !isTesting && tunnelState is VpnState.Connected,
             colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
             shape = RoundedCornerShape(14.dp),
@@ -256,6 +242,16 @@ fun SpeedTestScreen(
             )
         }
 
+        Text(phase, modifier = Modifier.padding(top = 8.dp))
+        if (isTesting) OutlinedButton(onClick = { testJob?.cancel() }) { Text("CANCEL TEST") }
+        if (history.isNotEmpty()) {
+            Text("Recent results", fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 16.dp))
+            history.forEach { result ->
+                Text("${result.nodeName} · ${java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT, java.text.DateFormat.SHORT).format(java.util.Date(result.timestamp))} · " +
+                    String.format(Locale.US, "↓ %.1f / ↑ %.1f Mbps", result.download, result.upload),
+                    fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+            }
+        }
         errorMessage?.let { message ->
             Text(message, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 12.dp))
         }

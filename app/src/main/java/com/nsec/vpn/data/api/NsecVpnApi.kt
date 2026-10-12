@@ -117,7 +117,13 @@ data class RedeemPromoRequest(val code: String)
 data class RedeemPromoData(val tier: String, val passExpiresAt: String?)
 data class RedeemPromoResponse(val success: Boolean, val data: RedeemPromoData?)
 
+data class ServerRequestBody(val country: String, val city: String, val note: String? = null)
+data class ServerRequestData(val id: String, val country: String, val city: String, val status: String, val createdAt: String)
+data class ServerRequestResponse(val success: Boolean, val data: ServerRequestData?)
+
 interface NsecVpnApi {
+    @POST("server-requests")
+    suspend fun submitServerRequest(@Header("Authorization") token: String, @Body request: ServerRequestBody): Response<ServerRequestResponse>
 
     @POST("billing/rewarded/prepare")
     suspend fun prepareReward(@Header("Authorization") token: String): Response<RewardTicketResponse>

@@ -25,3 +25,5 @@ dependencyResolutionManagement {
 rootProject.name = "Nsec VPN"
 
 include(":app")
+
+include(":speedtest-helper")

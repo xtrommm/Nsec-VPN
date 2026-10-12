@@ -61,11 +61,6 @@ fun HomeScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         serverListError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        if (isConnected && connectedNode != null) {
-            Text(connectedNode!!.nodeName.orEmpty(), fontWeight = FontWeight.Bold)
-            Text(connectedNode!!.locationName.orEmpty())
-            Text("VPN server IP: ${connectedNode!!.publicIpv4.orEmpty()}", modifier = Modifier.padding(vertical = 8.dp))
-        }
 
         if (!announcementDismissed && !announcementTitle.isNullOrEmpty()) {
             Row(

@@ -59,6 +59,8 @@ data class VpnStats(
 }
 
 enum class DnsProvider(val displayName: String, val primary: String, val secondary: String) {
+    AUTOMATIC("Automatic (server DNS)", "", ""),
+    CUSTOM("Custom DNS", "", ""),
     CLOUDFLARE("Cloudflare (Fast & Private)", "1.1.1.1", "1.0.0.1"),
     GOOGLE("Google Public DNS", "8.8.8.8", "8.8.4.4"),
     ADGUARD("AdGuard (Ad-Blocking DNS)", "94.140.14.14", "94.140.15.15"),

@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased — Android experience phase 2
+
+- Fixed Connection Status footer, selected tab, Back behavior and saved navigation.
+- Added configured support email/copy, authenticated server requests/cooldown, and stable installation ID/copy.
+- Applied persisted Automatic/preset/Custom DNS to new and reconnecting tunnels, with explicit IPv4-node limits and active DNS display.
+- Restored verified real server catalogs before background refresh; made entitlement and ping work asynchronous.
+- Removed duplicate node/location/IP text above the Home logo.
+- Replaced browser speed tests with VPN-bound, signature-protected companion measurements, cancellation, gauge and five-result history.
+- Replaced invented Troubleshooting passes with measured observations and explicit unverified checks.
+- Added paired APK installation and CI coverage; full Android/device verification remains pending.
+
 ## Unreleased — admin experience phase 1
 
 ### Added
