@@ -36,6 +36,7 @@ it('offline node fails before allocating or provisioning', async () => {
 });
 it('respects capacity and reserved leases', async () => {
   (prisma.serverNode.findUnique as jest.Mock).mockResolvedValue({ ...node, maxPeers: 1 });
+  tx.serverNode.findUniqueOrThrow.mockResolvedValue({ ...node, maxPeers: 1 });
   tx.peerSession.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([{ allocatedIp: '10.8.0.2/32' }]);
   await expect(provisionPeer('d1', 'n1', clientKey, 'FREE')).rejects.toThrow('SERVER_FULL');
   expect(AgentClient.addPeer).not.toHaveBeenCalled();
@@ -62,4 +63,11 @@ it('maintenance rejects peer creation before node calls', async () => {
  (prisma.appConfig.findUnique as jest.Mock).mockResolvedValue({ maintenanceMode: true });
  await expect(provisionPeer('d1','n1',clientKey,'FREE')).rejects.toThrow('MAINTENANCE_MODE');
  expect(AgentClient.addPeer).not.toHaveBeenCalled();
+});
+
+it('uses the capacity re-read inside the transaction after an admin changes it', async () => {
+  tx.serverNode.findUniqueOrThrow.mockResolvedValue({ ...node, maxPeers: 1 });
+  tx.peerSession.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([{ allocatedIp: '10.8.0.2/32' }]);
+  await expect(provisionPeer('d1', 'n1', clientKey, 'FREE')).rejects.toThrow('SERVER_FULL');
+  expect(AgentClient.addPeer).not.toHaveBeenCalled();
 });

@@ -6,16 +6,19 @@ import { ConnectVpnSchema, DisconnectVpnSchema } from '../types';
 import { AgentClient } from '../services/agentClient';
 import { connectLimiter } from '../middleware/rateLimit';
 import { provisionPeer } from '../services/peerProvisioning';
+import { provisionLocationPeer } from '../services/locationSelection';
 
 const router = Router();
 router.post('/connect', authenticateDevice, connectLimiter, validateBody(ConnectVpnSchema), async (req: AuthenticatedDeviceRequest, res: Response) => {
   try {
-    const data = await provisionPeer(req.device!.id, req.body.serverId, req.body.clientPublicKey, req.device!.tier);
+    const data = req.body.locationSelection
+      ? await provisionLocationPeer(req.device!.id, req.body.serverId, req.body.clientPublicKey, req.body.nodeLatencies, req.body.excludedNodeIds)
+      : await provisionPeer(req.device!.id, req.body.serverId, req.body.clientPublicKey, req.device!.tier);
     return res.json({ success: true, data });
   } catch (error) {
     const code = error instanceof Error ? error.message : '';
     const codes: Record<string, number> = { MAINTENANCE_MODE: 503, SERVER_NOT_FOUND: 404, NODE_DISABLED: 409, NODE_OFFLINE: 503,
-      DEVICE_BLOCKED: 403, KEY_ALREADY_REGISTERED: 409, SERVER_FULL: 503, AGENT_UNREACHABLE: 502, TIER_UPGRADE_REQUIRED: 403 };
+      DEVICE_BLOCKED: 403, KEY_ALREADY_REGISTERED: 409, SERVER_FULL: 503, ALL_SERVERS_FULL: 503, AGENT_UNREACHABLE: 502, TIER_UPGRADE_REQUIRED: 403 };
     return res.status(codes[code] ?? 500).json({ success: false, error: codes[code] ? code : 'INTERNAL_ERROR',
       message: codes[code] ? code.replace(/_/g, ' ') : 'Failed to negotiate VPN session' });
   }

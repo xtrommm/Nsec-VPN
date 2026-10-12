@@ -19,6 +19,9 @@ export const RefreshTokenSchema = z.object({
 });
 
 export const ConnectVpnSchema = z.object({
+  locationSelection: z.boolean().optional(),
+  excludedNodeIds: z.array(z.string().min(2).max(64)).max(1000).optional(),
+  nodeLatencies: z.array(z.object({ nodeId: z.string().min(2).max(64), pingMs: z.number().int().min(0).max(60000) })).max(1000).optional(),
   serverId: z.string().uuid().or(z.string().min(2).max(64)),
   clientPublicKey: z.string().regex(/^[A-Za-z0-9+/]{43}=$/).refine(v => Buffer.from(v, 'base64').toString('base64') === v && Buffer.from(v, 'base64').some(x => x !== 0))
 });

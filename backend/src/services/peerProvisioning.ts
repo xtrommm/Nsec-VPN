@@ -27,12 +27,12 @@ export async function provisionPeer(deviceId: string, serverId: string, clientPu
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${serverId}))`;
     const current = await tx.serverNode.findUniqueOrThrow({ where: { id: serverId } });
     if (current.isPremiumOnly && effectiveTier === 'FREE') throw new Error('TIER_UPGRADE_REQUIRED');
-    if (!current.active || current.publicKey !== node.publicKey || current.endpoint !== node.endpoint) throw new Error('NODE_DISABLED');
+    if (!current.active || current.publicKey !== node.publicKey || current.endpoint !== node.endpoint || current.subnetIpv4 !== node.subnetIpv4) throw new Error('NODE_DISABLED');
     const keyOwner = await tx.peerSession.findFirst({ where: { serverId, clientPublicKey, active: true } });
     if (keyOwner && keyOwner.deviceId !== deviceId) throw new Error('KEY_ALREADY_REGISTERED');
     const sessions = await tx.peerSession.findMany({ where: { serverId, deviceId, active: true } });
     const old = sessions[0];
-    const allocatedIp = old?.allocatedIp ?? await IpPoolService.allocateIp(tx, serverId, node.subnetIpv4, node.maxPeers);
+    const allocatedIp = old?.allocatedIp ?? await IpPoolService.allocateIp(tx, serverId, current.subnetIpv4, current.maxPeers);
     const leaseLimit = Date.now() + 24 * 60 * 60 * 1000;
     const expiresAt = new Date(current.isPremiumOnly && device.passExpiresAt ?
       Math.min(leaseLimit, device.passExpiresAt.getTime()) : leaseLimit);
