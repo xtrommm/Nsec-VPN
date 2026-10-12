@@ -36,7 +36,7 @@ class VpnRepository(
     private val _selectedServer = MutableStateFlow<Server?>(null)
     val selectedServer: StateFlow<Server?> = _selectedServer.asStateFlow()
 
-    private val _selectedDns = MutableStateFlow(DnsProvider.CLOUDFLARE)
+    private val _selectedDns = MutableStateFlow(DnsProvider.AUTOMATIC)
     val selectedDns: StateFlow<DnsProvider> = _selectedDns.asStateFlow()
 
     private val _killSwitchEnabled = MutableStateFlow(false)
@@ -76,7 +76,7 @@ class VpnRepository(
 
         val savedDnsName = keyStoreManager.getSelectedDns()
         if (savedDnsName != null) {
-            _selectedDns.value = DnsProvider.entries.find { it.name == savedDnsName } ?: DnsProvider.CLOUDFLARE
+            _selectedDns.value = DnsProvider.entries.find { it.name == savedDnsName } ?: DnsProvider.AUTOMATIC
         }
 
         _killSwitchEnabled.value = keyStoreManager.isKillSwitchEnabled()
@@ -311,7 +311,16 @@ class VpnRepository(
         keyStoreManager.saveThemeMode(mode.name)
     }
 
+    fun customDns(): String = keyStoreManager.getCustomDns()
+    fun dnsServersForConnection(): List<String> = com.nsec.vpn.vpn.DnsPolicy.forIpv4Tunnel(_selectedDns.value, customDns())
+    fun setCustomDns(raw: String) {
+        val addresses = com.nsec.vpn.vpn.DnsPolicy.parseCustom(raw).joinToString(", ")
+        com.nsec.vpn.vpn.DnsPolicy.forIpv4Tunnel(DnsProvider.CUSTOM, addresses)
+        keyStoreManager.saveCustomDns(addresses)
+        setDns(DnsProvider.CUSTOM)
+    }
     fun setDns(dns: DnsProvider) {
+        com.nsec.vpn.vpn.DnsPolicy.forIpv4Tunnel(dns, customDns())
         _selectedDns.value = dns
         keyStoreManager.saveSelectedDns(dns.name)
     }

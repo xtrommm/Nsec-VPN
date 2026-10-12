@@ -107,6 +107,9 @@ class KeyStoreManager(context: Context, private val vaultKeyProvider: (() -> jav
     }
     fun getSelectedServerId(): String? = prefs.getString(KEY_SELECTED_SERVER_ID, null)
 
+    fun saveCustomDns(value: String) { prefs.edit { putString("custom_dns", value) } }
+    fun getCustomDns(): String = prefs.getString("custom_dns", "") ?: ""
+
     fun saveSelectedDns(dnsName: String) {
         prefs.edit { putString(KEY_SELECTED_DNS, dnsName) }
     }

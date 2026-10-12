@@ -34,6 +34,8 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
     val vpnState: StateFlow<VpnState> = _vpnState.asStateFlow()
     private val _vpnStats = MutableStateFlow(VpnStats())
     val vpnStats: StateFlow<VpnStats> = _vpnStats.asStateFlow()
+    private val _activeDns = MutableStateFlow<List<String>>(emptyList())
+    val activeDns: StateFlow<List<String>> = _activeDns.asStateFlow()
     private val _connectedNode = MutableStateFlow<TunnelConfig?>(null)
     val connectedNode: StateFlow<TunnelConfig?> = _connectedNode.asStateFlow()
     // Retained diagnostics API; ads/API traffic always remains excluded.
@@ -65,7 +67,7 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
     fun setIncludeAppInTunnel(@Suppress("UNUSED_PARAMETER") include: Boolean) { _includeAppInTunnel.value = false }
 
     @Synchronized
-    fun startConnect(server: Server, dnsServers: List<String> = listOf("1.1.1.1", "1.0.0.1"),
+    fun startConnect(server: Server, dnsServers: List<String> = emptyList(),
                      excludedApps: Set<String> = emptySet(), onNeedsPermission: (Intent) -> Unit) {
         if (_vpnState.value is VpnState.Connecting || _vpnState.value is VpnState.Connected || _vpnState.value is VpnState.Disconnecting) return
         VpnService.prepare(context)?.let { onNeedsPermission(it); return }
@@ -110,6 +112,7 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
                 val config = TunnelConfigBuilder.build(tc, keyPair.privateKey.toBase64(), context.packageName, applications, dns)
                 updateNotification(tc.nodeName ?: server.name)
                 backend.setState(tunnel, Tunnel.State.UP, config)
+                _activeDns.value = dns.ifEmpty { tc.dnsServers }
                 connectionStartTime = SystemClock.elapsedRealtime()
                 }, handshake = { tc -> waitForHandshakeOrTimeout(HANDSHAKE_TIMEOUT_MS, tc.serverPublicKey) })
                 _connectedNode.value = tc
@@ -201,7 +204,7 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
         stopping = false
         val id = activePeerId; val key = activeClientPublicKey
         if (id != null && key != null) vpnRepository.notifyDisconnect(id, key)
-        activePeerId = null; activeTunnelConfig = null; _connectedNode.value = null
+        activePeerId = null; activeTunnelConfig = null; _connectedNode.value = null; _activeDns.value = emptyList()
         context.stopService(Intent(context, NsecVpnService::class.java))
     }
     @Synchronized
@@ -216,6 +219,27 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
             _vpnStats.value = VpnStats(); _vpnState.value = VpnState.Disconnected
         }
     }
+    @Synchronized
+    fun updateDns(dns: List<String>) {
+        require(dns.size <= 4 && dns.none { it.contains(':') }) { "This node needs reachable IPv4 DNS resolvers." }
+        if (dns == lastDns) return
+        lastDns = dns
+        if (_vpnState.value !is VpnState.Connected && _vpnState.value !is VpnState.Connecting) return
+        val server = activeServer ?: return
+        val previous = connectJob
+        statsJob?.cancel()
+        _vpnState.value = VpnState.Connecting
+        _connectedNode.value = null
+        connectJob = scope.launch {
+            try {
+                previous?.cancelAndJoin()
+                teardown()
+                currentCoroutineContext().ensureActive()
+                connectWithFailover(server, dns, lastExcludedApps)
+            } catch (e: CancellationException) { withContext(NonCancellable) { teardown() }; throw e }
+        }
+    }
+
     fun getDiagnosticsSummary(): String {
         if (!BuildConfig.DEBUG) return ""
         return "Node: ${activeTunnelConfig?.nodeName.orEmpty()}\nEndpoint: ${activeTunnelConfig?.serverEndpoint.orEmpty()}\nTunnel address: ${activeTunnelConfig?.clientAddress.orEmpty()}\nHandshake age: $latestHandshakeAgeSeconds s\nRX: ${_vpnStats.value.totalBytesReceived}\nTX: ${_vpnStats.value.totalBytesSent}\nAPI status: $lastApiStatusCode\nError: ${lastError.orEmpty()}"
