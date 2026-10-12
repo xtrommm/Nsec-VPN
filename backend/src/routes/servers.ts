@@ -35,7 +35,7 @@ router.get('/', authenticateDevice, async (req: AuthenticatedDeviceRequest, res:
         isRecommended: true,
         endpoint: true, publicIpv4: true
       },
-      orderBy: [{ isRecommended: 'desc' }, { currentLoad: 'asc' }]
+      orderBy: [{ sortOrder: 'asc' }, { isRecommended: 'desc' }, { currentLoad: 'asc' }]
     });
 
     // If client requests servers grouped by geographic location

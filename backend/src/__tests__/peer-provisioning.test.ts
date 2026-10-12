@@ -1,4 +1,4 @@
-jest.mock('../db', () => ({ prisma: { serverNode: { findUnique: jest.fn() }, $transaction: jest.fn() } }));
+jest.mock('../db', () => ({ prisma: { appConfig: { findUnique: jest.fn() }, serverNode: { findUnique: jest.fn() }, $transaction: jest.fn() } }));
 jest.mock('../services/nodeHealth', () => ({ testNode: jest.fn() }));
 jest.mock('../services/agentClient', () => ({ AgentClient: { addPeer: jest.fn(), removePeer: jest.fn() } }));
 import { prisma } from '../db';
@@ -10,7 +10,7 @@ const node = { id: 'n1', active: true, isPremiumOnly: false, endpoint: '47.85.10
 const tx = { device: { findUniqueOrThrow: jest.fn() }, $executeRaw: jest.fn(), serverNode: { findUniqueOrThrow: jest.fn() }, peerSession: { findFirst: jest.fn(), findMany: jest.fn(), create: jest.fn() } };
 const clientKey = Buffer.alloc(32, 9).toString('base64');
 beforeEach(() => {
-  jest.clearAllMocks(); tx.device.findUniqueOrThrow.mockResolvedValue({ isBlocked: false, tier: 'FREE', passExpiresAt: null }); (prisma.serverNode.findUnique as jest.Mock).mockResolvedValue(node);
+  jest.clearAllMocks(); (prisma.appConfig.findUnique as jest.Mock).mockResolvedValue({ maintenanceMode: false }); tx.device.findUniqueOrThrow.mockResolvedValue({ isBlocked: false, tier: 'FREE', passExpiresAt: null }); (prisma.serverNode.findUnique as jest.Mock).mockResolvedValue(node);
   (testNode as jest.Mock).mockResolvedValue({ online: true, agentOnline: true, publicIpv4: '47.85.109.170' });
   tx.serverNode.findUniqueOrThrow.mockResolvedValue(node); tx.peerSession.findMany.mockResolvedValue([]);
   tx.peerSession.create.mockResolvedValue({ peerId: 'peer_test' });
@@ -56,4 +56,10 @@ it('a premium peer lease cannot outlive the verified entitlement', async () => {
   await provisionPeer('d1', 'n1', clientKey, 'REWARDED_PASS');
   expect(AgentClient.addPeer).toHaveBeenCalledWith(node.agentUrl, node.agentSecretHash,
     expect.objectContaining({ expiresAt: expiresAt.toISOString() }));
+});
+
+it('maintenance rejects peer creation before node calls', async () => {
+ (prisma.appConfig.findUnique as jest.Mock).mockResolvedValue({ maintenanceMode: true });
+ await expect(provisionPeer('d1','n1',clientKey,'FREE')).rejects.toThrow('MAINTENANCE_MODE');
+ expect(AgentClient.addPeer).not.toHaveBeenCalled();
 });

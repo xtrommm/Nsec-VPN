@@ -18,6 +18,7 @@ import configRoutes from './routes/config';
 import billingRoutes from './routes/billing';
 import adminRoutes from './routes/admin';
 import { adminPromos, devicePromos } from './routes/promos';
+import { adminRequests, deviceRequests } from './routes/serverRequests';
 
 dotenv.config();
 
@@ -64,6 +65,8 @@ app.use('/api/v1/vpn', vpnRoutes);
 app.use('/api/v1/servers', serverRoutes);
 app.use('/api/v1', configRoutes);
 app.use('/api/v1/billing', billingRoutes);
+app.use('/api/v1/admin/server-requests', adminRequests);
+app.use('/api/v1/server-requests', deviceRequests);
 app.use('/api/v1/admin/promos', adminPromos);
 app.use('/api/v1/promos', devicePromos);
 app.use('/api/v1/admin', adminRoutes);

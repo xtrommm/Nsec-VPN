@@ -4,7 +4,7 @@ import { prisma } from '../db';
 import { EndpointSchema, SubnetSchema, isPublicIpv4 } from '../types';
 import { AgentClient } from './agentClient';
 
-export async function testNode(node: ServerNode, syncKey = false) {
+export async function testNode(node: ServerNode, syncKey = false, adminId?: string) {
   const health = await AgentClient.getNodeHealth(node.agentUrl, node.agentSecretHash);
   const endpoint = EndpointSchema.safeParse(node.endpoint);
   const subnet = SubnetSchema.safeParse(node.subnetIpv4);
@@ -19,12 +19,25 @@ export async function testNode(node: ServerNode, syncKey = false) {
   const keyMatches = health.publicKey === node.publicKey;
   const portMatches = Number(node.endpoint.split(':')[1]) === health.listenPort;
   const healthy = health.online && resolves && subnet.success && portMatches && (keyMatches || syncKey);
-  await prisma.serverNode.update({ where: { id: node.id }, data: {
+  const data = {
     healthy, healthCheckedAt: new Date(),
     ...(health.online ? { currentLoad: Math.min(100, Math.round(health.peerCount / node.maxPeers * 100)) } : {}),
     ...(health.online ? { publicIpv4: health.publicIpv4 } : {}),
     ...(syncKey && health.online ? { publicKey: health.publicKey } : {})
-  } });
+  };
+  if (syncKey && adminId) {
+    await prisma.$transaction(async tx => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${node.id}))`;
+      const current = await tx.serverNode.findUniqueOrThrow({ where: { id: node.id } });
+      if (current.endpoint !== node.endpoint || current.agentUrl !== node.agentUrl || current.publicKey !== node.publicKey) throw new Error('NODE_CHANGED');
+      await tx.serverNode.update({ where: { id: node.id }, data });
+      await tx.auditLog.create({ data: { adminId, action: 'SYNC_NODE_PUBLIC_KEY', targetResource: 'SERVER', targetId: node.id } });
+    });
+  } else {
+    // A stale health probe must never mark a changed endpoint or key healthy.
+    const result = await prisma.serverNode.updateMany({ where: { id: node.id, endpoint: node.endpoint, publicKey: node.publicKey, agentUrl: node.agentUrl }, data });
+    if (!result.count) return { ...health, online: false, agentOnline: health.online, keyMatches, portMatches, resolves, error: 'NODE_CHANGED' };
+  }
   return { ...health, online: healthy, agentOnline: health.online, keyMatches, portMatches, resolves,
     endpoint: node.endpoint, dnsServers: node.dnsServers, mtu: node.mtu, nodeName: node.name,
     locationName: `${node.city}, ${node.countryName}`, error: healthy ? undefined : 'NODE_VALIDATION_FAILED' };

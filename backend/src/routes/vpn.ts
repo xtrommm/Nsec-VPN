@@ -14,7 +14,7 @@ router.post('/connect', authenticateDevice, connectLimiter, validateBody(Connect
     return res.json({ success: true, data });
   } catch (error) {
     const code = error instanceof Error ? error.message : '';
-    const codes: Record<string, number> = { SERVER_NOT_FOUND: 404, NODE_DISABLED: 409, NODE_OFFLINE: 503,
+    const codes: Record<string, number> = { MAINTENANCE_MODE: 503, SERVER_NOT_FOUND: 404, NODE_DISABLED: 409, NODE_OFFLINE: 503,
       DEVICE_BLOCKED: 403, KEY_ALREADY_REGISTERED: 409, SERVER_FULL: 503, AGENT_UNREACHABLE: 502, TIER_UPGRADE_REQUIRED: 403 };
     return res.status(codes[code] ?? 500).json({ success: false, error: codes[code] ? code : 'INTERNAL_ERROR',
       message: codes[code] ? code.replace(/_/g, ' ') : 'Failed to negotiate VPN session' });
