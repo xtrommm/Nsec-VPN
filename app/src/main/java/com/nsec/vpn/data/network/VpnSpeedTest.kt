@@ -3,7 +3,7 @@ package com.nsec.vpn.data.network
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
+import androidx.core.net.toUri
 import com.nsec.vpn.vpn.WireGuardTunnelManager
 import kotlin.math.abs
 import kotlin.math.roundToLong
@@ -19,7 +19,7 @@ object VpnSpeedTest {
 
     fun openBrowser(context: Context, manager: WireGuardTunnelManager): Boolean {
         if (manager.vpnState.value !is com.nsec.vpn.data.model.VpnState.Connected) return false
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://speed.cloudflare.com/"))
+        val intent = Intent(Intent.ACTION_VIEW, "https://speed.cloudflare.com/".toUri())
             .addCategory(Intent.CATEGORY_BROWSABLE)
         @Suppress("DEPRECATION")
         val browsers = context.packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)

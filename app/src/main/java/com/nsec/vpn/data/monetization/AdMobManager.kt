@@ -2,6 +2,7 @@ package com.nsec.vpn.data.monetization
 
 import android.app.Activity
 import android.content.Context
+import androidx.core.content.edit
 import com.google.android.gms.ads.AdError
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.FullScreenContentCallback
@@ -85,9 +86,12 @@ class AdMobManager(private val context: Context) {
         val now = System.currentTimeMillis()
         val boot = android.provider.Settings.Global.getInt(context.contentResolver,
             android.provider.Settings.Global.BOOT_COUNT, -1)
-        rewardPrefs.edit().putLong("grantedWall", now).putLong("expiresWall", now + minutes * 60000L)
-            .putLong("expiresElapsed", android.os.SystemClock.elapsedRealtime() + minutes * 60000L)
-            .putInt("boot", boot).apply()
+        rewardPrefs.edit {
+            putLong("grantedWall", now)
+            putLong("expiresWall", now + minutes * 60000L)
+            putLong("expiresElapsed", android.os.SystemClock.elapsedRealtime() + minutes * 60000L)
+            putInt("boot", boot)
+        }
         refreshAdFreeConfig()
     }
 
