@@ -140,7 +140,7 @@ fun SettingsScreen(
                         text = "MANAGE",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = PrimaryBlue,
+                        color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.clickable { onOpenSplitTunnelApps() }
                     )
                 }
@@ -299,7 +299,7 @@ fun SettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showThemeDialog = false }) {
-                    Text("Close", color = PrimaryBlue)
+                    Text("Close", color = MaterialTheme.colorScheme.primary)
                 }
             }
         )
@@ -342,7 +342,7 @@ fun SettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showDnsDialog = false }) {
-                    Text("Close", color = PrimaryBlue)
+                    Text("Close", color = MaterialTheme.colorScheme.primary)
                 }
             }
         )
@@ -413,7 +413,7 @@ private fun SettingsToggleItem(
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(22.dp))
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
@@ -453,7 +453,7 @@ private fun SettingsClickableItem(
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(22.dp))
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)

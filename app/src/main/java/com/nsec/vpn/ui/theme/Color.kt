@@ -9,12 +9,12 @@ val LightCardBorder = Color(0xFFE2E8F0)         // Slate 200 - Soft card outline
 val LightCardHighlight = Color(0xFFF1F5F9)      // Slate 100 - Subdued container highlight
 val LightCardBorderHighlight = Color(0xFFCBD5E1)// Slate 300 - Distinct card stroke on focus/active
 
-// Dark Theme Palette
-val DarkBackground = Color(0xFF0B0F17)         // Slate 950 - Rich deep dark navy background
-val DarkSurface = Color(0xFF131C2E)            // Slate 900 - Elevated dark navy surface for cards
-val DarkCardBorder = Color(0xFF1E293B)         // Slate 800 - Subtle dark card border
-val DarkCardHighlight = Color(0xFF1E293B)      // Slate 800 - Subdued dark container highlight
-val DarkCardBorderHighlight = Color(0xFF334155)// Slate 700 - Active dark stroke
+// Charcoal surfaces: neutral contrast without the old navy cast.
+val DarkBackground = Color(0xFF101214)
+val DarkSurface = Color(0xFF1B1E22)
+val DarkCardBorder = Color(0xFF3B434C)
+val DarkCardHighlight = Color(0xFF272D34)
+val DarkCardBorderHighlight = Color(0xFF667382)
 
 // Brand Accents
 val PrimaryBlue = Color(0xFF2563EB)            // Blue 600 - Trusted brand accent
@@ -36,6 +36,6 @@ val TextSecondary = Color(0xFF475569)           // Slate 600 - Secondary text
 val TextTertiary = Color(0xFF94A3B8)            // Slate 400 - Captions / Placeholder text
 
 // Text Colors - Dark Theme
-val DarkTextPrimary = Color(0xFFF8FAFC)         // Slate 50 - Crisp white primary text
-val DarkTextSecondary = Color(0xFF94A3B8)       // Slate 400 - Muted secondary text
-val DarkTextTertiary = Color(0xFF64748B)        // Slate 500 - Subdued tertiary text
+val DarkTextPrimary = Color(0xFFF2F5F7)
+val DarkTextSecondary = Color(0xFFB8C1CA)
+val DarkTextTertiary = Color(0xFF8B99A6)

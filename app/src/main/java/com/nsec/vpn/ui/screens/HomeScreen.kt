@@ -114,7 +114,7 @@ fun HomeScreen(
                     text = "MILITARY GRADE",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
-                    color = PrimaryBlue
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
 
@@ -228,7 +228,7 @@ fun HomeScreen(
                     text = "CHANGE",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    color = PrimaryBlue,
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .clickable { onNavigateToServers() }
                         .padding(4.dp)

@@ -196,7 +196,7 @@ fun SpeedTestScreen(
                     text = "Mbps",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = PrimaryBlue,
+                    color = MaterialTheme.colorScheme.primary,
                 )
             }
         }
