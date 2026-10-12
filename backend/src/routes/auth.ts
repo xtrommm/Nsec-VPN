@@ -7,6 +7,7 @@ import { validateBody } from '../middleware/validate';
 import { RegisterDeviceSchema, RefreshTokenSchema, JwtDevicePayload } from '../types';
 import { authenticateDevice, AuthenticatedDeviceRequest } from '../middleware/auth';
 import { authLimiter } from '../middleware/rateLimit';
+import { currentAuthEpoch } from '../services/deviceRecovery';
 
 const router = Router();
 router.get('/me', authenticateDevice, async (req: AuthenticatedDeviceRequest, res) => {
@@ -79,7 +80,8 @@ router.post(
 
       const payload: JwtDevicePayload = {
         deviceId: device.deviceId,
-        tier: currentTier
+        tier: currentTier,
+        authEpoch: device.authEpoch
       };
       const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: ACCESS_TOKEN_TTL });
 
@@ -91,6 +93,7 @@ router.post(
         data: {
           tokenHash,
           deviceId: device.id,
+          authEpoch: device.authEpoch,
           expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS)
         }
       });
@@ -140,6 +143,9 @@ router.post(
         });
       }
 
+      if (!currentAuthEpoch(storedToken.authEpoch, storedToken.device.authEpoch)) {
+        return res.status(401).json({ success: false, error: 'TOKEN_REVOKED' });
+      }
       // Security defense: Token reuse detection (RFC 6749)
       // If a revoked token is presented, suspect token compromise and revoke all tokens for this device
       if (storedToken.revoked) {
@@ -183,6 +189,7 @@ router.post(
           data: {
             tokenHash: newTokenHash,
             deviceId: storedToken.device.id,
+            authEpoch: storedToken.device.authEpoch,
             expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS)
           }
         })
@@ -204,7 +211,8 @@ router.post(
 
       const payload: JwtDevicePayload = {
         deviceId: storedToken.device.deviceId,
-        tier: currentTier
+        tier: currentTier,
+        authEpoch: storedToken.device.authEpoch
       };
       const newAccessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: ACCESS_TOKEN_TTL });
 

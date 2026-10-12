@@ -36,6 +36,10 @@ model Device {
   id            String           @id @default(uuid())
   deviceId      String           @unique
   registrationSecretHash String?
+  recoveryPinHash String?
+  recoveryFailures Int @default(0)
+  recoveryBlockedUntil DateTime?
+  authEpoch Int @default(0)
   deviceModel   String?
   osVersion     String?
   appVersion    String?
@@ -61,6 +65,7 @@ model RefreshToken {
   device    Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   revoked   Boolean  @default(false)
+  authEpoch Int @default(0)
   createdAt DateTime @default(now())
 
   @@index([deviceId])

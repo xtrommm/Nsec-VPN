@@ -12,6 +12,7 @@ import { globalLimiter } from './middleware/rateLimit';
 
 // Import Route Handlers
 import authRoutes from './routes/auth';
+import recoveryRoutes from './routes/recovery';
 import vpnRoutes from './routes/vpn';
 import serverRoutes from './routes/servers';
 import configRoutes from './routes/config';
@@ -61,6 +62,7 @@ app.get('/ready', async (_req: Request, res: Response) => {
 
 // Mount Production API Routes
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/auth', recoveryRoutes);
 app.use('/api/v1/vpn', vpnRoutes);
 app.use('/api/v1/servers', serverRoutes);
 app.use('/api/v1', configRoutes);

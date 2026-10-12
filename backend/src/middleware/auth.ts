@@ -3,6 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { JwtDevicePayload, JwtAdminPayload } from '../types';
 import { prisma } from '../db';
+import { currentAuthEpoch } from '../services/deviceRecovery';
 
 
 export interface AuthenticatedDeviceRequest extends Request {
@@ -40,7 +41,7 @@ export const authenticateDevice = async (
 
     const device = await prisma.device.findUnique({
       where: { deviceId: decoded.deviceId },
-      select: { id: true, deviceId: true, tier: true, isBlocked: true, passExpiresAt: true }
+      select: { id: true, deviceId: true, tier: true, isBlocked: true, passExpiresAt: true, authEpoch: true }
     });
 
     if (!device) {
@@ -51,6 +52,9 @@ export const authenticateDevice = async (
       });
     }
 
+    if (!currentAuthEpoch(decoded.authEpoch, device.authEpoch)) {
+      return res.status(401).json({ success: false, error: 'TOKEN_REVOKED' });
+    }
     if (device.isBlocked) {
       return res.status(403).json({
         success: false,
