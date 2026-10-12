@@ -15,8 +15,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.net.InetSocketAddress
-import java.net.Socket
+import com.nsec.vpn.data.network.NodeLatencyProbe
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.flow.update
 
 class VpnRepository(
     private val context: Context,
@@ -115,7 +120,8 @@ class VpnRepository(
                         isPremiumOnly = dto.isPremiumOnly,
                         isRecommended = dto.isRecommended,
                         isFavorite = favs.contains(dto.id),
-                        totalNodes = dto.totalNodes
+                        totalNodes = dto.totalNodes,
+                        publicIpv4 = dto.publicIpv4
                     )
                 }
                 _serverListError.value = null
@@ -229,14 +235,21 @@ class VpnRepository(
     }
 
     suspend fun measurePings() = withContext(Dispatchers.IO) {
-        val updated = _servers.value.map { server ->
-            val ping: Long? = null
-            server.copy(pingMs = ping)
+        val limit = Semaphore(4)
+        val measured = coroutineScope {
+            _servers.value.map { server -> async {
+                limit.withPermit {
+                    server.id to (server.publicIpv4 to NodeLatencyProbe.measure(server.publicIpv4))
+                }
+            } }.awaitAll().toMap()
         }
-        _servers.value = updated
-        val currentSel = _selectedServer.value
-        if (currentSel != null) {
-            _selectedServer.value = updated.find { it.id == currentSel.id } ?: currentSel
+        _servers.update { current -> current.map { server ->
+            val result = measured[server.id]
+            if (result != null && result.first == server.publicIpv4) server.copy(pingMs = result.second)
+            else server
+        } }
+        _selectedServer.update { selected ->
+            selected?.let { previous -> _servers.value.find { it.id == previous.id } ?: previous }
         }
     }
 

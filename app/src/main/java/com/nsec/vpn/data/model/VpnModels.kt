@@ -12,7 +12,8 @@ data class Server(
     val isRecommended: Boolean = false,
     val pingMs: Long? = null,
     val isFavorite: Boolean = false,
-    val totalNodes: Int = 1
+    val totalNodes: Int = 1,
+    val publicIpv4: String? = null
 )
 
 data class TunnelConfig(

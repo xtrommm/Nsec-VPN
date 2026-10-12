@@ -32,13 +32,16 @@ import com.nsec.vpn.data.monetization.AdMobConfig
 import com.nsec.vpn.data.monetization.NativeAdManager
 import com.nsec.vpn.ui.components.SmartNativeAd
 import com.nsec.vpn.ui.theme.*
+import com.nsec.vpn.data.network.NodeLatencyProbe
+import com.nsec.vpn.data.network.VpnSpeedTest
+import android.os.SystemClock
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Locale
 
 @Composable
 fun SpeedTestScreen(
-    @Suppress("UNUSED_PARAMETER") currentServer: Server?,
+    currentServer: Server?,
     nativeAdManager: NativeAdManager,
     modifier: Modifier = Modifier,
     userTier: String = "FREE",
@@ -52,7 +55,10 @@ fun SpeedTestScreen(
     var currentSpeedMbps by remember { mutableFloatStateOf(0f) }
     var pingMs by remember { mutableStateOf<Long?>(null) }
     var jitterMs by remember { mutableStateOf<Long?>(null) }
-    var peakDownloadMbps by remember { mutableFloatStateOf(0f) }
+    var averageDownloadMbps by remember { mutableStateOf<Float?>(null) }
+    var averageUploadMbps by remember { mutableStateOf<Float?>(null) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var confirmBrowserTest by remember { mutableStateOf(false) }
 
     val animatedSpeed by animateFloatAsState(
         targetValue = currentSpeedMbps,
@@ -64,22 +70,74 @@ fun SpeedTestScreen(
 
     fun runSpeedTest() {
         if (isTesting) return
+        errorMessage = null
+        if (!VpnSpeedTest.openBrowser(context, manager)) {
+            errorMessage = "No browser included in the VPN is available. Include a browser in split tunneling and reconnect."
+            return
+        }
+        val node = manager.connectedNode.value
+        val start = manager.vpnStats.value
+        val startedAt = SystemClock.elapsedRealtime()
         isTesting = true
         currentSpeedMbps = 0f
-        peakDownloadMbps = 0f
+        averageDownloadMbps = null
+        averageUploadMbps = null
         pingMs = null
         jitterMs = null
-
         coroutineScope.launch {
-            try {
-                repeat(15) {
-                    delay(1000L)
-                    if (manager.vpnState.value !is VpnState.Connected) return@launch
-                    currentSpeedMbps = manager.vpnStats.value.downloadSpeedMbps
-                    peakDownloadMbps = maxOf(peakDownloadMbps, currentSpeedMbps)
+            val latency = launch {
+                val samples = mutableListOf<Long>()
+                repeat(3) {
+                    NodeLatencyProbe.measure(node?.publicIpv4 ?: currentServer?.publicIpv4)?.let(samples::add)
+                    delay(100)
                 }
-            } finally { isTesting = false }
+                pingMs = samples.takeIf { it.isNotEmpty() }?.average()?.toLong()
+                jitterMs = VpnSpeedTest.jitter(samples)
+            }
+            try {
+                var previous = start
+                var previousTime = startedAt
+                repeat(30) {
+                    delay(1000L)
+                    if (manager.vpnState.value !is VpnState.Connected || manager.connectedNode.value != node) {
+                        errorMessage = "VPN changed or disconnected. Reconnect and run the test again."
+                        return@launch
+                    }
+                    val now = SystemClock.elapsedRealtime()
+                    val stats = manager.vpnStats.value
+                    val speed = VpnSpeedTest.megabitsPerSecond(previous.totalBytesReceived,
+                        stats.totalBytesReceived, now - previousTime)
+                    val down = VpnSpeedTest.megabitsPerSecond(start.totalBytesReceived,
+                        stats.totalBytesReceived, now - startedAt)
+                    val up = VpnSpeedTest.megabitsPerSecond(start.totalBytesSent,
+                        stats.totalBytesSent, now - startedAt)
+                    if (speed == null || down == null || up == null) {
+                        errorMessage = "Tunnel counters reset. Run the test again."
+                        return@launch
+                    }
+                    currentSpeedMbps = speed
+                    averageDownloadMbps = down
+                    averageUploadMbps = up
+                    previous = stats
+                    previousTime = now
+                }
+                if (averageDownloadMbps == 0f && averageUploadMbps == 0f)
+                    errorMessage = "No tunnel traffic measured. Start the test in the browser and try again."
+            } finally {
+                latency.cancel()
+                isTesting = false
+            }
         }
+    }
+
+    if (confirmBrowserTest) {
+        AlertDialog(
+            onDismissRequest = { confirmBrowserTest = false },
+            title = { Text("Run VPN speed test") },
+            text = { Text("Opens Cloudflare in a browser included in the VPN. The test uses mobile or Wi-Fi data and shares your VPN exit IP with Cloudflare. Return here to see real tunnel traffic.") },
+            confirmButton = { TextButton(onClick = { confirmBrowserTest = false; runSpeedTest() }) { Text("START") } },
+            dismissButton = { TextButton(onClick = { confirmBrowserTest = false }) { Text("CANCEL") } }
+        )
     }
 
     Column(
@@ -91,14 +149,14 @@ fun SpeedTestScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            text = "Tunnel Throughput",
+            text = "SPEED TEST",
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground,
         )
 
         Text(
-            text = "Measures real WireGuard byte counters for 15 seconds. Download in another tunneled app; this app stays excluded for ads.",
+            text = "The browser shows tested download and upload speeds. This gauge measures all tunnel traffic for 30 seconds. Node ping and jitter measure your direct route to the node; ads remain outside the VPN.",
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp),
@@ -168,17 +226,19 @@ fun SpeedTestScreen(
                 .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceAround,
         ) {
-            MetricColumn(label = "PING", value = pingMs?.let { "$it ms" } ?: "Unavailable")
+            MetricColumn(label = "PING", value = pingMs?.let { "$it ms" } ?: "N/A")
             Box(modifier = Modifier.width(1.dp).height(30.dp).background(MaterialTheme.colorScheme.outline))
-            MetricColumn(label = "JITTER", value = jitterMs?.let { "$it ms" } ?: "Unavailable")
+            MetricColumn(label = "JITTER", value = jitterMs?.let { "$it ms" } ?: "N/A")
             Box(modifier = Modifier.width(1.dp).height(30.dp).background(MaterialTheme.colorScheme.outline))
-            MetricColumn(label = "PEAK", value = if (peakDownloadMbps > 0) String.format(Locale.US, "%.1f M", peakDownloadMbps) else "No traffic measured")
+            MetricColumn(label = "DOWN AVG", value = averageDownloadMbps?.let { String.format(Locale.US, "%.1f M", it) } ?: "—")
+            Box(modifier = Modifier.width(1.dp).height(30.dp).background(MaterialTheme.colorScheme.outline))
+            MetricColumn(label = "UP AVG", value = averageUploadMbps?.let { String.format(Locale.US, "%.1f M", it) } ?: "—")
         }
 
         Spacer(modifier = Modifier.height(36.dp))
 
         Button(
-            onClick = { runSpeedTest() },
+            onClick = { confirmBrowserTest = true },
             enabled = !isTesting && tunnelState is VpnState.Connected,
             colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
             shape = RoundedCornerShape(14.dp),
@@ -190,10 +250,14 @@ fun SpeedTestScreen(
             Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White)
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = if (isTesting) "TESTING IN PROGRESS..." else "MEASURE TUNNEL TRAFFIC",
+                text = if (isTesting) "TESTING IN PROGRESS..." else "TEST NOW",
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
             )
+        }
+
+        errorMessage?.let { message ->
+            Text(message, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 12.dp))
         }
 
         Spacer(modifier = Modifier.height(28.dp))
