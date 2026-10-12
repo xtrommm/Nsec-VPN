@@ -80,6 +80,8 @@ export const CreateServerSchema = z.object({
 });
 export const UpdateServerSchema = CreateServerSchema.partial();
 
+export const AdUnitSchema = z.string().regex(/^ca-app-pub-[0-9]{16}\/[0-9]{10}$/, "Enter a valid AdMob ad unit ID").refine(value => !value.startsWith("ca-app-pub-3940256099942544/"), "Use your production ad unit, not Google sample IDs").nullable();
+
 export const UpdateConfigSchema = z.object({
   minAppVersionCode: z.number().int().positive().optional(),
   latestAppVersionCode: z.number().int().positive().optional(),
@@ -91,8 +93,14 @@ export const UpdateConfigSchema = z.object({
   bannerAdsEnabled: z.boolean().optional(),
   interstitialAdsEnabled: z.boolean().optional(),
   interstitialIntervalSeconds: z.number().int().min(15).max(1800).optional(),
-  rewardedAdsEnabled: z.boolean().optional()
-});
+  rewardedAdsEnabled: z.boolean().optional(),
+  nativeAdsEnabled: z.boolean().optional(),
+  bannerAdUnitId: AdUnitSchema.optional(),
+  nativeAdUnitId: AdUnitSchema.optional(),
+  interstitialAdUnitId: AdUnitSchema.optional(),
+  rewardedAdUnitId: AdUnitSchema.optional(),
+  rewardedPassMinutes: z.number().int().min(1).max(1440).optional()
+}).strict();
 
 export const VerifySubscriptionSchema = z.object({
   packageName: z.string().min(3),

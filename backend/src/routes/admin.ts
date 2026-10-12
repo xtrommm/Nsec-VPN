@@ -295,12 +295,12 @@ router.get('/devices', authenticateAdmin(), async (req, res: Response) => {
 
 router.put(
   '/devices/:id/tier',
-  authenticateAdmin(),
+  authenticateAdmin('SUPER_ADMIN'),
   async (req: AuthenticatedAdminRequest, res: Response) => {
     const { id } = req.params;
     const { tier } = req.body;
 
-    if (!['FREE', 'VIP', 'REWARDED_PASS'].includes(tier)) {
+    if (!['FREE', 'VIP'].includes(tier)) {
       return res.status(400).json({
         success: false,
         error: 'INVALID_TIER',
@@ -408,7 +408,7 @@ router.get('/config', authenticateAdmin(), async (_req, res: Response) => {
 
 router.put(
   '/config',
-  authenticateAdmin(),
+  authenticateAdmin('SUPER_ADMIN'),
   validateBody(UpdateConfigSchema),
   async (req: AuthenticatedAdminRequest, res: Response) => {
     try {
@@ -416,6 +416,12 @@ router.put(
       if (sanitized.announcementTitle === '') sanitized.announcementTitle = null;
       if (sanitized.announcementBody === '') sanitized.announcementBody = null;
 
+      const existing = await prisma.appConfig.findUnique({ where: { id: 'global_config' } });
+      const merged = { ...existing, ...sanitized };
+      if ((merged.latestAppVersionCode ?? 1) < (merged.minAppVersionCode ?? 1))
+        return res.status(400).json({ success: false, error: 'VERSION_RANGE_INVALID' });
+      if (merged.announcementActive && (!merged.announcementTitle?.trim() || !merged.announcementBody?.trim()))
+        return res.status(400).json({ success: false, error: 'ANNOUNCEMENT_CONTENT_REQUIRED' });
       const updated = await prisma.appConfig.upsert({
         where: { id: 'global_config' },
         update: sanitized,

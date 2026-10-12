@@ -56,6 +56,8 @@ fun SmartNativeAd(
     var lastRefreshTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
     LaunchedEffect(isAdAllowed, adMobConfig.nativeAdUnitId) {
+        currentAd?.let { nativeAdManager.releaseAd(it) }
+        currentAd = null
         if (isAdAllowed) {
             nativeAdManager.preloadNativeAds(adMobConfig.nativeAdUnitId, adMobConfig.nativeEnabled)
             while (true) {

@@ -150,10 +150,16 @@ def deploy(sha):
         digests.append(verified_digest(metadata, image, sha))
     candidate_schema = command(['docker', 'run', '--rm', '--user', '0', '--network', 'none',
         '--entrypoint', 'cat', digests[0], '/app/prisma/schema.prisma'], 'RELEASE_SCHEMA_UNAVAILABLE')
-    if hashlib.sha256(candidate_schema).hexdigest() != baseline:
-        # Existing production was upgraded manually. Never re-run an absent baseline
-        # migration or db push; schema changes require a reviewed migration first.
-        raise DeployError('REVIEWED_DATABASE_MIGRATION_REQUIRED')
+    candidate_fingerprint = hashlib.sha256(candidate_schema).hexdigest()
+    approval = STATE / 'approved-next-schema.json'
+    schema_changes = candidate_fingerprint != baseline
+    if schema_changes:
+        if not approval.exists():
+            raise DeployError('REVIEWED_DATABASE_MIGRATION_REQUIRED')
+        private_file(approval)
+        approved = json.loads(approval.read_text())
+        if approved.get('sha') != sha or approved.get('schemaHash') != candidate_fingerprint:
+            raise DeployError('REVIEWED_DATABASE_MIGRATION_REQUIRED')
 
     candidate = CONFIG.with_name('compose.next.json')
     rollback = CONFIG.with_name('compose.rollback.json')
@@ -191,6 +197,13 @@ def deploy(sha):
     temporary.write_text('NSEC_IMAGE_TAG=sha-' + sha + '\n')
     os.chmod(temporary, 0o600)
     os.replace(temporary, STATE / 'current.env')
+    if schema_changes:
+        baseline_file = STATE / 'website-schema.sha256'
+        baseline_tmp = baseline_file.with_suffix('.tmp')
+        baseline_tmp.write_text(candidate_fingerprint + '\n')
+        os.chmod(baseline_tmp, 0o600)
+        os.replace(baseline_tmp, baseline_file)
+        approval.unlink()
     print('DEPLOYED: ' + sha + '; backend and admin ready; database and credentials preserved')
 
 

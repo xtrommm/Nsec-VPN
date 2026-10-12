@@ -357,6 +357,67 @@ class VpnRepository(
         _userTier.value != "FREE"
     }
 
+    suspend fun prepareReward(): String = withContext(Dispatchers.IO) {
+        var token = keyStoreManager.getAccessToken() ?: authenticateDevice()
+        var response = api.prepareReward("Bearer $token")
+        if (response.code() == 401) {
+            token = tryRefreshToken() ?: throw IllegalStateException("Please sign in again")
+            response = api.prepareReward("Bearer $token")
+        }
+        val result = response.body()
+        if (!response.isSuccessful || result?.success != true || result.data == null)
+            throw IllegalStateException("VIP reward preparation is unavailable. Please try again")
+        result.data.ticketId
+    }
+
+    suspend fun claimReward(ticketId: String) = withContext(Dispatchers.IO) {
+        keyStoreManager.savePendingRewardTicket(ticketId)
+        var token = keyStoreManager.getAccessToken() ?: authenticateDevice()
+        var response = api.claimReward("Bearer $token", com.nsec.vpn.data.api.ClaimRewardRequest(ticketId))
+        if (response.code() == 401) {
+            token = tryRefreshToken() ?: throw IllegalStateException("Please sign in again")
+            response = api.claimReward("Bearer $token", com.nsec.vpn.data.api.ClaimRewardRequest(ticketId))
+        }
+        val result = response.body()
+        if (!response.isSuccessful || result?.success != true || result.data == null) {
+            if (response.code() in listOf(400, 403, 404, 410, 429)) keyStoreManager.savePendingRewardTicket(null)
+            throw IllegalStateException("VIP grant unavailable. A completed reward will retry when the service returns")
+        }
+        applyVerifiedEntitlement(result.data.tier, result.data.passExpiresAt)
+        keyStoreManager.savePendingRewardTicket(null)
+    }
+
+    private var nextRewardRetryElapsedMs = 0L
+    suspend fun retryPendingReward() {
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (now < nextRewardRetryElapsedMs) return
+        nextRewardRetryElapsedMs = now + 300_000L
+        val ticket = keyStoreManager.getPendingRewardTicket() ?: return
+        try { claimReward(ticket) } catch (_: Exception) { /* Retained until retry or terminal rejection. */ }
+    }
+
+    suspend fun redeemPromo(code: String) = withContext(Dispatchers.IO) {
+        val token = keyStoreManager.getAccessToken() ?: authenticateDevice()
+        var response = api.redeemPromo("Bearer $token", com.nsec.vpn.data.api.RedeemPromoRequest(code.trim()))
+        if (response.code() == 401) {
+            val refreshed = tryRefreshToken() ?: throw IllegalStateException("Please sign in again")
+            response = api.redeemPromo("Bearer $refreshed", com.nsec.vpn.data.api.RedeemPromoRequest(code.trim()))
+        }
+        val result = response.body()
+        if (!response.isSuccessful || result?.success != true || result.data == null) {
+            val error = try { org.json.JSONObject(response.errorBody()?.string().orEmpty()).optString("error") } catch (_: Exception) { "" }
+            throw IllegalStateException(when (error) {
+                "PROMO_ALREADY_REDEEMED" -> "You already redeemed this code"
+                "PROMO_EXPIRED" -> "This code has expired"
+                "PROMO_EXHAUSTED" -> "This code has reached its redemption limit"
+                "PROMO_RATE_LIMIT" -> "Too many attempts. Try again later"
+                "PROMO_INVALID" -> "Code is invalid or disabled"
+                else -> "Could not redeem the code. Please try again"
+            })
+        }
+        applyVerifiedEntitlement(result.data.tier, result.data.passExpiresAt)
+    }
+
     private fun applyVerifiedEntitlement(tier: String, expiresAt: String?) {
         require(tier in setOf("FREE", "VIP", "REWARDED_PASS")) { "Invalid entitlement response" }
         verifiedEntitlementExpiresAtMs = expiresAt?.let { java.time.Instant.parse(it).toEpochMilli() }

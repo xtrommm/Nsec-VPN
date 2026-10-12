@@ -17,6 +17,7 @@ import serverRoutes from './routes/servers';
 import configRoutes from './routes/config';
 import billingRoutes from './routes/billing';
 import adminRoutes from './routes/admin';
+import { adminPromos, devicePromos } from './routes/promos';
 
 dotenv.config();
 
@@ -63,6 +64,8 @@ app.use('/api/v1/vpn', vpnRoutes);
 app.use('/api/v1/servers', serverRoutes);
 app.use('/api/v1', configRoutes);
 app.use('/api/v1/billing', billingRoutes);
+app.use('/api/v1/admin/promos', adminPromos);
+app.use('/api/v1/promos', devicePromos);
 app.use('/api/v1/admin', adminRoutes);
 
 // Global 404 Handler

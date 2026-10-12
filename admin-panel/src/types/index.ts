@@ -9,6 +9,13 @@ export interface ServerNode {
   publicKey: string;
   agentUrl: string;
   agentSecret?: string;
+  subnetIpv4?: string;
+  dnsServers?: string[];
+  mtu?: number;
+  maxPeers?: number;
+  publicIpv4?: string | null;
+  healthy?: boolean;
+  healthCheckedAt?: string | null;
   currentLoad: number;
   isPremiumOnly: boolean;
   isRecommended: boolean;
@@ -52,6 +59,11 @@ export interface AppConfigData {
   interstitialIntervalSeconds: number;
   rewardedAdsEnabled: boolean;
   nativeAdsEnabled?: boolean;
+  bannerAdUnitId?: string | null;
+  nativeAdUnitId?: string | null;
+  interstitialAdUnitId?: string | null;
+  rewardedAdUnitId?: string | null;
+  rewardedPassMinutes?: number;
   updatedAt?: string;
 }
 

@@ -44,6 +44,8 @@ model Device {
   isBlocked     Boolean          @default(false)
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
+  promoRedemptions PromoRedemption[]
+  rewardTickets RewardTicket[]
   tokens        RefreshToken[]
   peerSessions  PeerSession[]
 
@@ -126,6 +128,12 @@ model AppConfig {
   interstitialAdsEnabled       Boolean  @default(true)
   interstitialIntervalSeconds Int      @default(120)
   rewardedAdsEnabled          Boolean  @default(true)
+  nativeAdsEnabled            Boolean  @default(true)
+  bannerAdUnitId              String?
+  nativeAdUnitId              String?
+  interstitialAdUnitId        String?
+  rewardedAdUnitId            String?
+  rewardedPassMinutes         Int      @default(30)
   updatedAt                   DateTime @updatedAt
 }
 
@@ -165,4 +173,39 @@ model PurchaseClaim {
   tokenHash String @id
   deviceId String
   expiresAt DateTime
+}
+
+model PromoCode {
+  id String @id @default(uuid())
+  codeHash String @unique
+  label String
+  passMinutes Int
+  maxRedemptions Int
+  redemptionCount Int @default(0)
+  expiresAt DateTime?
+  active Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  redemptions PromoRedemption[]
+}
+
+model PromoRedemption {
+  id String @id @default(uuid())
+  promoId String
+  promo PromoCode @relation(fields: [promoId], references: [id], onDelete: Restrict)
+  deviceId String
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  redeemedAt DateTime @default(now())
+  @@unique([promoId, deviceId])
+}
+
+model RewardTicket {
+  id String @id @default(uuid())
+  deviceId String
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  claimedAt DateTime?
+  grantExpiresAt DateTime?
+  @@index([deviceId, createdAt])
 }
