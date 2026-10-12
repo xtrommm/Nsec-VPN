@@ -76,6 +76,15 @@ android {
   }
 }
 
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+  // Robolectric 4.17 uses SharedSecrets to bridge Android file descriptors to JDK 21.
+  // Export only this package to the test JVM; Android runtime permissions are unchanged.
+  jvmArgs("--add-exports=java.base/jdk.internal.access=ALL-UNNAMED")
+  testLogging {
+    exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+  }
+}
+
 dependencies {
   coreLibraryDesugaring(libs.android.desugar)
   implementation(platform(libs.androidx.compose.bom))

@@ -1,7 +1,7 @@
 package com.nsec.vpn
 
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import com.nsec.vpn.data.model.Server
 import com.nsec.vpn.data.model.VpnState
 import com.nsec.vpn.data.model.VpnStats
@@ -16,6 +16,7 @@ import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36], qualifiers = "w400dp-h800dp-xhdpi")
+@OptIn(ExperimentalTestApi::class)
 class ConnectedScreenUiTest {
 
     @get:Rule
