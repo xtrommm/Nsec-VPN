@@ -23,3 +23,9 @@
 ### Pending
 - App experience items 1–7 and honest Troubleshooting assistant (in progress).
 - Separate signed speed-test helper, chosen by the user, plus on-device VPN-path verification.
+
+### Remote Config client delivery
+- Validated API responses persist locally and refresh every 30 seconds while the activity is open.
+- Failed refreshes report a visible error and retain verified settings; invalid or unsuccessful responses are rejected.
+- Global ads controls, support contact and publish timestamp have backward-compatible optional DTO fields.
+- Connect waits for verified settings and respects maintenance/minimum-version controls.
