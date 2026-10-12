@@ -222,6 +222,13 @@ fun SettingsScreen(
                 onClick = onOpenDebugDiagnostics
             )
         }
+        Spacer(modifier = Modifier.height(24.dp))
+        SectionHeader("INSTALLATION ID")
+        Text(deviceId, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        TextButton(enabled = deviceId.isNotBlank(), onClick = { copy(deviceId) }) {
+            Icon(Icons.Default.ContentCopy, contentDescription = null)
+            Spacer(Modifier.width(6.dp)); Text("Copy device ID")
+        }
 
     }
 
