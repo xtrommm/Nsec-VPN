@@ -1,17 +1,15 @@
-
 name: Nsec VPN - Auto Deploy Website
 
 on:
-  push:
+  workflow_run:
+    workflows: [CI Pipeline]
+    types: [completed]
     branches: [main]
-    paths:
-      - 'backend/**'
-      - 'admin-panel/**'
-      - '.github/workflows/auto-deploy-website.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
+  actions: read
   packages: write
 
 concurrency:
@@ -19,90 +17,95 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  test:
-    name: Test Backend
+  verify:
+    name: Verify successful main release
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: backend
-
-    env:
-      NODE_ENV: test
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nsecvpn_ci?schema=public
-      JWT_SECRET: ci_pipeline_test_jwt_secret_nsec_vpn_2026
-      NODE_OPTIONS: --max-old-space-size=4096
-
+    outputs:
+      sha: ${{ steps.release.outputs.sha }}
+      eligible: ${{ steps.release.outputs.eligible }}
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
-
-      - name: Setup Node 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: npm
-          cache-dependency-path: backend/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Generate Prisma client
-        run: npx prisma generate
-
-      - name: Run backend tests
-        run: npm test -- --runInBand --detectOpenHandles --forceExit
-
-      - name: Build backend
-        run: npm run build
+      - name: Verify exact commit against full CI
+        id: release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          [[ "$SHA" =~ ^[a-f0-9]{40}$ ]]
+          if [[ "$EVENT" == workflow_dispatch && "$GITHUB_REF" != refs/heads/main ]]; then
+            echo 'Production releases are restricted to main.'
+            exit 1
+          fi
+          current=$(gh api "repos/$REPO/git/ref/heads/main" --jq '.object.sha')
+          if [[ "$current" != "$SHA" ]]; then
+            echo 'Release superseded by a newer main commit; no deployment.'
+            echo 'eligible=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          gh api -X GET "repos/$REPO/actions/workflows/ci.yml/runs?head_sha=$SHA&event=push&per_page=100" |
+            jq -e --arg sha "$SHA" '.workflow_runs | any(.[];
+              .head_sha == $sha and .head_branch == "main" and .event == "push" and
+              .status == "completed" and .conclusion == "success")' >/dev/null
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo 'eligible=true' >> "$GITHUB_OUTPUT"
 
   build:
-    name: Build and Publish Website
-    needs: test
+    name: Build and publish website
+    needs: verify
+    if: needs.verify.outputs.eligible == 'true'
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
-
-      - name: Configure Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to GHCR
-        uses: docker/login-action@v3
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.verify.outputs.sha }}
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Publish Backend
+      - name: Publish backend
         uses: docker/build-push-action@v6
         with:
           context: ./backend
           push: true
           platforms: linux/amd64
           provenance: false
-          tags: ghcr.io/xtrommm/nsec-vpn-backend:sha-${{ github.sha }}
+          build-args: NODE_BUILD_HEAP_MB=4096
+          tags: ghcr.io/xtrommm/nsec-vpn-backend:sha-${{ needs.verify.outputs.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ needs.verify.outputs.sha }}
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
-
-      - name: Publish Admin Panel
+      - name: Publish admin
         uses: docker/build-push-action@v6
         with:
           context: ./admin-panel
           push: true
           platforms: linux/amd64
           provenance: false
-          tags: ghcr.io/xtrommm/nsec-vpn-admin:sha-${{ github.sha }}
+          tags: ghcr.io/xtrommm/nsec-vpn-admin:sha-${{ needs.verify.outputs.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ needs.verify.outputs.sha }}
           cache-from: type=gha,scope=admin
           cache-to: type=gha,mode=max,scope=admin
 
   deploy:
-    name: Auto Deploy Production
-    needs: build
+    name: Deploy through restricted v2 handler
+    needs: [verify, build]
     runs-on: ubuntu-latest
     environment: production
-
     steps:
       - name: Configure SSH
         shell: bash
@@ -115,35 +118,26 @@ jobs:
           mkdir -p "$HOME/.ssh"
           printf '%s\n' "$DEPLOY_KEY" > "$HOME/.ssh/nsec_deploy"
           printf '%s\n' "$HOST_KEY" > "$HOME/.ssh/known_hosts"
-          chmod 600 "$HOME/.ssh/nsec_deploy"
-          chmod 600 "$HOME/.ssh/known_hosts"
-
-      - name: Deploy Git commit
+          chmod 600 "$HOME/.ssh/nsec_deploy" "$HOME/.ssh/known_hosts"
+      - name: Deploy verified images
         shell: bash
         env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
           DEPLOY_HOST: ${{ secrets.NSEC_DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.NSEC_DEPLOY_USER }}
-          SHA: ${{ github.sha }}
+          SHA: ${{ needs.verify.outputs.sha }}
         run: |
           set -euo pipefail
-          ssh \
-            -i "$HOME/.ssh/nsec_deploy" \
-            -o IdentitiesOnly=yes \
-            -o BatchMode=yes \
-            -o StrictHostKeyChecking=yes \
-            -o ConnectTimeout=15 \
-            "$DEPLOY_USER@$DEPLOY_HOST" \
-            "deploy $SHA"
-
-      - name: Verify live API
+          current=$(gh api "repos/$REPO/git/ref/heads/main" --jq '.object.sha')
+          if [[ "$current" != "$SHA" ]]; then
+            echo 'Release superseded; existing website retained.'
+            exit 0
+          fi
+          ssh -i "$HOME/.ssh/nsec_deploy" -o IdentitiesOnly=yes -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes -o ConnectTimeout=15 \
+            "$DEPLOY_USER@$DEPLOY_HOST" "deploy-v2 $SHA"
+      - name: Check public readiness
         run: |
-          curl --fail --silent --show-error \
-            --retry 5 --retry-delay 3 \
-            https://api.nsecvpn.com/ready
-
-      - name: Verify live Admin
-        run: |
-          curl --fail --silent --show-error \
-            --retry 5 --retry-delay 3 \
-            -o /dev/null \
-            https://admin.nsecvpn.com/
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 --retry-all-errors https://api.nsecvpn.com/ready
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 --retry-all-errors -o /dev/null https://admin.nsecvpn.com/

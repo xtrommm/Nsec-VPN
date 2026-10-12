@@ -5,6 +5,7 @@ import com.nsec.vpn.data.api.*
 import com.nsec.vpn.data.local.KeyStoreManager
 import com.nsec.vpn.data.repository.VpnRepository
 import kotlinx.coroutines.runBlocking
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -17,9 +18,30 @@ import retrofit2.Response
 class AuditFixesTest {
 
     @Test
+    fun vaultKeepsOneIdentityAndKeyAcrossInstances() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val first = TestVault.create(context)
+        val second = TestVault.create(context)
+        assertEquals(first.getOrCreateDeviceId(), second.getOrCreateDeviceId())
+        assertEquals(first.getOrCreateRegistrationSecret(), second.getOrCreateRegistrationSecret())
+        assertEquals(first.getOrCreateWireGuardKeyPair().privateKey, second.getOrCreateWireGuardKeyPair().privateKey)
+    }
+
+    @Test
+    fun corruptedStoredKeyFailsInsteadOfSilentlyRegenerating() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        context.getSharedPreferences("nsecvpn_secure_vault", android.content.Context.MODE_PRIVATE)
+            .edit().putString("wg_private_key", "corrupted-test-ciphertext").commit()
+        try {
+            TestVault.create(context).getOrCreateWireGuardKeyPair()
+            org.junit.Assert.fail("Corrupt stored key must fail closed")
+        } catch (_: IllegalArgumentException) { }
+    }
+
+    @Test
     fun keyStoreManager_encryptsAndDecryptsTokensAndPrivateKeys() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-        val keyStore = KeyStoreManager(context)
+        val keyStore = TestVault.create(context)
 
         val rawToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test_payload_12345"
         val rawRefreshToken = "refresh_secret_abc123"
@@ -29,7 +51,7 @@ class AuditFixesTest {
         assertEquals(rawToken, keyStore.getAccessToken())
         assertEquals(rawRefreshToken, keyStore.getRefreshToken())
 
-        val keyPair = keyStore.generateEphemeralWireGuardKeyPair()
+        val keyPair = keyStore.getOrCreateWireGuardKeyPair()
         assertNotNull(keyPair.privateKey.toBase64())
         assertEquals(keyPair.privateKey.toBase64(), keyStore.getStoredPrivateKeyBase64())
     }
@@ -37,7 +59,7 @@ class AuditFixesTest {
     @Test
     fun vpnDisclosureAcceptance_persistsCorrectly() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-        val keyStore = KeyStoreManager(context)
+        val keyStore = TestVault.create(context)
 
         assertFalse(keyStore.isVpnDisclosureAccepted())
         keyStore.saveVpnDisclosureAccepted(true)
@@ -50,7 +72,9 @@ class AuditFixesTest {
         var refreshTokenCallCount = 0
 
         val fakeApi = object : NsecVpnApi {
-            override suspend fun registerDevice(request: RegisterDeviceRequest): Response<RegisterDeviceResponse> {
+            override suspend fun getDeviceProfile(token: String): Response<DeviceProfileResponse> = Response.success(DeviceProfileResponse(false, null))
+    override suspend fun verifyPurchase(token: String, request: VerifyPurchaseRequest): Response<VerifyPurchaseResponse> = Response.success(VerifyPurchaseResponse(false))
+    override suspend fun registerDevice(request: RegisterDeviceRequest): Response<RegisterDeviceResponse> {
                 return Response.success(RegisterDeviceResponse(true, AuthDataDto("token_initial", "refresh_initial", DeviceInfoDto("dev1", "FREE", null))))
             }
 
@@ -63,7 +87,7 @@ class AuditFixesTest {
                 return if (token == "Bearer token_refreshed") {
                     Response.success(ServerListResponse(true, ServerListDataDto(emptyList())))
                 } else {
-                    val errorBody = okhttp3.ResponseBody.create(null, "Unauthorized")
+                    val errorBody = "Unauthorized".toResponseBody()
                     Response.error(401, errorBody)
                 }
             }
@@ -85,7 +109,7 @@ class AuditFixesTest {
             }
         }
 
-        val keyStore = KeyStoreManager(context)
+        val keyStore = TestVault.create(context)
         keyStore.saveTokens("token_expired", "refresh_valid")
 
         val repo = VpnRepository(context, fakeApi, keyStore)
@@ -99,7 +123,7 @@ class AuditFixesTest {
     fun pingMeasurement_returnsMeasuredPingOrNull_neverInventedRandoms() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         val fakeApi = FakeNsecVpnApi()
-        val keyStore = KeyStoreManager(context)
+        val keyStore = TestVault.create(context)
 
         val repo = VpnRepository(context, fakeApi, keyStore)
         repo.refreshServers()

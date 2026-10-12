@@ -5,7 +5,8 @@ import compression from 'compression';
 import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 import pino from 'pino';
-import pinoHttp from 'pino-http';
+import { refreshNodeHealth } from './services/nodeHealth';
+import { expirePeers } from './services/peerProvisioning';
 import { prisma } from './db';
 import { globalLimiter } from './middleware/rateLimit';
 
@@ -39,7 +40,7 @@ app.use(cors({
 }));
 app.use(compression());
 app.use(express.json({ limit: '1mb' }));
-app.use(pinoHttp({ logger, autoLogging: { ignore: (req) => req.url === '/health' || req.url === '/ready' } }));
+// No HTTP access logging; source addresses, headers, URLs and bodies are never persisted.
 app.use(globalLimiter);
 
 // Health & Readiness Endpoints (Docker / Kubernetes)
@@ -71,12 +72,12 @@ app.use((_req: Request, res: Response) => {
 
 // Centralized Safe Error Handler (Zero stack traces exposed)
 app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
-  logger.error({ err, path: req.path, method: req.method }, 'Unhandled request error');
+  logger.error('Unhandled request error');
   const statusCode = typeof err.status === 'number' ? err.status : 500;
   res.status(statusCode).json({
     success: false,
     error: err.code || 'INTERNAL_SERVER_ERROR',
-    message: process.env.NODE_ENV === 'production' ? 'An unexpected error occurred' : err.message
+    message: 'An unexpected error occurred'
   });
 });
 
@@ -85,8 +86,9 @@ async function seedDefaultAdmin() {
   try {
     const adminCount = await prisma.adminUser.count();
     if (adminCount === 0) {
-      const defaultEmail = process.env.ADMIN_EMAIL || 'admin@nsecvpn.com';
-      const defaultPass = process.env.ADMIN_PASSWORD || 'NsecAdmin2026!Secure';
+      const defaultEmail = process.env.ADMIN_EMAIL;
+      if (!defaultEmail || !process.env.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD.length < 12) throw new Error('Configure admin bootstrap credentials');
+      const defaultPass = process.env.ADMIN_PASSWORD!;
       const passwordHash = await bcrypt.hash(defaultPass, 12);
       await prisma.adminUser.create({
         data: {
@@ -95,10 +97,10 @@ async function seedDefaultAdmin() {
           role: 'SUPER_ADMIN'
         }
       });
-      logger.info(`[BOOTSTRAP] Initial super admin initialized: ${defaultEmail}`);
+      logger.info('Initial super admin initialized');
     }
   } catch (e: any) {
-    logger.warn(`[BOOTSTRAP] Database not yet ready or migrating: ${e.message}`);
+    logger.warn('Admin bootstrap failed');
   }
 }
 
@@ -106,6 +108,8 @@ async function seedDefaultAdmin() {
 const server = app.listen(PORT, async () => {
   logger.info(`🚀 Nsec VPN Production Backend running on port ${PORT}`);
   await seedDefaultAdmin();
+  void refreshNodeHealth().catch(() => logger.warn("Node health refresh failed"));
+  setInterval(() => { void refreshNodeHealth().catch(() => logger.warn("Node health refresh failed")); void expirePeers().catch(() => logger.warn("Lease cleanup failed")); }, 60000).unref();
 });
 
 // Graceful Process Teardown

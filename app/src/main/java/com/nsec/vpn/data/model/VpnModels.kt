@@ -20,9 +20,13 @@ data class TunnelConfig(
     val serverEndpoint: String,
     val clientAddress: String,
     val dnsServers: List<String> = listOf("1.1.1.1", "1.0.0.1"),
-    val allowedIps: List<String> = listOf("0.0.0.0/0", "::/0"),
+    val allowedIps: List<String> = listOf("0.0.0.0/0"),
     val persistentKeepalive: Int = 25,
-    val mtu: Int = 1420
+    val mtu: Int = 1420,
+    val nodeId: String? = null,
+    val nodeName: String? = null,
+    val locationName: String? = null,
+    val publicIpv4: String? = null
 )
 
 sealed class VpnState {
@@ -46,9 +50,9 @@ data class VpnStats(
             val minutes = (connectionDurationSeconds % 3600) / 60
             val seconds = connectionDurationSeconds % 60
             return if (hours > 0) {
-                String.format("%02d:%02d:%02d", hours, minutes, seconds)
+                String.format(java.util.Locale.ROOT, "%02d:%02d:%02d", hours, minutes, seconds)
             } else {
-                String.format("%02d:%02d", minutes, seconds)
+                String.format(java.util.Locale.ROOT, "%02d:%02d", minutes, seconds)
             }
         }
 }

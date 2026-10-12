@@ -46,11 +46,11 @@ Under Google Play policies regarding Monetization and Ads:
   
   | Question | Answer | Details |
   |---|---|---|
-  | Does your app collect or share user data? | **Yes** | Device or other IDs (Anonymous Keystore UUID for subscription sync and ad identifiers where enabled). |
-  | Is data encrypted in transit? | **Yes** | All API traffic is HTTPS / TLS 1.3. Tunnel traffic is ChaCha20-Poly1305. |
-  | Can users request data deletion? | **Yes** | In-app one-tap 'Clear Keystore Identity & Cache' or email support. |
+  | Does your app collect or share user data? | **Yes** | Device or other IDs (Random installation ID for subscription sync and ad identifiers where enabled). |
+  | Is data encrypted in transit? | **Yes** | App API traffic requires HTTPS; verify deployed TLS and the private or HTTPS agent channel. Tunnel traffic is ChaCha20-Poly1305. |
+  | Can users request data deletion? | **Yes** | Operator must implement and verify server-side deletion before claiming this; clearing local data only resets the device. |
   | Does the app log web browsing or traffic? | **No** | Zero logs of websites visited, apps accessed, or IP payloads. |
-  | Are IP addresses logged? | **No** | Originating client IP addresses are never logged or stored. |
+  | Are IP addresses logged? | **No** | App/backend/agent request logging is disabled; independently verify reverse proxies, CDN and cloud logging. |
 
 ---
 

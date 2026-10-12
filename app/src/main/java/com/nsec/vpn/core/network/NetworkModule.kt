@@ -1,7 +1,6 @@
 package com.nsec.vpn.core.network
 
 import android.content.Context
-import com.nsec.vpn.BuildConfig
 import com.nsec.vpn.data.api.NsecVpnApi
 import com.nsec.vpn.data.local.KeyStoreManager
 import com.nsec.vpn.data.monetization.AdMobManager
@@ -29,11 +28,7 @@ object NetworkModule {
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(10, TimeUnit.SECONDS)
             .addInterceptor(HttpLoggingInterceptor().apply {
-                level = if (BuildConfig.DEBUG) {
-                    HttpLoggingInterceptor.Level.BASIC
-                } else {
-                    HttpLoggingInterceptor.Level.NONE
-                }
+                level = HttpLoggingInterceptor.Level.NONE
             })
             .build()
     }

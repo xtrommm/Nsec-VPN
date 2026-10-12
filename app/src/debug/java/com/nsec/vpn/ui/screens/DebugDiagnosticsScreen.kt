@@ -36,8 +36,9 @@ fun DebugDiagnosticsScreen(
 ) {
     val context = LocalContext.current
     val tunnelManager = remember { WireGuardTunnelManager.getInstance(context) }
-    val diagnosticsText = tunnelManager.getDiagnosticsSummary()
-    val includeApp by tunnelManager.includeAppInTunnel.collectAsStateWithLifecycle()
+    val statsSnapshot by tunnelManager.vpnStats.collectAsStateWithLifecycle()
+    val diagnosticsText = remember(statsSnapshot) { tunnelManager.getDiagnosticsSummary() }
+
 
     Scaffold(
         topBar = {
@@ -66,26 +67,6 @@ fun DebugDiagnosticsScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.surface)
-                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
-                    .padding(14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Include this app in tunnel (debug test)", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                    Text("Routes app traffic through VPN to test exit IP", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Switch(
-                    checked = includeApp,
-                    onCheckedChange = { tunnelManager.setIncludeAppInTunnel(it) },
-                    colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = PrimaryBlue)
-                )
-            }
 
             Spacer(modifier = Modifier.height(16.dp))
 

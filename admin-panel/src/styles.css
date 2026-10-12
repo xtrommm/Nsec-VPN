@@ -1,0 +1,7 @@
+@import "tailwindcss";
+@theme {
+ --color-nsec-navy: #000B29;
+ --color-nsec-cyan: #00E5FF;
+ --color-nsec-blue: #2563EB;
+ --color-nsec-card: #0A122E;
+}

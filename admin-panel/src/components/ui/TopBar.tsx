@@ -5,7 +5,7 @@ interface TopBarProps {
   adminEmail: string | null;
   adminRole: string | null;
   loading: boolean;
-  activeTunnels: number;
+  activeTunnels: number | null;
   totalServers: number;
   onRefresh: () => void;
   onLogout: () => void;
@@ -68,7 +68,7 @@ export const TopBar = ({
           <span className="text-emerald-500/60">•</span>
           <span className="flex items-center space-x-1">
             <Activity className="w-3 h-3 text-emerald-400" />
-            <span>{activeTunnels} Live Tunnels</span>
+            <span>{activeTunnels ?? 'Unavailable'} Active Peer Leases</span>
           </span>
         </div>
 

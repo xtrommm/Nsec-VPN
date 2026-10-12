@@ -28,8 +28,8 @@ fun ServerCard(
     server: Server,
     isSelected: Boolean,
     onSelect: () -> Unit,
-    onToggleFavorite: (() -> Unit)? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onToggleFavorite: (() -> Unit)? = null
 ) {
     val borderColor = if (isSelected) PrimaryBlue else MaterialTheme.colorScheme.outline
     val backgroundColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
@@ -110,15 +110,15 @@ fun ServerCard(
             horizontalAlignment = Alignment.End,
             modifier = Modifier.padding(end = 8.dp)
         ) {
-            val ping = server.pingMs ?: 45L
+            val ping = server.pingMs
             val pingColor = when {
-                ping < 50 -> EmeraldGreen
-                ping < 90 -> AmberWarning
+                ping != null && ping < 50 -> EmeraldGreen
+                ping != null && ping < 90 -> AmberWarning
                 else -> CrimsonError
             }
 
             Text(
-                text = "${ping}ms",
+                text = ping?.let { "${it}ms" } ?: "Unavailable",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 color = pingColor

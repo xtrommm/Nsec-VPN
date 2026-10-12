@@ -1,94 +1,42 @@
-# Nsec VPN Deployment & Operations Guide
+# Deployment of the repair candidate
 
-This guide covers production deployment of the **Backend API**, **Web Admin Console**, **PostgreSQL Database**, and **WireGuard Server Nodes**.
+For CloudPanel manually upgraded on 2026-10-12, follow
+[GitHub website deployment](GITHUB-WEBSITE-DEPLOYMENT.md). Its private Compose
+model and encrypted agent channel supersede the old generated deployment files.
+Install the restricted v2 handler before merging into automatic deployment.
 
----
+Release is NO-GO until the [repair report](E2E-REPAIR-REPORT.md) acceptance gates pass.
+Do not run an unreviewed installer piped from main. Review and check out the repair
+branch or apply the source package to its documented base commit first.
 
-## 1. Prerequisites
-- **Control Server (API & Admin)**: Ubuntu 22.04 / 24.04 LTS (2 vCPU, 4GB RAM).
-- **Domain Names**:
-  - `api.nsecvpn.com` ➔ Pointing to Control Server IP.
-  - `admin.nsecvpn.com` ➔ Pointing to Control Server IP.
-- **WireGuard Node Servers**: One or more Ubuntu 22.04 / 24.04 nodes (1 Gbps+ port recommended).
-- **Software**: Docker & Docker Compose (`apt install docker.io docker-compose`).
+1. Back up the production database privately. Compare the baseline migration to
+   the existing schema before marking it applied; do not recreate populated tables.
+   Review `scripts/migrate-e2e.sql`, resolve duplicate active peer rows, then migrate.
+2. Set BACKEND_ENV_FILE to a protected file with actual per-node, billing and reward environment values; Compose loads it into the backend. Supply backend secrets through protected environment variables: JWT signing,
+   bootstrap admin credentials, each node's agent credential, and enabled TOTP
+   seeds. `agentSecretHash` and `totpSecret` store only env:VARIABLE references.
+   Privately migrate legacy raw credentials. Never paste environment contents.
+3. Install/build/test the authoritative agent source and run the reviewed checkout:
+   `sudo bash deployment/install-wireguard-node.sh`. Supply the real backend egress
+   IPv4 and agent credential privately when requested. Existing WireGuard identity
+   and peers are preserved; rotate the compromised node key separately.
+4. Open Alibaba inbound UDP51820 publicly. Restrict management TCP51821 to the
+   actual backend source IP. Use a private management network or a verified HTTPS
+   proxy; HMAC does not encrypt HTTP. Preserve SSH recovery access.
+5. Run `sudo bash scripts/node-health.sh` and the independent official-WireGuard
+   test in `scripts/manual-peer-test.sh`. Store client config/QR privately.
+6. Deploy agent first, then migrations/backend/admin and APK. Perform the explicit
+   v2 device-registration/version switch described in `scripts/verify-system.md`.
+   New clients fail clearly against old servers; old unproved registration receives
+   APP_UPDATE_REQUIRED. Configure real Play Billing and AdMob SSV credentials.
+7. Enter only the actual current node public key, public endpoint and credential
+   reference. Run admin Test node and explicit public-key sync. Enable a node only
+   after its health and real phone traffic pass.
+8. Complete `scripts/verify-system.md`, including reboot persistence, DNS/IPv6,
+   revoked peer, outages, failover and Chrome exit-IP checks before publication.
 
----
-
-## 2. Deploying Control Plane (Docker Compose)
-
-### Step 1: Clone Repository
-```bash
-git clone https://github.com/your-username/Nsec-VPN.git /opt/nsec-vpn
-cd /opt/nsec-vpn/deployment
-```
-
-### Step 2: Configure Environment Variables
-Create `.env` file in `/opt/nsec-vpn/deployment`:
-```bash
-cat << 'EOF' > .env
-DB_PASSWORD=YourStrongDatabasePassword2026!
-JWT_SECRET=$(openssl rand -hex 32)
-ADMIN_EMAIL=admin@nsecvpn.com
-ADMIN_PASSWORD=YourSecureAdminPassword2026!
-CORS_ORIGIN=https://admin.nsecvpn.com
-EOF
-```
-
-### Step 3: SSL Certificates (Certbot)
-```bash
-apt install -y certbot
-certbot certonly --standalone -d api.nsecvpn.com -d admin.nsecvpn.com
-```
-
-### Step 4: Launch Stack
-```bash
-docker-compose up -d --build
-```
-
-Verify containers are running:
-```bash
-docker-compose ps
-```
-
----
-
-## 3. Deploying WireGuard Server Nodes
-
-Run the automated installer on each server node (e.g. US, Germany, Singapore).
-
-### Option A: Public Repository or Local Server Copy
-If the repository is public or already cloned to `/opt/nsec-vpn`:
-```bash
-# If cloned locally on the server:
-sudo bash /opt/nsec-vpn/deployment/install-wireguard-node.sh
-
-# Or via public raw URL:
-curl -fsSL https://raw.githubusercontent.com/xtrommm/Nsec-VPN/main/deployment/install-wireguard-node.sh | sudo bash
-```
-
-### Option B: Private Repository (Remote Node)
-For remote nodes where the repository is **private**, provide a GitHub Personal Access Token (PAT) with read access to the repo:
-```bash
-curl -fsSL -H "Authorization: token YOUR_GITHUB_PERSONAL_ACCESS_TOKEN" \
-  https://raw.githubusercontent.com/xtrommm/Nsec-VPN/main/deployment/install-wireguard-node.sh | sudo bash
-```
-> **Security Note:** Never hardcode your real GitHub Personal Access Token directly inside public documentation or commit history. Pass it as an environment variable or command argument when executing on the server node.
-
-The script will output:
-```text
-==========================================================
-    WireGuard Node & Agent Configured Successfully!       
-==========================================================
-WireGuard Endpoint: 198.51.100.24:51820
-Server Public Key : xT3kL9mN8vQ1wZ4pE6rY7uI2oA5sD8fG0hJ2kL4zX9c=
-Agent URL         : http://198.51.100.24:51821
-Agent Shared Secret: 4f8a12e3c09b78d65412a9c8e7b6d5f4
-==========================================================
-```
-
-### Step 5: Register Node in Admin Panel
-1. Open `https://admin.nsecvpn.com`.
-2. Log in using `admin@nsecvpn.com`.
-3. Click **Add New Node**.
-4. Enter the Endpoint, Public Key, Agent URL, and Shared Secret.
-5. Click **Save & Register Node**.
+Never include GitHub tokens in command arguments or downloaded shell pipelines.
+Use an authenticated git credential helper or copy the reviewed source privately.
+Keep service environment/lease files root-readable and disable request/access logs
+in every external proxy/CDN as well as the supplied configuration. Confirm the
+production signing key and ad IDs without changing them as part of this repair.

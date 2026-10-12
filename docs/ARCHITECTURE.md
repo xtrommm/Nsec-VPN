@@ -1,3 +1,5 @@
+> Updated implementation and verification truth: see `scripts/verify-system.md`, `scripts/security-rotation.md` and `docs/E2E-REPAIR-REPORT.md`. Older design descriptions below do not constitute deployed-system evidence. Backend now honors the requested node; client failover stays within the same location.
+
 # Nsec VPN Architecture & System Design
 
 This document details the system design, network topologies, cryptographic handshakes, and data models of the **Nsec VPN** platform.
@@ -69,8 +71,8 @@ sequenceDiagram
 Nsec VPN is engineered with zero-logs guarantees across all tiers:
 - **No IP Address Logging**: Client originating IP addresses are never written to disk, database, or log streams.
 - **No Traffic Logging**: DNS queries, packet destinations, and throughput contents are never inspected or mirrored.
-- **Volatile In-Memory Routing**: WireGuard cryptographic public keys exist only in server volatile RAM for active routing and are purged upon disconnection.
-- **Hardware Keystore Authentication**: Authentication relies on client hardware UUIDs stored inside Android Keystore without email addresses or passwords.
+- **Volatile In-Memory Routing**: Current remote endpoints, handshake times and transfer counters are held by WireGuard in RAM. Expiring client public-key/address leases are persisted for reboot recovery and removed after confirmed disconnect/expiry; device authentication, entitlements and admin audit records persist.
+- **Hardware Keystore Authentication**: A random device UUID identifies an installation. A device-held registration secret, JWT/hashed refresh tokens and a locally generated WireGuard key authorize access. Android Keystore protects the vault encryption key; this is not a hardware UUID or a guarantee of hardware-backed key storage.
 
 ---
 

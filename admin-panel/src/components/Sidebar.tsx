@@ -5,7 +5,7 @@ interface SidebarProps {
   setCurrentTab: (tab: 'servers' | 'devices' | 'config' | 'audit') => void;
   adminRole: string | null;
   serverCount: number;
-  deviceCount: number;
+  deviceCount: number | null;
   adminEmail?: string | null;
   onLogout?: () => void;
   mobileOpen?: boolean;
@@ -34,7 +34,7 @@ export const Sidebar = ({
       id: 'devices' as const,
       label: 'Devices & VIP Tiers',
       icon: Users,
-      badge: deviceCount > 0 ? deviceCount : undefined
+      badge: deviceCount !== null && deviceCount > 0 ? deviceCount : undefined
     },
     {
       id: 'config' as const,

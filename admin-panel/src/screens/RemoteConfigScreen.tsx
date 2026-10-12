@@ -709,7 +709,7 @@ export const RemoteConfigScreen = ({
                 <textarea
                   rows={4}
                   maxLength={512}
-                  placeholder="e.g. Dedicated 10Gbps uplinks are now live across all European gateway nodes."
+                  placeholder="Enter a verified announcement for users."
                   value={formData.announcementBody || ''}
                   onChange={(e) =>
                     setFormData((prev) => ({ ...prev, announcementBody: e.target.value }))

@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   postgres:
     image: postgres:16-alpine
@@ -25,12 +23,14 @@ services:
       dockerfile: Dockerfile
     container_name: nsecvpn-backend
     restart: unless-stopped
+    env_file:
+      - ${BACKEND_ENV_FILE:?Required protected backend environment file}
     environment:
       NODE_ENV: production
       PORT: "4000"
       DATABASE_URL: postgresql://nsecvpn_admin:${DB_PASSWORD}@postgres:5432/nsecvpn_db
       JWT_SECRET: ${JWT_SECRET:?Required}
-      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@nsecvpn.com}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?Required}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Required}
       CORS_ORIGIN: ${CORS_ORIGIN:-https://admin.nsecvpn.com}
     ports:

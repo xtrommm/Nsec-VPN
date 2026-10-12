@@ -13,7 +13,9 @@ data class RegisterDeviceRequest(
     val deviceModel: String,
     val osVersion: String,
     val appVersion: String,
-    val appVersionCode: Int
+    val appVersionCode: Int,
+    val registrationSecret: String? = null,
+    val registrationProof: String? = null
 )
 
 data class RegisterDeviceResponse(
@@ -64,7 +66,11 @@ data class TunnelConfigDto(
     val dnsServers: List<String>,
     val allowedIps: List<String>,
     val persistentKeepalive: Int = 25,
-    val mtu: Int = 1420
+    val mtu: Int = 1420,
+    val nodeId: String? = null,
+    val nodeName: String? = null,
+    val locationName: String? = null,
+    val publicIpv4: String? = null
 )
 
 data class DisconnectVpnRequest(val peerId: String, val clientPublicKey: String)
@@ -88,8 +94,18 @@ data class AdsDto(
 data class LegalResponse(val success: Boolean, val data: LegalDocDto?)
 data class LegalDocDto(val type: String, val version: String, val contentMarkdown: String)
 
+data class VerifyPurchaseRequest(val packageName: String, val productId: String, val purchaseToken: String)
+data class VerifyPurchaseResponse(val success: Boolean)
+
+data class DeviceProfileResponse(val success: Boolean, val data: DeviceInfoDto?)
 interface NsecVpnApi {
-    @POST("auth/register-device")
+    @GET("auth/me")
+    suspend fun getDeviceProfile(@Header("Authorization") token: String): Response<DeviceProfileResponse>
+
+    @POST("billing/verify")
+    suspend fun verifyPurchase(@Header("Authorization") token: String, @Body request: VerifyPurchaseRequest): Response<VerifyPurchaseResponse>
+
+    @POST("auth/register-device-v2")
     suspend fun registerDevice(@Body request: RegisterDeviceRequest): Response<RegisterDeviceResponse>
 
     @POST("auth/refresh-token")

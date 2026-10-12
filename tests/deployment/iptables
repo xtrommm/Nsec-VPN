@@ -1,0 +1,10 @@
+#!/usr/bin/env python3
+import os,sys,json,pathlib
+path=pathlib.Path(os.environ['FIREWALL_TEST_STATE'])
+rules=json.loads(path.read_text()) if path.exists() else []
+args=sys.argv[1:];operation=args[2];rule=[args[0],args[1],args[3]]+args[4:]
+if operation=='-I':rule=[args[0],args[1],args[3]]+args[5:]
+if operation=='-C':raise SystemExit(0 if rule in rules else 1)
+if operation=='-I':rules.append(rule)
+if operation=='-D':rules.remove(rule)
+path.write_text(json.dumps(rules))

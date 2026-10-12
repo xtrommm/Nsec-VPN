@@ -1,188 +1,66 @@
 package com.nsec.vpn.vpn
 
-import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.net.VpnService
 import android.os.Build
-import android.os.ParcelFileDescriptor
-import android.util.Log
+import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
-import com.nsec.vpn.BuildConfig
 import com.nsec.vpn.MainActivity
 import com.nsec.vpn.R
+import com.nsec.vpn.data.model.VpnState
+import kotlinx.coroutines.*
 
-class NsecVpnService : VpnService() {
-
-    private var vpnInterface: ParcelFileDescriptor? = null
-
+/** Notification companion only. GoBackend.VpnService owns the sole TUN and WireGuard engine. */
+class NsecVpnService : Service() {
+    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private var serverName = ""
+    override fun onBind(intent: Intent?): IBinder? = null
+    override fun onCreate() {
+        super.onCreate()
+        if (Build.VERSION.SDK_INT >= 26) {
+            getSystemService(NotificationManager::class.java).createNotificationChannel(
+                NotificationChannel(CHANNEL_ID, "VPN connection", NotificationManager.IMPORTANCE_LOW))
+        }
+        scope.launch {
+            WireGuardTunnelManager.getInstance(this@NsecVpnService).vpnState.collect { state ->
+                if (state is VpnState.Connected || state is VpnState.Connecting) notifyState(state is VpnState.Connected)
+            }
+        }
+    }
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when (intent?.action) {
-            ACTION_CONNECT -> {
-                val serverName = intent.getStringExtra(EXTRA_SERVER_NAME) ?: "Secure Tunnel"
-                val dnsServers = intent.getStringArrayListExtra(EXTRA_DNS_SERVERS) ?: arrayListOf("1.1.1.1", "1.0.0.1")
-                val excludedApps = intent.getStringArrayListExtra(EXTRA_EXCLUDED_APPS)
-
-                establishTunnel(serverName, dnsServers, excludedApps)
-
-                val notification = buildNotification(serverName)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                    ServiceCompat.startForeground(
-                        this,
-                        NOTIFICATION_ID,
-                        notification,
-                        ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED
-                    )
-                } else {
-                    startForeground(NOTIFICATION_ID, notification)
-                }
-            }
-            ACTION_DISCONNECT -> {
-                closeTunnel()
-                WireGuardTunnelManager.getInstance(this).disconnect()
-                stopForeground(STOP_FOREGROUND_REMOVE)
-                stopSelf()
-            }
+        if (intent?.action == ACTION_DISCONNECT) {
+            WireGuardTunnelManager.getInstance(this).disconnect()
+            stopForeground(STOP_FOREGROUND_REMOVE); stopSelf()
+        } else {
+            serverName = intent?.getStringExtra(EXTRA_SERVER_NAME).orEmpty()
+            notifyState(WireGuardTunnelManager.getInstance(this).vpnState.value is VpnState.Connected)
         }
         return START_NOT_STICKY
     }
-
-    private fun establishTunnel(
-        serverName: String,
-        dnsServers: List<String>,
-        excludedApps: List<String>?
-    ) {
-        try {
-            val builder = Builder()
-                .setSession("Nsec VPN: $serverName")
-                .setMtu(1420)
-                .addAddress("10.8.0.2", 32)
-                .addRoute("0.0.0.0", 0)
-
-            for (dns in dnsServers) {
-                try {
-                    builder.addDnsServer(dns)
-                } catch (_: Throwable) {}
-            }
-
-            // Always exclude the app's own package so AdMob ad requests and API calls bypass the VPN tunnel
-            try {
-                builder.addDisallowedApplication(packageName)
-            } catch (e: Exception) {
-                Log.e("NsecVpnService", "Failed to exclude own package: ${e.message}")
-            }
-
-            if (!excludedApps.isNullOrEmpty()) {
-                for (pkg in excludedApps) {
-                    if (pkg != packageName) {
-                        try {
-                            builder.addDisallowedApplication(pkg)
-                        } catch (_: Throwable) {}
-                    }
-                }
-            }
-
-            vpnInterface?.close()
-            vpnInterface = builder.establish()
-            Log.i("NsecVpnService", "VPN TUN interface established successfully")
-
-            if (BuildConfig.DEBUG) {
-                checkAppNetworkCapabilities()
-            }
-        } catch (e: Exception) {
-            Log.e("NsecVpnService", "Could not establish VPN TUN interface: ${e.message}")
+    private fun notifyState(connected: Boolean) {
+        if (android.net.VpnService.prepare(this) != null) {
+            WireGuardTunnelManager.getInstance(this).disconnect()
+            stopSelf()
+            return
         }
+        val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        val disconnect = PendingIntent.getService(this, 1, Intent(this, NsecVpnService::class.java).setAction(ACTION_DISCONNECT), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID).setSmallIcon(R.drawable.ic_notification_small)
+            .setContentTitle(if (connected) "Nsec VPN Connected" else "Nsec VPN Connecting")
+            .setContentText(serverName).setContentIntent(open).setOngoing(true).addAction(0, "Disconnect", disconnect).build()
+        if (Build.VERSION.SDK_INT >= 34) ServiceCompat.startForeground(this, 1001, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED)
+        else startForeground(1001, notification)
     }
-
-    private fun checkAppNetworkCapabilities() {
-        try {
-            val cm = getSystemService(android.net.ConnectivityManager::class.java)
-            val activeNetwork = cm?.activeNetwork
-            val caps = cm?.getNetworkCapabilities(activeNetwork)
-            val hasVpn = caps?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN) ?: false
-            Log.d("NsecVpnService", "[AdTrafficDebug] App active network has TRANSPORT_VPN: $hasVpn (Expected: false)")
-        } catch (e: Exception) {
-            Log.d("NsecVpnService", "[AdTrafficDebug] Failed to check network capabilities: ${e.message}")
-        }
-    }
-
-    private fun closeTunnel() {
-        try {
-            vpnInterface?.close()
-        } catch (_: Throwable) {}
-        vpnInterface = null
-    }
-
-    override fun onRevoke() {
-        super.onRevoke()
-        closeTunnel()
-        WireGuardTunnelManager.getInstance(this).disconnect()
-        stopForeground(STOP_FOREGROUND_REMOVE)
-        stopSelf()
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        closeTunnel()
-        stopForeground(STOP_FOREGROUND_REMOVE)
-    }
-
-    private fun buildNotification(serverName: String): Notification {
-        createNotificationChannel()
-
-        val openAppIntent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-        }
-        val pendingOpenApp = PendingIntent.getActivity(
-            this, 0, openAppIntent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
-
-        val disconnectIntent = Intent(this, NsecVpnService::class.java).apply {
-            action = ACTION_DISCONNECT
-        }
-        val pendingDisconnect = PendingIntent.getService(
-            this, 1, disconnectIntent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
-
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Nsec VPN Connected")
-            .setContentText("Secured via WireGuard: $serverName")
-            .setSmallIcon(R.drawable.ic_notification_small)
-            .setContentIntent(pendingOpenApp)
-            .setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .addAction(0, "Disconnect", pendingDisconnect)
-            .build()
-    }
-
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "Nsec VPN Connection Status",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Shows live WireGuard tunnel connection status"
-                setShowBadge(false)
-            }
-            val manager = getSystemService(NotificationManager::class.java)
-            manager?.createNotificationChannel(channel)
-        }
-    }
-
+    override fun onDestroy() { scope.cancel(); super.onDestroy() }
     companion object {
         const val ACTION_CONNECT = "com.nsec.vpn.ACTION_CONNECT"
         const val ACTION_DISCONNECT = "com.nsec.vpn.ACTION_DISCONNECT"
         const val EXTRA_SERVER_NAME = "extra_server_name"
-        const val EXTRA_DNS_SERVERS = "extra_dns_servers"
-        const val EXTRA_EXCLUDED_APPS = "extra_excluded_apps"
         private const val CHANNEL_ID = "nsecvpn_status_channel"
-        private const val NOTIFICATION_ID = 1001
     }
 }

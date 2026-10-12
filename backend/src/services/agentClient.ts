@@ -1,140 +1,50 @@
 import crypto from 'crypto';
+import { z } from 'zod';
+import { PublicKeySchema, isPublicIpv4 } from '../types';
 
-export interface AddPeerPayload {
-  publicKey: string;
-  allocatedIp: string;
-}
-
-export interface RemovePeerPayload {
-  publicKey: string;
-}
-
+export interface AddPeerPayload { publicKey: string; allocatedIp: string; expiresAt: string }
+export interface RemovePeerPayload { publicKey: string }
 export interface NodeHealthResponse {
-  online: boolean;
-  peerCount: number;
-  loadPercent: number;
+  online: boolean; peerCount: number; loadPercent: number; publicKey?: string;
+  publicIpv4?: string; listenPort?: number; handshakeCount?: number;
 }
-
+const HealthSchema = z.object({
+  online: z.literal(true), peerCount: z.number().int().nonnegative(), loadPercent: z.number().min(0).max(100),
+  publicKey: PublicKeySchema, publicIpv4: z.string().refine(isPublicIpv4),
+  listenPort: z.number().int().min(1).max(65535), handshakeCount: z.number().int().nonnegative()
+});
 export class AgentClient {
-  /**
-   * Calls the remote node agent to register a peer on wg0.
-   */
-  static async addPeer(
-    agentUrl: string,
-    secret: string,
-    payload: AddPeerPayload,
-    timeoutMs = 4000
-  ): Promise<{ success: boolean; message?: string }> {
+  private static async request(url: string, credentialReference: string, method: string, path: string, payload?: unknown): Promise<unknown> {
+    if (!/^env:[A-Z][A-Z0-9_]{2,95}$/.test(credentialReference)) throw new Error('AGENT_CREDENTIAL_REFERENCE_REQUIRED');
+    const secret = process.env[credentialReference.slice(4)];
+    if (!secret || secret.length < 32) throw new Error('AGENT_CREDENTIAL_CONFIGURATION_MISSING');
     const timestamp = Date.now().toString();
-    const bodyStr = JSON.stringify(payload);
-    const signature = crypto
-      .createHmac('sha256', secret)
-      .update(`${timestamp}.${bodyStr}`)
-      .digest('hex');
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), timeoutMs);
-
-    try {
-      const response = await fetch(`${agentUrl.replace(/\/$/, '')}/api/v1/agent/peers`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Agent-Timestamp': timestamp,
-          'X-Agent-Signature': signature
-        },
-        body: bodyStr,
-        signal: controller.signal
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Agent returned HTTP ${response.status}: ${errorText}`);
-      }
-
-      return (await response.json()) as { success: boolean };
-    } catch (err: any) {
-      if (err.name === 'AbortError') {
-        throw new Error('Agent connection timed out after 4 seconds');
-      }
-      throw err;
-    } finally {
-      clearTimeout(timeout);
-    }
+    const body = payload === undefined ? '' : JSON.stringify(payload);
+    // v2 binds the signature to method and path; the updated agent accepts v1 during rollout.
+    const signature = crypto.createHmac('sha256', secret).update(`${timestamp}.${method}.${path}.${body}`).digest('hex');
+    const response = await fetch(`${url.replace(/\/$/, '')}${path}`, {
+      method, body: payload === undefined ? undefined : body,
+      headers: { 'Content-Type': 'application/json', 'X-Agent-Timestamp': timestamp,
+        'X-Agent-Signature': signature, 'X-Agent-Version': '2' },
+      signal: AbortSignal.timeout(4000), redirect: 'error'
+    });
+    if (!response.ok) throw new Error('AGENT_UNREACHABLE');
+    const bodyText = await response.text();
+    const signatureHeader = response.headers.get('X-Agent-Response-Signature') || '';
+    const expected = crypto.createHmac('sha256', secret).update(`response.${timestamp}.${method}.${path}.${bodyText}`).digest('hex');
+    if (!/^[a-f0-9]{64}$/.test(signatureHeader) || !crypto.timingSafeEqual(Buffer.from(signatureHeader), Buffer.from(expected))) throw new Error('AGENT_RESPONSE_UNAUTHENTICATED');
+    return JSON.parse(bodyText);
   }
-
-  /**
-   * Calls the remote node agent to remove a peer from wg0.
-   */
-  static async removePeer(
-    agentUrl: string,
-    secret: string,
-    payload: RemovePeerPayload,
-    timeoutMs = 4000
-  ): Promise<{ success: boolean }> {
-    const timestamp = Date.now().toString();
-    const bodyStr = JSON.stringify(payload);
-    const signature = crypto
-      .createHmac('sha256', secret)
-      .update(`${timestamp}.${bodyStr}`)
-      .digest('hex');
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), timeoutMs);
-
-    try {
-      const response = await fetch(`${agentUrl.replace(/\/$/, '')}/api/v1/agent/peers`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Agent-Timestamp': timestamp,
-          'X-Agent-Signature': signature
-        },
-        body: bodyStr,
-        signal: controller.signal
-      });
-
-      if (!response.ok) {
-        return { success: false };
-      }
-      return (await response.json()) as { success: boolean };
-    } catch (_err) {
-      return { success: false };
-    } finally {
-      clearTimeout(timeout);
-    }
+  static async addPeer(url: string, secret: string, payload: AddPeerPayload): Promise<void> {
+    const result = await this.request(url, secret, 'POST', '/api/v1/agent/peers', payload);
+    z.object({ success: z.literal(true), persisted: z.literal(true) }).parse(result);
   }
-
-  /**
-   * Pings the node agent for status and current connected peer count.
-   */
-  static async getNodeHealth(
-    agentUrl: string,
-    secret: string
-  ): Promise<NodeHealthResponse> {
-    const timestamp = Date.now().toString();
-    const signature = crypto.createHmac('sha256', secret).update(timestamp).digest('hex');
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2500);
-
-    try {
-      const res = await fetch(`${agentUrl.replace(/\/$/, '')}/api/v1/agent/health`, {
-        headers: {
-          'X-Agent-Timestamp': timestamp,
-          'X-Agent-Signature': signature
-        },
-        signal: controller.signal
-      });
-      if (res.ok) {
-        const data = (await res.json()) as any;
-        return { online: true, peerCount: data.peerCount || 0, loadPercent: data.loadPercent || 0 };
-      }
-    } catch (_e) {
-      // Node agent unreachable or timeout
-    } finally {
-      clearTimeout(timeout);
-    }
-    return { online: false, peerCount: 0, loadPercent: 0 };
+  static async removePeer(url: string, secret: string, payload: RemovePeerPayload): Promise<void> {
+    const result = await this.request(url, secret, 'DELETE', '/api/v1/agent/peers', payload);
+    z.object({ success: z.literal(true), persisted: z.literal(true) }).parse(result);
+  }
+  static async getNodeHealth(url: string, secret: string): Promise<NodeHealthResponse> {
+    try { return HealthSchema.parse(await this.request(url, secret, 'GET', '/api/v1/agent/health')); }
+    catch { return { online: false, peerCount: 0, loadPercent: 0 }; }
   }
 }

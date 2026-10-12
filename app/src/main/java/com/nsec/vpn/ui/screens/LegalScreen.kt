@@ -58,7 +58,7 @@ fun LegalScreen(
                 Icon(Icons.Default.Shield, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(28.dp))
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
-                    text = "Strict No-Logging Guarantee: Nsec VPN (nsecvpn.com) never logs, stores, or shares your personal network traffic.",
+                    text = "Nsec VPN does not store browsing activity, DNS queries, traffic content, or originating client IP addresses in its app, backend, or agent.",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurface,
                     lineHeight = 17.sp
@@ -67,11 +67,11 @@ fun LegalScreen(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            PolicySection("1. Information We Do NOT Collect", "We operate an absolute zero-logs service:\n• No originating IP addresses\n• No connection timestamps correlated with users\n• No DNS queries or web browsing history\n• No transmitted data payloads or contents\n\nAll WireGuard cryptographic handshakes reside in volatile kernel memory and are immediately cleared when disconnected.")
+            PolicySection("1. Information We Do NOT Collect", "We do not persist originating client IP addresses, DNS queries, browsing history, or traffic contents. WireGuard keeps current handshake and transfer statistics in kernel memory. Device registration and expiring peer configuration are persisted to authenticate access and restore peers after reboot; these are service records, not browsing logs.")
 
             PolicySection("2. WireGuard Cryptographic Key Exchange", "Your Curve25519 private key is generated locally inside your device's secure environment. Only your public key is sent to the server for tunnel handshake configuration.")
 
-            PolicySection("3. Anonymous Device Authentication", "You do not need an email address or password to use Nsec VPN. Each installation is identified solely by an anonymous hardware UUID stored locally.")
+            PolicySection("3. Anonymous Device Authentication", "You do not need an email address or password to use Nsec VPN. A randomly generated installation ID and a device-held registration secret authorize access. Android Keystore protects the local encryption key; hardware-backed storage depends on the device. Clearing local app data does not delete existing backend registration or billing records.")
 
             PolicySection("4. Google Play Compliance", "Nsec VPN strictly utilizes the Android VpnService API solely for user-initiated VPN tunnel encapsulation per nsecvpn.com policies.")
         }

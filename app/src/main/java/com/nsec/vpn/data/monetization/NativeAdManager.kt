@@ -71,7 +71,7 @@ class NativeAdManager(private val context: Context) {
             adLoader.loadAd(AdRequest.Builder().build())
         } catch (e: Throwable) {
             isPreloading.set(false)
-            Log.e("NativeAdManager", "Failed to preload native ad", e)
+            Log.e("NativeAdManager", "Failed to preload native ad")
         }
     }
 

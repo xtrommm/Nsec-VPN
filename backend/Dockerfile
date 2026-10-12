@@ -1,5 +1,5 @@
 
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
@@ -14,10 +14,11 @@ COPY . .
 
 RUN npx prisma generate
 
-RUN NODE_OPTIONS="--max-old-space-size=1536" npm run build
+ARG NODE_BUILD_HEAP_MB=4096
+RUN NODE_OPTIONS="--max-old-space-size=${NODE_BUILD_HEAP_MB}" npm run build
 
 
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 
 WORKDIR /app
 
