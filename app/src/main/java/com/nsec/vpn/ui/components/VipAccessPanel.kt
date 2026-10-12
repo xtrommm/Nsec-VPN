@@ -54,7 +54,7 @@ fun VipRewardCard(offer: RewardOffer, busy: Boolean, onWatchReward: () -> Unit,
                     if (busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                     else Icon(Icons.Default.PlayArrow, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text(if (busy) "Preparing your reward…" else "Watch ad & unlock", fontWeight = FontWeight.Bold)
+                    Text(if (busy) "Preparing your Reward…" else "Watch Ad & Unlock", fontWeight = FontWeight.Bold)
                 }
             }
             if (showMoreOptions) TextButton(onClick = onMoreOptions, modifier = Modifier.align(Alignment.CenterHorizontally)) {
@@ -87,7 +87,7 @@ private fun CompactVipOffer(offer: RewardOffer, busy: Boolean, onWatchReward: ()
                     modifier = Modifier.heightIn(min = 48.dp).testTag("watch_vip_reward"),
                     contentPadding = PaddingValues(horizontal = 12.dp), shape = RoundedCornerShape(12.dp)) {
                     if (busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                    else Text("Watch ad", fontWeight = FontWeight.Bold)
+                    else Text("Watch Ad", fontWeight = FontWeight.Bold)
                 }
             } else {
                 TextButton(onClick = onMoreOptions, modifier = Modifier.heightIn(min = 48.dp)) {

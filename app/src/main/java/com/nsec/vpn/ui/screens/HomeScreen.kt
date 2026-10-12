@@ -112,13 +112,13 @@ fun HomeScreen(
         ) {
             Column {
                 Text(
-                    text = "Nsec -VPN",
+                    text = "Nsec PRIVATE VPN",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
-                    text = "WIREGUARD FOR ANDROID",
+                    text = "MILITARY GRADE SECURITY",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.primary
@@ -202,7 +202,7 @@ fun HomeScreen(
             } else {
                 Icon(
                     imageVector = Icons.Default.Warning,
-                    contentDescription = "VPN disconnected",
+                    contentDescription = "VPN Disconnected",
                     tint = AmberWarning,
                     modifier = Modifier.size(18.dp)
                 )
