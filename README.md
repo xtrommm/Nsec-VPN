@@ -166,3 +166,7 @@ The VPN-bound speed test still requires the matching-signature companion applica
 ### Compact Home layout
 
 The Home reward offer uses a compact row. Tap **Watch ad** to request the configured rewarded pass, or tap the card for full VIP details and paid plans. Smaller spacing and connect control leave more room for the server selector and existing native ad. Scrolling remains available for small screens, large fonts, announcements and variable ad sizes. VIP/ad-free users still follow the existing ad suppression rules.
+
+### Location pools and compact speed tests
+
+The Android catalog displays one country/city location backed by individual nodes. New clients ask the backend for an eligible node ranked by reserved capacity and measured latency, with transaction-protected capacity fallback and explicit all-full errors. Speed-test history is removed, the gauge/layout is compact, and cold startup includes theme-aware Europe branding. Deploy the updated backend before installing the APK. No database migration or dependency is added. See [APP-POLISH-LOCATION-POOLS.md](docs/APP-POLISH-LOCATION-POOLS.md) for audit evidence, API compatibility and device checks.

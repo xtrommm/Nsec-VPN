@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased — App polish and location pools
+
+- Capitalize source labels and messages while preserving headers, mottos, uppercase copy, timers, units and external content.
+- Compact the speed-test gauge and layout; remove history display and result persistence.
+- Group nodes by country/city, rank eligible nodes by latency/capacity, retry capacity misses across the pool, and report exhausted locations distinctly.
+- Exclude actual failed nodes during failover, preserve verified connected-node details, and keep device/tier/transaction checks authoritative.
+- Move catalog restoration off the UI thread, memoize location grouping, and make existing native ads reachable in small catalogs.
+- Add theme-aware cold-start Europe branding, backend/Android regressions, and rollout documentation without a schema migration.
+
 ## Unreleased — Compact Home
 
 - Replace the tall Home reward promotion with a compact duration/benefits row and direct Watch ad action. Tap the card for full VIP options.
