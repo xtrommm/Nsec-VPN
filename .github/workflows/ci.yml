@@ -153,5 +153,18 @@ jobs:
 
       - name: Android lint
         run: ./gradlew :app:lintDebug --no-daemon
+      - name: Print complete Android lint report
+        if: always()
+        shell: bash
+        run: |
+          report=app/build/reports/lint-results-debug.txt
+          fallback=app/build/intermediates/lint_intermediate_text_report/debug/lintReportDebug/lint-results-debug.txt
+          if [[ -f "$report" ]]; then
+            cat "$report"
+          elif [[ -f "$fallback" ]]; then
+            cat "$fallback"
+          else
+            echo 'No Android lint text report was generated; inspect the preceding Gradle error.'
+          fi
       - name: Build Debug APK
         run: ./gradlew :app:assembleDebug --no-daemon
