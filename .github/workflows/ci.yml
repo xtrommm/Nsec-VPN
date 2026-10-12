@@ -157,10 +157,10 @@ jobs:
             -dname "CN=Android Debug,O=Nsec VPN,C=US"
 
       - name: Run Unit & Robolectric Tests
-        run: ./gradlew :app:testDebugUnitTest --no-daemon --warning-mode all -Dorg.gradle.deprecation.trace=true
+        run: ./gradlew :app:testDebugUnitTest :speedtest-helper:testDebugUnitTest --no-daemon --warning-mode all -Dorg.gradle.deprecation.trace=true
 
       - name: Android lint
-        run: ./gradlew :app:lintDebug :app:lintRelease --continue --no-daemon --warning-mode all -Dorg.gradle.deprecation.trace=true
+        run: ./gradlew :app:lintDebug :app:lintRelease :speedtest-helper:lintDebug :speedtest-helper:lintRelease --continue --no-daemon --warning-mode all -Dorg.gradle.deprecation.trace=true
       - name: Print complete Android lint report
         if: always()
         shell: bash
@@ -178,4 +178,4 @@ jobs:
           done
       - name: Build debug and validation release APKs
         # This job has only an ephemeral debug key; its release APK is not for publishing.
-        run: ./gradlew :app:assembleDebug :app:assembleRelease --no-daemon --warning-mode all -Dorg.gradle.deprecation.trace=true
+        run: ./gradlew :app:assembleDebug :app:assembleRelease :speedtest-helper:assembleDebug :speedtest-helper:assembleRelease --no-daemon --warning-mode all -Dorg.gradle.deprecation.trace=true

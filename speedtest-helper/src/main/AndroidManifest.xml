@@ -1,0 +1,9 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="com.nsec.vpn.permission.SPEED_TEST" />
+    <queries><package android:name="com.nsec.vpn" /></queries>
+    <application android:allowBackup="false" android:usesCleartextTraffic="false" android:label="Nsec VPN Speed Helper">
+        <service android:name=".SpeedTestService" android:exported="true" android:permission="com.nsec.vpn.permission.SPEED_TEST" />
+    </application>
+</manifest>
