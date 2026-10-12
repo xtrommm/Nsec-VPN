@@ -133,3 +133,7 @@ New specific errors: `PROMO_NOT_STARTED`, `PROMO_ALREADY_VIP`, `PROMO_ENCRYPTION
 ## Suggestions, not added
 
 Separate paid/reward/promo entitlement records would improve revocation and accounting beyond the current shared tier/expiry model. Hardware-backed registration integrity can reduce reinstall farming; per-install limits do not prevent new installations. Admin 2FA enrollment UI, monitoring/alerts and data-retention settings require product choices. No extra feature is enabled without a decision.
+
+### Recorded validation status
+
+Backend: 81 tests in 12 suites (including maintenance), type check and production build. Panel: four validation tests, type check and Vite production build. Deployment: 16 tests, including safe private-key creation/retention/refusal. Installer: preflight, local-edit preservation, three-way merges and repeat-run protection checked separately. Android and fresh-PostgreSQL integration remain required in CI. Browser interaction/visual smoke remains unverified in this runtime because browser startup was rejected by its socket restrictions. Passing source checks does not prove real rewarded-ad, DNS or VPN traffic behavior.
