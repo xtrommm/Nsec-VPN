@@ -93,6 +93,7 @@ class VpnRepositoryTest {
         }
         val repository = VpnRepository(context, api, TestVault.create(context))
         repository.refreshServers()
+        repository.refreshVerifiedEntitlement()
         assertEquals("VIP", repository.userTier.value)
         expired = true
         repository.refreshVerifiedEntitlement()

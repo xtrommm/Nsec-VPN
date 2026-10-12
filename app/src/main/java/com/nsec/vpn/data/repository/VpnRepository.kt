@@ -3,6 +3,14 @@ package com.nsec.vpn.data.repository
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import com.nsec.vpn.BuildConfig
+import com.nsec.vpn.data.local.ServerCatalogCache
+import com.nsec.vpn.data.api.ServerItemDto
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.sync.Mutex
 import com.nsec.vpn.data.api.NsecVpnApi
 import com.nsec.vpn.data.api.RegisterDeviceRequest
 import com.nsec.vpn.data.local.KeyStoreManager
@@ -28,6 +36,14 @@ class VpnRepository(
     private val api: NsecVpnApi,
     private val keyStoreManager: KeyStoreManager
 ) {
+    private val repositoryScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val refreshMutex = Mutex()
+    private val catalogCache = ServerCatalogCache(context)
+    private var latencyJob: Job? = null
+    private val _serversLoading = MutableStateFlow(false)
+    val serversLoading: StateFlow<Boolean> = _serversLoading.asStateFlow()
+    private val _usingCachedServers = MutableStateFlow(false)
+    val usingCachedServers: StateFlow<Boolean> = _usingCachedServers.asStateFlow()
     private val _serverListError = MutableStateFlow<String?>(null)
     val serverListError: StateFlow<String?> = _serverListError.asStateFlow()
     private val _servers = MutableStateFlow<List<Server>>(emptyList())
@@ -67,7 +83,9 @@ class VpnRepository(
         val savedThemeName = keyStoreManager.getThemeMode()
         _themeMode.value = ThemeMode.entries.find { it.name == savedThemeName } ?: ThemeMode.SYSTEM
 
-        _servers.value = emptyList()
+        val cached = catalogCache.read()
+        _servers.value = mapServers(cached)
+        _usingCachedServers.value = cached.isNotEmpty()
 
         val savedServerId = keyStoreManager.getSelectedServerId()
         _selectedServer.value = _servers.value.firstOrNull { it.id == savedServerId }
@@ -84,12 +102,14 @@ class VpnRepository(
         _excludedPackages.value = keyStoreManager.getExcludedPackages()
         _autoConnectEnabled.value = keyStoreManager.isAutoConnectEnabled()
 
-        kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+        repositoryScope.launch {
             cleanUninstalledExcludedPackages(context)
         }
     }
 
     suspend fun refreshServers() = withContext(Dispatchers.IO) {
+        if (!refreshMutex.tryLock()) return@withContext
+        _serversLoading.value = true
         checkRewardedPassExpiry()
         try {
             var token = keyStoreManager.getAccessToken() ?: authenticateDevice()
@@ -107,38 +127,36 @@ class VpnRepository(
             val body = response.body()
             if (response.isSuccessful && body?.success == true && body.data?.servers != null) {
                 val dtos = body.data.servers
-                val favs = _favoriteServerIds.value
-                val mapped = dtos.map { dto ->
-                    Server(
-                        id = dto.id,
-                        name = dto.name,
-                        countryCode = dto.countryCode,
-                        countryName = dto.countryName,
-                        city = dto.city,
-                        flagEmoji = dto.flagEmoji,
-                        currentLoad = dto.currentLoad,
-                        isPremiumOnly = dto.isPremiumOnly,
-                        isRecommended = dto.isRecommended,
-                        isFavorite = favs.contains(dto.id),
-                        totalNodes = dto.totalNodes,
-                        publicIpv4 = dto.publicIpv4
-                    )
-                }
+                ServerCatalogCache.validate(dtos)
+                val mapped = mapServers(dtos)
+                catalogCache.write(dtos)
+                _usingCachedServers.value = false
                 _serverListError.value = null
                 _servers.value = mapped
-                try { refreshVerifiedEntitlement() } catch (_: Exception) { /* Retain only this process's verified entitlement. */ }
+                repositoryScope.launch { try { refreshVerifiedEntitlement() } catch (e: CancellationException) { throw e } catch (_: Exception) { /* Retain verified state. */ } }
 
                 val currentSelected = _selectedServer.value
                 if (currentSelected == null || !mapped.any { it.id == currentSelected.id }) {
                     _selectedServer.value = mapped.firstOrNull { it.isRecommended } ?: mapped.firstOrNull()
                 }
             } else { _serverListError.value = "Server list unavailable (${response.code()})" }
-        } catch (e: Exception) {
+        } catch (e: CancellationException) { throw e }
+        catch (_: Exception) {
             _serverListError.value = "Server list unavailable; check your internet connection"
             // No fallback to mock servers. Keep existing servers or empty list.
+        } finally {
+            _serversLoading.value = false
+            refreshMutex.unlock()
         }
+        latencyJob?.cancel()
+        latencyJob = repositoryScope.launch { measurePings() }
+    }
 
-        measurePings()
+    private fun mapServers(dtos: List<ServerItemDto>): List<Server> = dtos.map { dto ->
+        Server(dto.id, dto.name, dto.countryCode, dto.countryName, dto.city, dto.flagEmoji,
+            dto.currentLoad, dto.isPremiumOnly, dto.isRecommended,
+            isFavorite = _favoriteServerIds.value.contains(dto.id), totalNodes = dto.totalNodes,
+            publicIpv4 = dto.publicIpv4)
     }
 
     suspend fun fetchTunnelConfig(
@@ -173,6 +191,7 @@ class VpnRepository(
             val code = try { org.json.JSONObject(response.errorBody()?.string().orEmpty()).optString("error") } catch (_: Exception) { "" }
             throw com.nsec.vpn.vpn.VpnApiException(response.code(), when (code) {
                 "SERVER_FULL" -> "Server is full"
+                "MAINTENANCE_MODE" -> "VPN maintenance is in progress. Please try again later."
                 "NODE_DISABLED" -> "Server is disabled"
                 "NODE_OFFLINE", "AGENT_UNREACHABLE" -> "Server is offline"
                 "TIER_UPGRADE_REQUIRED" -> "This server requires an active premium pass"
@@ -260,8 +279,8 @@ class VpnRepository(
                 deviceId = deviceId,
                 deviceModel = Build.MODEL,
                 osVersion = Build.VERSION.RELEASE,
-                appVersion = "1.0.0",
-                appVersionCode = 1,
+                appVersion = BuildConfig.VERSION_NAME,
+                appVersionCode = BuildConfig.VERSION_CODE,
                 registrationSecret = keyStoreManager.getOrCreateRegistrationSecret(),
                 registrationProof = keyStoreManager.getAccessToken()
             )
@@ -418,6 +437,8 @@ class VpnRepository(
             throw IllegalStateException(when (error) {
                 "PROMO_ALREADY_REDEEMED" -> "You already redeemed this code"
                 "PROMO_EXPIRED" -> "This code has expired"
+                "PROMO_NOT_STARTED" -> "This promotion has not started yet."
+                "PROMO_ALREADY_VIP" -> "You already have VIP without an expiry; this code was not consumed."
                 "PROMO_EXHAUSTED" -> "This code has reached its redemption limit"
                 "PROMO_RATE_LIMIT" -> "Too many attempts. Try again later"
                 "PROMO_INVALID" -> "Code is invalid or disabled"

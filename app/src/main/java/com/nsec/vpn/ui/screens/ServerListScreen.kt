@@ -48,7 +48,10 @@ fun ServerListScreen(
     onRefreshPings: () -> Unit,
     onUpgradeRequired: () -> Unit,
     modifier: Modifier = Modifier,
-    adMobConfig: AdMobConfig = AdMobConfig()
+    adMobConfig: AdMobConfig = AdMobConfig(),
+    isLoading: Boolean = false,
+    usingCache: Boolean = false,
+    errorMessage: String? = null
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -117,6 +120,12 @@ fun ServerListScreen(
             }
         }
 
+        if (usingCache) Text("Saved server list · refreshing availability", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        errorMessage?.let { Text(it, fontSize = 12.sp, color = MaterialTheme.colorScheme.error) }
+        if (isLoading && servers.isEmpty()) Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            repeat(3) { Box(Modifier.fillMaxWidth().height(64.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant)) }
+            Text("Loading servers…", fontSize = 12.sp)
+        }
         Spacer(modifier = Modifier.height(12.dp))
 
         OutlinedTextField(
