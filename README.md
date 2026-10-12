@@ -156,3 +156,9 @@ The charcoal dark theme and redesigned Server Request sheet are documented in [A
 ## Android CI backup-policy repair
 
 See [Actions CI repair](docs/ACTIONS-CI-REPAIR.md) for the failed run evidence and fix. Run `python3 scripts/check-android-backups.py` before Android builds; both Android modules must explicitly exclude cloud/device backup data. The CI deployment gate remains enabled.
+
+## Live load and rewarded VIP
+
+See [live load/rewarded VIP](docs/LIVE-LOAD-REWARDED-VIP.md). Configure Rewarded pass minutes = 45 in the VPN admin panel to show/grant the requested offer. Home displays the real connected node’s current measured peer capacity while foreground polling runs; no migration is needed.
+
+The VPN-bound speed test still requires the matching-signature companion application. See [two-app Google Play release](docs/PLAY-STORE-TWO-APPS.md) before publishing either bundle.

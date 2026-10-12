@@ -115,7 +115,8 @@ const server = app.listen(PORT, async () => {
   logger.info(`🚀 Nsec VPN Production Backend running on port ${PORT}`);
   await seedDefaultAdmin();
   void refreshNodeHealth().catch(() => logger.warn("Node health refresh failed"));
-  setInterval(() => { void refreshNodeHealth().catch(() => logger.warn("Node health refresh failed")); void expirePeers().catch(() => logger.warn("Lease cleanup failed")); }, 60000).unref();
+  setInterval(() => { void refreshNodeHealth().catch(() => logger.warn("Node health refresh failed")); }, 30000).unref();
+  setInterval(() => { void expirePeers().catch(() => logger.warn("Lease cleanup failed")); }, 60000).unref();
 });
 
 // Graceful Process Teardown

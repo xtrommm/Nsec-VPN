@@ -107,7 +107,7 @@ class VpnRepository(
         }
     }
 
-    suspend fun refreshServers() = withContext(Dispatchers.IO) {
+    suspend fun refreshServers(refreshLatency: Boolean = true) = withContext(Dispatchers.IO) {
         if (!refreshMutex.tryLock()) return@withContext
         _serversLoading.value = true
         checkRewardedPassExpiry()
@@ -136,9 +136,8 @@ class VpnRepository(
                 repositoryScope.launch { try { refreshVerifiedEntitlement() } catch (e: CancellationException) { throw e } catch (_: Exception) { /* Retain verified state. */ } }
 
                 val currentSelected = _selectedServer.value
-                if (currentSelected == null || !mapped.any { it.id == currentSelected.id }) {
-                    _selectedServer.value = mapped.firstOrNull { it.isRecommended } ?: mapped.firstOrNull()
-                }
+                _selectedServer.value = currentSelected?.let { selected -> mapped.firstOrNull { it.id == selected.id } }
+                    ?: mapped.firstOrNull { it.isRecommended } ?: mapped.firstOrNull()
             } else { _serverListError.value = "Server list unavailable (${response.code()})" }
         } catch (e: CancellationException) { throw e }
         catch (_: Exception) {
@@ -148,15 +147,18 @@ class VpnRepository(
             _serversLoading.value = false
             refreshMutex.unlock()
         }
-        latencyJob?.cancel()
-        latencyJob = repositoryScope.launch { measurePings() }
+        if (refreshLatency) {
+            latencyJob?.cancel()
+            latencyJob = repositoryScope.launch { measurePings() }
+        }
     }
 
     private fun mapServers(dtos: List<ServerItemDto>): List<Server> = dtos.map { dto ->
         Server(dto.id, dto.name, dto.countryCode, dto.countryName, dto.city, dto.flagEmoji,
             dto.currentLoad, dto.isPremiumOnly, dto.isRecommended,
             isFavorite = _favoriteServerIds.value.contains(dto.id), totalNodes = dto.totalNodes,
-            publicIpv4 = dto.publicIpv4)
+            publicIpv4 = dto.publicIpv4, loadUpdatedAt = dto.loadUpdatedAt,
+            pingMs = _servers.value.firstOrNull { it.id == dto.id && it.publicIpv4 == dto.publicIpv4 }?.pingMs)
     }
 
     suspend fun fetchTunnelConfig(

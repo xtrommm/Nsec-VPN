@@ -22,6 +22,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nsec.vpn.ui.components.RewardOffer
+import com.nsec.vpn.ui.components.VipRewardCard
+import com.nsec.vpn.data.model.ServerStatus
 import com.nsec.vpn.data.model.Server
 import com.nsec.vpn.data.model.VpnState
 import com.nsec.vpn.data.monetization.AdMobConfig
@@ -45,7 +48,11 @@ fun HomeScreen(
     adMobConfig: AdMobConfig = AdMobConfig(),
     announcementTitle: String? = null,
     announcementBody: String? = null,
-    onNavigateToConnected: () -> Unit = {}
+    onNavigateToConnected: () -> Unit = {},
+    rewardOffer: RewardOffer = RewardOffer.from(false, false, 0, "FREE", false),
+    rewardBusy: Boolean = false,
+    onWatchReward: () -> Unit = onUpgradeClicked,
+    serverStatusNow: Long = System.currentTimeMillis()
 ) {
     val isConnected = vpnState is VpnState.Connected
     val connectedNode by tunnelManager.connectedNode.collectAsState()
@@ -111,7 +118,7 @@ fun HomeScreen(
                     color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
-                    text = "MILITARY GRADE",
+                    text = "WIREGUARD FOR ANDROID",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.primary
@@ -171,7 +178,7 @@ fun HomeScreen(
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = if (isConnected) "SECURE TUNNEL (ACTIVE)" else "UNPROTECTED NETWORK",
+                    text = if (isConnected) "SECURE TUNNEL (ACTIVE)" else "VPN NOT CONNECTED",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = if (isConnected) EmeraldGreen else CrimsonError,
@@ -195,7 +202,7 @@ fun HomeScreen(
             } else {
                 Icon(
                     imageVector = Icons.Default.Warning,
-                    contentDescription = "Unencrypted",
+                    contentDescription = "VPN disconnected",
                     tint = AmberWarning,
                     modifier = Modifier.size(18.dp)
                 )
@@ -210,6 +217,9 @@ fun HomeScreen(
         )
 
         Spacer(modifier = Modifier.height(36.dp))
+
+        VipRewardCard(rewardOffer, rewardBusy, onWatchReward, onUpgradeClicked, compact = true)
+        Spacer(modifier = Modifier.height(24.dp))
 
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(
@@ -262,7 +272,7 @@ fun HomeScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Ping: ${selectedServer.pingMs?.let { "${it}ms" } ?: "Unavailable"} • Load: ${selectedServer.currentLoad}%",
+                            text = "Ping: ${selectedServer.pingMs?.let { "${it}ms" } ?: "Unavailable"} • Peer capacity: ${ServerStatus.loadText(selectedServer, serverStatusNow)}",
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

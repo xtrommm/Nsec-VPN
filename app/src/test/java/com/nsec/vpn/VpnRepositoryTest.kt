@@ -126,6 +126,27 @@ class VpnRepositoryTest {
     }
 
     @Test
+    fun catalogRefreshUpdatesTheSelectedServerWithoutDisconnecting() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        var load = 10
+        val api = object : FakeNsecVpnApi() {
+            override suspend fun getServers(token: String, grouped: Boolean): Response<ServerListResponse> =
+                Response.success(ServerListResponse(true, ServerListDataDto(listOf(
+                    ServerItemDto("test-live-node", "Test node", "DE", "Germany", "Frankfurt", "🇩🇪", load,
+                        false, loadUpdatedAt = java.time.Instant.now().toString())
+                ))))
+        }
+        val repository = VpnRepository(context, api, TestVault.create(context))
+        repository.refreshServers(refreshLatency = false)
+        assertEquals(10, repository.selectedServer.value?.currentLoad)
+        load = 75
+        repository.refreshServers(refreshLatency = false)
+        assertEquals("test-live-node", repository.selectedServer.value?.id)
+        assertEquals(75, repository.selectedServer.value?.currentLoad)
+        assertNotNull(repository.selectedServer.value?.loadUpdatedAt)
+    }
+
+    @Test
     fun init_populatesServersAndSelectsDefault() = runBlocking {
         val fakeApi = FakeNsecVpnApi()
         val keyStoreManager = TestVault.create(ApplicationProvider.getApplicationContext())

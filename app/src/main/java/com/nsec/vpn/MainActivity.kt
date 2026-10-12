@@ -11,15 +11,11 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -39,6 +35,12 @@ import com.nsec.vpn.ui.navigation.Screen
 import com.nsec.vpn.ui.screens.*
 import com.nsec.vpn.ui.theme.*
 import kotlinx.coroutines.launch
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.nsec.vpn.data.model.ServerStatus
+import com.nsec.vpn.ui.components.VipAccessSheet
+import com.nsec.vpn.ui.components.RewardOffer
 
 class MainActivity : ComponentActivity() {
 
@@ -94,6 +96,12 @@ class MainActivity : ComponentActivity() {
                 var pendingUserInitiatedConnect by remember { mutableStateOf(false) }
 
                 var showVipModal by remember { mutableStateOf(false) }
+                var rewardBusy by remember { mutableStateOf(false) }
+                var serverStatusNow by remember { mutableLongStateOf(System.currentTimeMillis()) }
+                val lifecycleOwner = LocalLifecycleOwner.current
+                val displayedServer = ServerStatus.current(servers, connectedNode?.nodeId, tunnelManager.activeServer ?: selectedServer)
+                val rewardOffer = RewardOffer.from(remoteConfigLoaded, adMobConfig.rewardedEnabled,
+                    adMobConfig.rewardedPassMinutes, userTier, adMobConfig.adFreeUntilEpochMillis != null)
                 var showPromoDialog by remember { mutableStateOf(false) }
                 var promoCodeInput by remember { mutableStateOf("") }
 
@@ -171,6 +179,53 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                fun watchReward() {
+                    if (rewardBusy || !rewardOffer.available) return
+                    if (!adMobManager.isRewardedReady()) {
+                        adMobManager.preloadRewarded(this@MainActivity)
+                        Toast.makeText(this@MainActivity, "The ad is loading. Please try again shortly.", Toast.LENGTH_LONG).show()
+                        return
+                    }
+                    rewardBusy = true
+                    coroutineScope.launch {
+                        try {
+                            val ticket = vpnRepo.prepareReward()
+                            showVipModal = false
+                            var earned = false
+                            var adFailed = false
+                            adMobManager.showRewarded(
+                                activity = this@MainActivity,
+                                verificationTicket = ticket,
+                                onRewarded = {
+                                    earned = true
+                                    adMobManager.grantAdFreeReward()
+                                    coroutineScope.launch {
+                                        try {
+                                            vpnRepo.claimReward(ticket)
+                                            Toast.makeText(this@MainActivity, "VIP activated: ad-free and VIP servers unlocked.", Toast.LENGTH_LONG).show()
+                                        } catch (error: kotlinx.coroutines.CancellationException) { throw error }
+                                        catch (error: Exception) {
+                                            Toast.makeText(this@MainActivity, error.message ?: "Ad-free is active; VIP activation will retry.", Toast.LENGTH_LONG).show()
+                                        }
+                                    }
+                                },
+                                onError = { error ->
+                                    adFailed = true
+                                    Toast.makeText(this@MainActivity, error, Toast.LENGTH_LONG).show()
+                                },
+                                onAdDismissed = {
+                                    rewardBusy = false
+                                    if (!earned && !adFailed) Toast.makeText(this@MainActivity, "Complete the rewarded ad to unlock VIP.", Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                        } catch (error: kotlinx.coroutines.CancellationException) { rewardBusy = false; throw error }
+                        catch (error: Exception) {
+                            rewardBusy = false
+                            Toast.makeText(this@MainActivity, error.message ?: "Could not prepare the VIP reward.", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
+
                 LaunchedEffect(Unit) {
                     val configRefresh = launch { remoteConfigManager.fetchRemoteConfig() }
                     vpnRepo.refreshServers()
@@ -196,6 +251,20 @@ class MainActivity : ComponentActivity() {
 
                 LaunchedEffect(servers.isNotEmpty(), autoConnectEnabled, remoteConfigLoaded) {
                     if (servers.isNotEmpty() && autoConnectEnabled && remoteConfigLoaded && vpnState is VpnState.Disconnected) triggerConnectSequence(isUserInitiated = false)
+                }
+
+                LaunchedEffect(lifecycleOwner) {
+                    lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                        while (true) {
+                            vpnRepo.refreshServers(refreshLatency = false)
+                            serverStatusNow = System.currentTimeMillis()
+                            kotlinx.coroutines.delay(15_000)
+                        }
+                    }
+                }
+
+                LaunchedEffect(vpnState, connectedNode?.nodeId) {
+                    if (vpnState is VpnState.Connected) vpnRepo.refreshServers(refreshLatency = false)
                 }
 
                 LaunchedEffect(currentTab) {
@@ -289,7 +358,7 @@ class MainActivity : ComponentActivity() {
                                     vpnState = vpnState,
                                     vpnStats = vpnStats,
                                     connectedNode = connectedNode,
-                                    selectedServer = tunnelManager.activeServer ?: selectedServer,
+                                    selectedServer = displayedServer,
                                     userTier = userTier,
                                     onDisconnect = { tunnelManager.disconnect() },
                                     onBackToHome = { activeSubScreen = null; currentTab = Screen.Home }
@@ -323,7 +392,7 @@ class MainActivity : ComponentActivity() {
                                         HomeScreen(
                                             vpnState = vpnState,
                                             tunnelManager = tunnelManager,
-                                            selectedServer = tunnelManager.activeServer ?: selectedServer,
+                                            selectedServer = displayedServer,
                                             userTier = userTier,
                                             adMobConfig = adMobConfig,
                                             nativeAdManager = adMobManager.nativeAdManager,
@@ -332,7 +401,11 @@ class MainActivity : ComponentActivity() {
                                             onToggleVpn = { triggerConnectSequence(isUserInitiated = true) },
                                             onNavigateToServers = { currentTab = Screen.Servers },
                                             onNavigateToConnected = { currentTab = Screen.Home; activeSubScreen = "connected" },
-                                            onUpgradeClicked = { showVipModal = true }
+                                            onUpgradeClicked = { showVipModal = true },
+                                            rewardOffer = rewardOffer,
+                                            rewardBusy = rewardBusy,
+                                            onWatchReward = { watchReward() },
+                                            serverStatusNow = serverStatusNow
                                         )
                                     }
                                     Screen.Servers -> {
@@ -341,7 +414,7 @@ class MainActivity : ComponentActivity() {
                                             isLoading = serversLoading,
                                             usingCache = usingCachedServers,
                                             errorMessage = serverListError,
-                                            selectedServer = tunnelManager.activeServer ?: selectedServer,
+                                            selectedServer = displayedServer,
                                             userTier = userTier,
                                             adMobConfig = adMobConfig,
                                             nativeAdManager = adMobManager.nativeAdManager,
@@ -440,155 +513,26 @@ class MainActivity : ComponentActivity() {
                 }
 
                 if (showVipModal) {
-                    AlertDialog(
-                        onDismissRequest = { showVipModal = false },
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        title = {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Star, contentDescription = null, tint = AmberWarning)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Upgrade to Nsec VPN VIP", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                            }
-                        },
-                        text = {
-                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Text(
-                                    "Enjoy zero ads, unlimited 10Gbps WireGuard nodes, bypass all streaming geo-blocks, and priority routing.",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontSize = 12.sp,
-                                    lineHeight = 17.sp
+                    VipAccessSheet(
+                        offer = rewardOffer,
+                        busy = rewardBusy,
+                        onDismiss = { showVipModal = false },
+                        onWatchReward = { watchReward() },
+                        onPurchase = { productId ->
+                            showVipModal = false
+                            coroutineScope.launch {
+                                playBillingManager.launchPurchase(
+                                    activity = this@MainActivity,
+                                    productId = productId,
+                                    onSuccess = {
+                                        coroutineScope.launch {
+                                            try { vpnRepo.refreshVerifiedEntitlement() }
+                                            catch (error: kotlinx.coroutines.CancellationException) { throw error }
+                                            catch (_: Exception) { Toast.makeText(this@MainActivity, "Purchase verified; entitlement refresh pending", Toast.LENGTH_LONG).show() }
+                                        }
+                                    },
+                                    onError = { error -> Toast.makeText(this@MainActivity, error, Toast.LENGTH_LONG).show() }
                                 )
-
-                                Surface(
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = MaterialTheme.colorScheme.primaryContainer,
-                                    border = BorderStroke(1.5.dp, PrimaryBlue),
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            showVipModal = false
-                                            coroutineScope.launch {
-                                                playBillingManager.launchPurchase(
-                                                    activity = this@MainActivity,
-                                                    productId = "nsecvpn_premium_yearly",
-                                                    onSuccess = {
-                                                        coroutineScope.launch {
-                                                            try { vpnRepo.refreshVerifiedEntitlement() }
-                                                            catch (_: Exception) { Toast.makeText(this@MainActivity, "Purchase verified; entitlement refresh pending", Toast.LENGTH_LONG).show() }
-                                                        }
-                                                        Toast.makeText(this@MainActivity, "Yearly VIP Activated! Thank you.", Toast.LENGTH_LONG).show()
-                                                    },
-                                                    onError = { err ->
-                                                        Toast.makeText(this@MainActivity, err, Toast.LENGTH_SHORT).show()
-                                                    }
-                                                )
-                                            }
-                                        }
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(14.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Column {
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Text("Yearly VIP Plan", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                                                Spacer(modifier = Modifier.width(6.dp))
-                                                Text(
-                                                    "50% OFF",
-                                                    fontSize = 9.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = EmeraldGreen,
-                                                    modifier = Modifier.background(MaterialTheme.colorScheme.emeraldBadgeContainer, RoundedCornerShape(4.dp)).padding(horizontal = 4.dp, vertical = 2.dp)
-                                                )
-                                            }
-                                            Text("Exact price shown by Google Play before purchase", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                        }
-                                        Icon(Icons.Default.Star, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(20.dp))
-                                    }
-                                }
-
-                                Surface(
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = MaterialTheme.colorScheme.surface,
-                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            showVipModal = false
-                                            coroutineScope.launch {
-                                                playBillingManager.launchPurchase(
-                                                    activity = this@MainActivity,
-                                                    productId = "nsecvpn_premium_monthly",
-                                                    onSuccess = {
-                                                        coroutineScope.launch {
-                                                            try { vpnRepo.refreshVerifiedEntitlement() }
-                                                            catch (_: Exception) { Toast.makeText(this@MainActivity, "Purchase verified; entitlement refresh pending", Toast.LENGTH_LONG).show() }
-                                                        }
-                                                        Toast.makeText(this@MainActivity, "Monthly VIP Activated!", Toast.LENGTH_SHORT).show()
-                                                    },
-                                                    onError = { err ->
-                                                        Toast.makeText(this@MainActivity, err, Toast.LENGTH_SHORT).show()
-                                                    }
-                                                )
-                                            }
-                                        }
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(14.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Column {
-                                            Text("Monthly VIP Plan", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                                            Text("Exact price shown by Google Play before purchase", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                        }
-                                    }
-                                }
-
-                                Surface(
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = MaterialTheme.colorScheme.surfaceVariant,
-                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            showVipModal = false
-                                            coroutineScope.launch {
-                                                try {
-                                                    val ticket = vpnRepo.prepareReward()
-                                                    adMobManager.showRewarded(
-                                                        activity = this@MainActivity,
-                                                        verificationTicket = ticket,
-                                                        onRewarded = {
-                                                            adMobManager.grantAdFreeReward()
-                                                            coroutineScope.launch {
-                                                                try {
-                                                                    vpnRepo.claimReward(ticket)
-                                                                    Toast.makeText(this@MainActivity, "VIP activated: ad-free and premium servers unlocked.", Toast.LENGTH_LONG).show()
-                                                                } catch (error: Exception) {
-                                                                    Toast.makeText(this@MainActivity, error.message ?: "VIP claim will retry", Toast.LENGTH_LONG).show()
-                                                                }
-                                                            }
-                                                        },
-                                                        onAdDismissed = {}
-                                                    )
-                                                } catch (error: Exception) {
-                                                    Toast.makeText(this@MainActivity, error.message ?: "Could not prepare VIP reward", Toast.LENGTH_LONG).show()
-                                                }
-                                            }
-                                        }
-                                ) {
-                                    Column(modifier = Modifier.padding(12.dp)) {
-                                        Text("Watch Rewarded Ad for 45 minutes VIP", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue)
-                                        Text("Unlocks ad-free VIP and premium servers after successful completion.", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                }
-                            }
-                        },
-                        confirmButton = {
-                            TextButton(onClick = { showVipModal = false }) {
-                                Text("Close", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     )
