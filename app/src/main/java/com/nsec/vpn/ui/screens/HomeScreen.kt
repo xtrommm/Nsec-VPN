@@ -64,7 +64,7 @@ fun HomeScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 16.dp),
+            .padding(horizontal = 20.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         serverListError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -155,7 +155,7 @@ fun HomeScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         Row(
             modifier = Modifier
@@ -209,17 +209,18 @@ fun HomeScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(36.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         ConnectButton(
             vpnState = vpnState,
-            onToggle = onToggleVpn
+            onToggle = onToggleVpn,
+            compact = true
         )
 
-        Spacer(modifier = Modifier.height(36.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         VipRewardCard(rewardOffer, rewardBusy, onWatchReward, onUpgradeClicked, compact = true)
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(
@@ -287,7 +288,7 @@ fun HomeScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(28.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         SmartNativeAd(
             nativeAdManager = nativeAdManager,

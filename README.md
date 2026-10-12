@@ -162,3 +162,7 @@ See [Actions CI repair](docs/ACTIONS-CI-REPAIR.md) for the failed run evidence a
 See [live load/rewarded VIP](docs/LIVE-LOAD-REWARDED-VIP.md). Configure Rewarded pass minutes = 45 in the VPN admin panel to show/grant the requested offer. Home displays the real connected node’s current measured peer capacity while foreground polling runs; no migration is needed.
 
 The VPN-bound speed test still requires the matching-signature companion application. See [two-app Google Play release](docs/PLAY-STORE-TWO-APPS.md) before publishing either bundle.
+
+### Compact Home layout
+
+The Home reward offer uses a compact row. Tap **Watch ad** to request the configured rewarded pass, or tap the card for full VIP details and paid plans. Smaller spacing and connect control leave more room for the server selector and existing native ad. Scrolling remains available for small screens, large fonts, announcements and variable ad sizes. VIP/ad-free users still follow the existing ad suppression rules.

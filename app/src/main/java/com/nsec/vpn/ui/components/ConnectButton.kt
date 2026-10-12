@@ -37,7 +37,8 @@ import com.nsec.vpn.ui.theme.*
 fun ConnectButton(
     vpnState: VpnState,
     onToggle: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    compact: Boolean = false
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "pulseTransition")
 
@@ -79,12 +80,12 @@ fun ConnectButton(
     ) {
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier.size(220.dp)
+            modifier = Modifier.size(if (compact) 170.dp else 220.dp)
         ) {
             if (vpnState is VpnState.Connected || vpnState is VpnState.Connecting) {
                 Box(
                     modifier = Modifier
-                        .size(200.dp)
+                        .size(if (compact) 148.dp else 200.dp)
                         .scale(pulseScale)
                         .clip(CircleShape)
                         .background(buttonColor.copy(alpha = 0.15f))
@@ -93,7 +94,7 @@ fun ConnectButton(
 
             Box(
                 modifier = Modifier
-                    .size(175.dp)
+                    .size(if (compact) 144.dp else 175.dp)
                     .clip(CircleShape)
                     .background(
                         Brush.radialGradient(
@@ -108,7 +109,7 @@ fun ConnectButton(
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .size(150.dp)
+                    .size(if (compact) 124.dp else 150.dp)
                     .shadow(
                         elevation = 14.dp,
                         shape = CircleShape,
@@ -148,12 +149,12 @@ fun ConnectButton(
                     },
                     contentDescription = labelText,
                     tint = buttonColor,
-                    modifier = Modifier.size(54.dp)
+                    modifier = Modifier.size(if (compact) 46.dp else 54.dp)
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(if (compact) 6.dp else 16.dp))
 
         Text(
             text = labelText,
