@@ -156,6 +156,11 @@ class KeyStoreManager(context: Context, private val vaultKeyProvider: (() -> jav
     }
     fun getThemeMode(): String = prefs.getString(KEY_THEME_MODE, "SYSTEM") ?: "SYSTEM"
 
+    fun savePendingRewardTicket(ticket: String?) {
+        prefs.edit { if (ticket == null) remove("pending_reward_ticket") else putString("pending_reward_ticket", ticket) }
+    }
+    fun getPendingRewardTicket(): String? = prefs.getString("pending_reward_ticket", null)
+
     companion object {
         private val vaultLock = Any()
         private const val KEY_VAULT_SEED = "nsec_vault_seed_v1"

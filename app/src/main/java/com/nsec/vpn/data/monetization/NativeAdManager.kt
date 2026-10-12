@@ -24,20 +24,39 @@ class NativeAdManager(private val context: Context) {
     private val maxPoolSize = 3
     private val isPreloading = AtomicBoolean(false)
     private var retryAttempt = 0
+    private var configuredUnit: String? = null
+    private var configuredEnabled = true
+    private var generation = 0
+
+    fun configure(adUnitId: String, enabled: Boolean) {
+        if (configuredUnit != adUnitId || configuredEnabled != enabled) {
+            generation++
+            destroyAll()
+            isPreloading.set(false)
+            retryAttempt = 0
+        }
+        configuredUnit = adUnitId
+        configuredEnabled = enabled
+    }
 
     private val _adLoadedEvent = MutableStateFlow(0L)
     val adLoadedEvent: StateFlow<Long> = _adLoadedEvent.asStateFlow()
 
     fun preloadNativeAds(adUnitId: String, enabled: Boolean) {
-        if (!enabled || pool.size + assignedAds.size >= maxPoolSize || isPreloading.get()) {
+        if (!enabled || !configuredEnabled || (configuredUnit != null && configuredUnit != adUnitId) || pool.size + assignedAds.size >= maxPoolSize || isPreloading.get()) {
             return
         }
 
         isPreloading.set(true)
+        val requestGeneration = generation
         try {
             val adLoader = AdLoader.Builder(context.applicationContext, adUnitId)
                 .forNativeAd { nativeAd ->
                     scope.launch {
+                        if (requestGeneration != generation || !configuredEnabled) {
+                            nativeAd.destroy()
+                            return@launch
+                        }
                         isPreloading.set(false)
                         retryAttempt = 0
                         if (pool.size < maxPoolSize) {
@@ -52,12 +71,13 @@ class NativeAdManager(private val context: Context) {
                 }
                 .withAdListener(object : AdListener() {
                     override fun onAdFailedToLoad(error: LoadAdError) {
+                        if (requestGeneration != generation || !configuredEnabled) return
                         isPreloading.set(false)
                         scope.launch {
                             retryAttempt++
                             val delayMs = (1000L * (1 shl retryAttempt.coerceAtMost(5))).coerceAtMost(30000L)
                             delay(delayMs)
-                            preloadNativeAds(adUnitId, enabled)
+                            if (requestGeneration == generation) preloadNativeAds(adUnitId, enabled)
                         }
                     }
                 })

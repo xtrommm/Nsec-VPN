@@ -72,6 +72,14 @@ class AuditFixesTest {
         var refreshTokenCallCount = 0
 
         val fakeApi = object : NsecVpnApi {
+    override suspend fun prepareReward(token: String): retrofit2.Response<com.nsec.vpn.data.api.RewardTicketResponse> =
+        retrofit2.Response.success(com.nsec.vpn.data.api.RewardTicketResponse(false, null))
+    override suspend fun claimReward(token: String, request: com.nsec.vpn.data.api.ClaimRewardRequest): retrofit2.Response<com.nsec.vpn.data.api.RedeemPromoResponse> =
+        retrofit2.Response.success(com.nsec.vpn.data.api.RedeemPromoResponse(false, null))
+
+    override suspend fun redeemPromo(token: String, request: com.nsec.vpn.data.api.RedeemPromoRequest): retrofit2.Response<com.nsec.vpn.data.api.RedeemPromoResponse> =
+        retrofit2.Response.success(com.nsec.vpn.data.api.RedeemPromoResponse(false, null))
+
             override suspend fun getDeviceProfile(token: String): Response<DeviceProfileResponse> = Response.success(DeviceProfileResponse(false, null))
     override suspend fun verifyPurchase(token: String, request: VerifyPurchaseRequest): Response<VerifyPurchaseResponse> = Response.success(VerifyPurchaseResponse(false))
     override suspend fun registerDevice(request: RegisterDeviceRequest): Response<RegisterDeviceResponse> {

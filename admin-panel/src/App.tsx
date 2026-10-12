@@ -1,555 +1,93 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { AlertTriangle, Lock, Mail, ArrowRight } from 'lucide-react';
-import { Sidebar } from './components/Sidebar';
-import { TopBar } from './components/ui/TopBar';
-import { ToastContainer } from './components/ui/Toast';
-import { NodesScreen } from './screens/NodesScreen';
-import { DevicesScreen } from './screens/DevicesScreen';
-import { RemoteConfigScreen } from './screens/RemoteConfigScreen';
-import { AuditScreen } from './screens/AuditScreen';
-import {
-  ServerNode,
-  DeviceUser,
-  StatsData,
-  AppConfigData,
-  AuditLogEntry,
-  ToastMessage
-} from './types';
-
-const API_BASE = '/api/v1/admin';
-
-export default function App() {
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('nsec_admin_token'));
-  const [adminEmail, setAdminEmail] = useState<string | null>(() => localStorage.getItem('nsec_admin_email'));
-  const [adminRole, setAdminRole] = useState<string | null>(() => localStorage.getItem('nsec_admin_role') || 'ADMIN');
-
-  // Auth Form State
-  const [loginEmail, setLoginEmail] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
-  const [totpCode, setTotpCode] = useState('');
-  const [loginError, setLoginError] = useState<string | null>(null);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
-
-  // App Navigation & Mobile Drawer
-  const [currentTab, setCurrentTab] = useState<'servers' | 'devices' | 'config' | 'audit'>('servers');
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  // Toast System
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
-
-  const showToast = useCallback((type: 'success' | 'error' | 'info' | 'warning', message: string, title?: string) => {
-    const id = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-    const newToast: ToastMessage = { id, type, title, message };
-    setToasts((prev) => [...prev, newToast]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4500);
-  }, []);
-
-  const dismissToast = useCallback((id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  }, []);
-
-  // Data States
-  const [stats, setStats] = useState<StatsData | null>(null);
-  const [servers, setServers] = useState<ServerNode[]>([]);
-  const [devices, setDevices] = useState<DeviceUser[]>([]);
-  const [deviceSearch, setDeviceSearch] = useState('');
-  const [devicePage, setDevicePage] = useState(1);
-  const [deviceTotalPages, setDeviceTotalPages] = useState(1);
-  const [config, setConfig] = useState<AppConfigData | null>(null);
-  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
-
-  // Authenticated API Fetcher
-  const apiFetch = useCallback(
-    async (endpoint: string, options: RequestInit = {}) => {
-      if (!token) throw new Error('Not authenticated');
-      const res = await fetch(`${API_BASE}${endpoint}`, {
-        ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-          ...options.headers
-        }
-      });
-
-      if (res.status === 401) {
-        localStorage.removeItem('nsec_admin_token');
-        localStorage.removeItem('nsec_admin_email');
-        localStorage.removeItem('nsec_admin_role');
-        setToken(null);
-        setAdminEmail(null);
-        setAdminRole(null);
-        showToast('error', 'Your administrative session has expired. Please sign in again.', 'Session Expired');
-        throw new Error('Session expired');
-      }
-
-      if (!res.ok) {
-        const errorJson = await res.json().catch(() => ({}));
-        throw new Error(errorJson.message || `Request failed with status ${res.status}`);
-      }
-
-      return res.json();
-    },
-    [token, showToast]
-  );
-
-  // Handle Login
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoginError(null);
-    setIsLoggingIn(true);
-
-    try {
-      const res = await fetch(`${API_BASE}/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: loginEmail, password: loginPassword, totpCode: totpCode || undefined })
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || 'Invalid administrator credentials');
-      }
-
-      localStorage.setItem('nsec_admin_token', data.token);
-      localStorage.setItem('nsec_admin_email', data.admin.email);
-      localStorage.setItem('nsec_admin_role', data.admin.role);
-      setToken(data.token);
-      setAdminEmail(data.admin.email);
-      setAdminRole(data.admin.role);
-      showToast('success', `Signed in as ${data.admin.email}`, 'Welcome');
-    } catch (err: any) {
-      setLoginError(err.message);
-    } finally {
-      setIsLoggingIn(false);
-    }
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('nsec_admin_token');
-    localStorage.removeItem('nsec_admin_email');
-    localStorage.removeItem('nsec_admin_role');
-    setToken(null);
-    setAdminEmail(null);
-    setAdminRole(null);
-    showToast('info', 'You have been signed out safely.', 'Signed Out');
-  };
-
-  // Fetch KPI Stats, Servers, & Remote Config
-  const refreshData = useCallback(async () => {
-    if (!token) return;
-    setLoading(true);
-    try {
-      const [statsRes, serversRes, configRes] = await Promise.all([
-        apiFetch('/stats'),
-        apiFetch('/servers'),
-        apiFetch('/config')
-      ]);
-
-      if (statsRes.success) setStats(statsRes.data);
-      if (serversRes.success) setServers(serversRes.servers);
-      if (configRes.success) setConfig(configRes.data || configRes.config);
-    } catch (err: any) {
-      showToast('error', err.message, 'Data Fetch Error');
-    } finally {
-      setLoading(false);
-    }
-  }, [apiFetch, token, showToast]);
-
-  // Fetch Devices Page
-  const fetchDevices = useCallback(async () => {
-    if (!token) return;
-    try {
-      const query = new URLSearchParams({
-        page: devicePage.toString(),
-        limit: '15',
-        search: deviceSearch
-      });
-      const res = await apiFetch(`/devices?${query.toString()}`);
-      if (res.success) {
-        setDevices(res.devices);
-        setDeviceTotalPages(res.pagination?.totalPages || 1);
-      }
-    } catch (err: any) {
-      showToast('error', err.message, 'Device Fetch Error');
-    }
-  }, [apiFetch, devicePage, deviceSearch, token, showToast]);
-
-  // Fetch Audit Trail
-  const fetchAuditLogs = useCallback(async () => {
-    if (!token || adminRole !== 'SUPER_ADMIN') return;
-    try {
-      const res = await apiFetch('/audit-logs');
-      if (res.success) {
-        setAuditLogs(res.logs);
-      }
-    } catch (err: any) {
-      showToast('error', err.message, 'Audit Trail Error');
-    }
-  }, [apiFetch, token, adminRole, showToast]);
-
-  useEffect(() => {
-    if (token) {
-      refreshData();
-    }
-  }, [token, refreshData]);
-
-  useEffect(() => {
-    if (token && currentTab === 'devices') {
-      fetchDevices();
-    }
-  }, [token, currentTab, fetchDevices]);
-
-  useEffect(() => {
-    if (token && currentTab === 'audit') {
-      fetchAuditLogs();
-    }
-  }, [token, currentTab, fetchAuditLogs]);
-
-  // 1. Server Actions
-  const handleCreateServer = async (serverData: any): Promise<boolean> => {
-    try {
-      await apiFetch('/servers', {
-        method: 'POST',
-        body: JSON.stringify(serverData)
-      });
-      showToast('success', `WireGuard node "${serverData.name}" registered successfully.`, 'Node Created');
-      refreshData();
-      return true;
-    } catch (err: any) {
-      showToast('error', err.message, 'Creation Failed');
-      return false;
-    }
-  };
-
-  const handleToggleServer = async (server: ServerNode): Promise<boolean> => {
-    try {
-      await apiFetch(`/servers/${server.id}`, {
-        method: 'PUT',
-        body: JSON.stringify({ active: !server.active })
-      });
-      showToast(
-        'success',
-        `Node "${server.name}" marked as ${!server.active ? 'Active' : 'Disabled'}.`,
-        'Status Updated'
-      );
-      refreshData();
-      return true;
-    } catch (err: any) {
-      showToast('error', err.message, 'Status Update Failed');
-      return false;
-    }
-  };
-
-  const handleDeleteServer = async (id: string): Promise<boolean> => {
-    try {
-      await apiFetch(`/servers/${id}`, { method: 'DELETE' });
-      showToast('success', 'WireGuard gateway cluster removed.', 'Node Deleted');
-      refreshData();
-      return true;
-    } catch (err: any) {
-      showToast('error', err.message, 'Deletion Failed');
-      return false;
-    }
-  };
-
-  const handlePingServer = async (server: ServerNode) => {
-    try {
-      const res = await apiFetch(`/servers/${server.id}/ping`, { method: 'POST' });
-      if (res.health?.agentOnline) {
-        const h = res.health;
-        window.alert(`Node test: ${h.online ? 'PASS' : 'FAIL'}\nEndpoint: ${h.endpoint}\nPublic IPv4: ${h.publicIpv4 || 'Unavailable'}\nPublic key matches: ${h.keyMatches}\nUDP port matches: ${h.portMatches}\nDNS: ${(h.dnsServers || []).join(', ')}\nMTU: ${h.mtu}\nLocation: ${h.locationName}`);
-      }
-      if (res.health?.online) {
-        showToast(
-          'success',
-          `Daemon online: ${res.health.peerCount} peers active, ${res.health.loadPercent}% CPU.`,
-          server.name
-        );
-      } else {
-        showToast(
-          'warning',
-          `Agent unreachable at ${server.agentUrl}: ${res.health?.error || 'Timed out'}`,
-          server.name
-        );
-      }
-      refreshData();
-      return res.health || { online: false };
-    } catch (err: any) {
-      showToast('error', err.message, 'Daemon Check Failed');
-      return { online: false, error: err.message };
-    }
-  };
-
-  // 2. Device Actions
-  const handleUpdateDeviceTier = async (deviceId: string, tier: 'FREE' | 'VIP'): Promise<boolean> => {
-    try {
-      await apiFetch(`/devices/${deviceId}/tier`, {
-        method: 'PUT',
-        body: JSON.stringify({ tier })
-      });
-      showToast('success', `Device tier updated to ${tier}.`, 'Tier Changed');
-      fetchDevices();
-      refreshData();
-      return true;
-    } catch (err: any) {
-      showToast('error', err.message, 'Tier Update Failed');
-      return false;
-    }
-  };
-
-  const handleToggleDeviceBlock = async (device: DeviceUser): Promise<boolean> => {
-    try {
-      await apiFetch(`/devices/${device.id}/block`, {
-        method: 'PUT',
-        body: JSON.stringify({ isBlocked: !device.isBlocked })
-      });
-      showToast(
-        device.isBlocked ? 'success' : 'warning',
-        `Device ${device.deviceId.slice(0, 12)}... is now ${!device.isBlocked ? 'Blocked' : 'Unblocked'}.`,
-        'Access Control'
-      );
-      fetchDevices();
-      return true;
-    } catch (err: any) {
-      showToast('error', err.message, 'Block Action Failed');
-      return false;
-    }
-  };
-
-  const handleExportCsv = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/export/stats`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (!res.ok) throw new Error('Failed to export CSV');
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `nsecvpn_stats_${new Date().toISOString().split('T')[0]}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-      showToast('success', 'Aggregated anonymous statistics downloaded.', 'CSV Exported');
-    } catch (err: any) {
-      showToast('error', err.message, 'Export Error');
-    }
-  };
-
-  // 3. Remote Config & Ads Action
-  const handleSaveConfig = async (updatedConfig: AppConfigData): Promise<boolean> => {
-    try {
-      const res = await apiFetch('/config', {
-        method: 'PUT',
-        body: JSON.stringify(updatedConfig)
-      });
-      setConfig(res.config || res.data || updatedConfig);
-      showToast(
-        'success',
-        'Remote Configuration & AdMob placements published to live cloud API!',
-        'Published Live'
-      );
-      return true;
-    } catch (err: any) {
-      showToast('error', err.message, 'Publish Failed');
-      return false;
-    }
-  };
-
-  // If unauthenticated, render Modern Secure Login Screen
-  if (!token) {
-    return (
-      <div className="min-h-screen bg-[#00081D] flex items-center justify-center p-4 selection:bg-cyan-500 selection:text-white">
-        <div className="w-full max-w-md">
-          {/* Brand header */}
-          <div className="flex flex-col items-center text-center mb-8">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-500 to-cyan-400 flex items-center justify-center font-black text-2xl text-white shadow-xl shadow-cyan-500/25 mb-4">
-              N
-            </div>
-            <h1 className="text-2xl font-black text-white tracking-tight">Nsec VPN Console</h1>
-            <p className="text-xs text-cyan-400 font-semibold tracking-wider uppercase mt-1">
-              Zero-Logs Core Administration
-            </p>
-          </div>
-
-          <div className="bg-[#070E24] border border-slate-800/90 rounded-3xl p-8 shadow-2xl relative overflow-hidden backdrop-blur-xl">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 via-cyan-400 to-blue-500" />
-
-            <div className="mb-6">
-              <h2 className="text-base font-bold text-white">Administrator Access</h2>
-              <p className="text-xs text-slate-400 mt-0.5">Authenticate with your private backend credentials.</p>
-            </div>
-
-            {loginError && (
-              <div className="bg-rose-500/10 border border-rose-500/30 rounded-xl p-3.5 text-rose-300 text-xs mb-5 flex items-start space-x-2.5 animate-in fade-in">
-                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-                <span>{loginError}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-slate-400 block mb-1.5 uppercase tracking-wider">
-                  Admin Email
-                </label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
-                  <input
-                    type="email"
-                    value={loginEmail}
-                    onChange={(e) => setLoginEmail(e.target.value)}
-                    placeholder="admin@nsecvpn.com"
-                    required
-                    className="w-full bg-slate-900/90 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition font-medium"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-slate-400 block mb-1.5 uppercase tracking-wider">
-                  Password
-                </label>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
-                  <input
-                    type="password"
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    placeholder="••••••••••••"
-                    required
-                    className="w-full bg-slate-900/90 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition font-mono"
-                  />
-                </div>
-                <input aria-label="Authenticator code" autoComplete="one-time-code" placeholder="Authenticator code (if enabled)" value={totpCode} onChange={e => setTotpCode(e.target.value)} className="w-full bg-slate-900 p-2 rounded" />
-
-              </div>
-
-              <button
-                type="submit"
-                disabled={isLoggingIn}
-                className="w-full mt-2 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 disabled:opacity-50 py-3 rounded-xl text-xs font-bold text-white transition shadow-lg shadow-cyan-500/20 flex items-center justify-center space-x-2"
-              >
-                {isLoggingIn ? (
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <>
-                    <span>Sign In to Console</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
-            </form>
-
-            <div className="mt-6 pt-6 border-t border-slate-800/80 text-center">
-              <span className="text-[11px] text-slate-500">
-                Encrypted tunnel sessions protected by Curve25519 & ChaCha20-Poly1305.
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-[#00081D] text-slate-100 flex flex-col md:flex-row selection:bg-cyan-500 selection:text-white">
-      {/* Toast Notification Container */}
-      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
-
-      {/* Responsive Navigation Sidebar */}
-      <Sidebar
-        currentTab={currentTab}
-        setCurrentTab={setCurrentTab}
-        adminRole={adminRole}
-        serverCount={servers.length}
-        deviceCount={stats?.totalDevices ?? null}
-        adminEmail={adminEmail}
-        onLogout={handleLogout}
-        mobileOpen={mobileMenuOpen}
-        onCloseMobile={() => setMobileMenuOpen(false)}
-      />
-
-      {/* Main Administrative Viewport */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <TopBar
-          currentTab={currentTab}
-          adminEmail={adminEmail}
-          adminRole={adminRole}
-          loading={loading}
-          activeTunnels={stats?.activeTunnels ?? null}
-          totalServers={servers.length}
-          onRefresh={refreshData}
-          onLogout={handleLogout}
-          onToggleMobileMenu={() => setMobileMenuOpen(true)}
-        />
-
-        <main className="flex-1 p-4 md:p-8 overflow-y-auto">
-          {/* TAB 1: WIREGUARD NODES */}
-          {currentTab === 'servers' && (
-            <NodesScreen
-              servers={servers}
-              adminRole={adminRole}
-              loading={loading}
-              onRefresh={refreshData}
-              onCreateServer={handleCreateServer}
-              onToggleServer={handleToggleServer}
-              onDeleteServer={handleDeleteServer}
-              onPingServer={handlePingServer}
-            onSyncKey={async server => {
-              try {
-                const res = await apiFetch(`/servers/${server.id}/sync-public-key`, { method: 'POST' });
-                showToast(res.health?.online ? 'success' : 'warning', 'Public key synchronized; existing clients must reconnect.');
-                await refreshData();
-              } catch { showToast('error', 'Public key sync failed'); }
-            }}
-            />
-          )}
-
-          {/* TAB 2: CLIENT DEVICES */}
-          {currentTab === 'devices' && (
-            <DevicesScreen
-              devices={devices}
-              totalDevices={stats?.totalDevices ?? null}
-              vipCount={stats?.vipSubscribers ?? null}
-              loading={loading}
-              page={devicePage}
-              totalPages={deviceTotalPages}
-              search={deviceSearch}
-              onSearchChange={(val) => {
-                setDeviceSearch(val);
-                setDevicePage(1);
-              }}
-              onPageChange={(p) => setDevicePage(p)}
-              onRefresh={fetchDevices}
-              onUpdateTier={handleUpdateDeviceTier}
-              onToggleBlock={handleToggleDeviceBlock}
-              onExportCsv={handleExportCsv}
-            />
-          )}
-
-          {/* TAB 3: REMOTE CONFIG & ADMOB */}
-          {currentTab === 'config' && (
-            <RemoteConfigScreen
-              config={config}
-              onSaveConfig={handleSaveConfig}
-              onRefreshConfig={refreshData}
-            />
-          )}
-
-          {/* TAB 4: AUDIT TRAIL */}
-          {currentTab === 'audit' && adminRole === 'SUPER_ADMIN' && (
-            <AuditScreen
-              logs={auditLogs}
-              loading={loading}
-              onRefresh={fetchAuditLogs}
-            />
-          )}
-        </main>
-      </div>
-    </div>
-  );
+import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { ControlNodes, ConsoleApi } from './components/ControlNodes';
+import { ControlSettings } from './components/ControlSettings';
+import { ControlPromos } from './components/ControlPromos';
+import { ServerNode, DeviceUser, StatsData, AppConfigData, AuditLogEntry } from './types';
+type Tab='overview'|'nodes'|'devices'|'promos'|'settings'|'audit';
+const titles:Record<Tab,string>={overview:'Overview',nodes:'VPN nodes',devices:'Devices',promos:'Promo codes',settings:'App settings & ads',audit:'Audit trail'};
+export default function App(){
+ const [token,setToken]=useState<string|null>(()=>sessionStorage.getItem('nsec_console_token'));
+ const [email,setEmail]=useState(()=>sessionStorage.getItem('nsec_console_email')||'');
+ const [role,setRole]=useState(()=>sessionStorage.getItem('nsec_console_role')||'');
+ const [tab,setTab]=useState<Tab>('overview');const [menu,setMenu]=useState(false);
+ const [theme,setTheme]=useState(()=>localStorage.getItem('nsec_console_theme')||'dark');
+ const [error,setError]=useState('');const [busy,setBusy]=useState(false);
+ const [loginEmail,setLoginEmail]=useState('');const [password,setPassword]=useState('');const [totp,setTotp]=useState('');
+ const [nodes,setNodes]=useState<ServerNode[]>([]);const [nodesLoaded,setNodesLoaded]=useState(false);const [stats,setStats]=useState<StatsData|null>(null);const [config,setConfig]=useState<AppConfigData|null>(null);
+ const [devices,setDevices]=useState<DeviceUser[]>([]);const [search,setSearch]=useState('');const [page,setPage]=useState(1);const [pages,setPages]=useState(1);
+ const [logs,setLogs]=useState<AuditLogEntry[]>([]);const canWrite=role==='SUPER_ADMIN';
+ const logout=useCallback(()=>{
+  ['nsec_console_token','nsec_console_email','nsec_console_role'].forEach(k=>sessionStorage.removeItem(k));
+  ['nsec_admin_token','nsec_admin_email','nsec_admin_role'].forEach(k=>localStorage.removeItem(k));
+  setToken(null);setRole('');setEmail('');setNodes([]);setNodesLoaded(false);setDevices([]);setStats(null);setConfig(null);setLogs([]);setPassword('');setTotp('');
+ },[]);
+ const api:ConsoleApi=useCallback(async(path,options={})=>{
+  const response=await fetch('/api/v1/admin'+path,{...options,headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`,...options.headers},signal:AbortSignal.timeout(15000)});
+  const data=await response.json().catch(()=>({}));
+  if(response.status===401){logout();throw new Error('Session expired. Sign in again.');}
+  if(!response.ok||!data.success)throw new Error(data.message||data.error||`Request failed (${response.status})`);
+  return data;
+ },[token,logout]);
+ const core=useCallback(async()=>{
+  setBusy(true);setError('');const results=await Promise.allSettled([api('/servers'),api('/stats')]);
+  if(results[0].status==='fulfilled'){setNodes(results[0].value.servers);setNodesLoaded(true);}
+  if(results[1].status==='fulfilled')setStats(results[1].value.data);
+  const failed=results.find(r=>r.status==='rejected');if(failed?.status==='rejected')setError(failed.reason instanceof Error?failed.reason.message:'Some data could not be refreshed');
+  setBusy(false);
+ },[api]);
+ const loadDevices=useCallback(async()=>{
+  try{const r=await api(`/devices?${new URLSearchParams({page:String(page),limit:'20',search})}`);setDevices(r.devices);setPages(r.pagination.totalPages);setError('');}
+  catch(e){setError(e instanceof Error?e.message:'Could not load devices');}
+ },[api,page,search]);
+ useEffect(()=>{if(!token)return;let live=true;void core();void api('/config').then(r=>{if(live)setConfig(r.config);}).catch(e=>{if(live)setError(e.message);});
+  const timer=setInterval(()=>void core(),30000);return()=>{live=false;clearInterval(timer);};},[token,api,core]);
+ useEffect(()=>{if(!token||tab!=='devices')return;const timer=setTimeout(()=>void loadDevices(),300);return()=>clearTimeout(timer);},[token,tab,loadDevices]);
+ useEffect(()=>{if(token&&tab==='audit'&&canWrite)void api('/audit-logs').then(r=>setLogs(r.logs)).catch(e=>setError(e.message));},[token,tab,canWrite,api]);
+ async function login(e:FormEvent){e.preventDefault();setBusy(true);setError('');try{
+  const r=await fetch('/api/v1/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:loginEmail,password,totpCode:totp||undefined}),signal:AbortSignal.timeout(15000)});
+  const d=await r.json();if(!r.ok||!d.success)throw new Error(d.message||'Sign-in failed');
+  ['nsec_admin_token','nsec_admin_email','nsec_admin_role'].forEach(k=>localStorage.removeItem(k));
+  sessionStorage.setItem('nsec_console_token',d.token);sessionStorage.setItem('nsec_console_email',d.admin.email);sessionStorage.setItem('nsec_console_role',d.admin.role);
+  setEmail(d.admin.email);setRole(d.admin.role);setToken(d.token);setPassword('');setTotp('');
+ }catch(e){setError(e instanceof Error?e.message:'Sign-in unavailable');}finally{setBusy(false);}}
+ async function deviceAction(d:DeviceUser,kind:'block'|'tier'){
+  const data=kind==='block'?{isBlocked:!d.isBlocked}:{tier:d.tier==='FREE'?'VIP':'FREE'};
+  if(!window.confirm(kind==='block'?`${d.isBlocked?'Unblock':'Block'} this device?`:d.tier==='FREE'?'Grant VIP for one year?':'Remove premium access?'))return;
+  try{await api(`/devices/${d.id}/${kind}`,{method:'PUT',body:JSON.stringify(data)});await loadDevices();await core();}
+  catch(e){setError(e instanceof Error?e.message:'Device update failed');}
+ }
+ async function exportStats(){try{
+  const r=await fetch('/api/v1/admin/export/stats',{headers:{Authorization:`Bearer ${token}`},signal:AbortSignal.timeout(15000)});
+  if(!r.ok)throw new Error('Export failed');const url=URL.createObjectURL(await r.blob());const a=document.createElement('a');a.href=url;a.download='nsec-aggregate-statistics.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ }catch(e){setError(e instanceof Error?e.message:'Export failed');}}
+ const healthy=nodes.filter(n=>n.active&&n.healthy&&n.healthCheckedAt&&Date.now()-Date.parse(n.healthCheckedAt)<120000).length;
+ return <div className="console" data-theme={theme}>
+ {!token?<main className="login-wrap"><form className="panel login" onSubmit={login}><div className="brand-mark">N</div><span className="eyebrow">NSEC VPN</span><h1>Operations console</h1><p>Manage VPN infrastructure, access and monetization.</p>
+  <label>Email<input type="email" autoComplete="username" required value={loginEmail} onChange={e=>setLoginEmail(e.target.value)}/></label>
+  <label>Password<input type="password" autoComplete="current-password" required value={password} onChange={e=>setPassword(e.target.value)}/></label>
+  <label>Authenticator code (if enabled)<input inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" value={totp} onChange={e=>setTotp(e.target.value)}/></label>
+  {error&&<p className="error" role="alert">{error}</p>}<button className="primary" disabled={busy}>{busy?'Signing in…':'Sign in'}</button>
+ </form></main>:<div className="console-layout">
+ <aside className={`console-sidebar ${menu?'open':''}`}><div className="brand"><div className="brand-mark">N</div><div><strong>Nsec VPN</strong><span>Operations console</span></div></div>
+  <nav aria-label="Main navigation">{(Object.keys(titles) as Tab[]).filter(t=>t!=='audit'||canWrite).map(t=><button key={t} className={tab===t?'selected':''} aria-current={tab===t?'page':undefined} onClick={()=>{setTab(t);setMenu(false);}}>{titles[t]}</button>)}</nav>
+  <div className="sidebar-footer"><strong>{email}</strong><span>{role.replace('_',' ')}</span><p>No browsing or traffic-content records.</p><button onClick={logout}>Sign out</button></div>
+ </aside><main className="console-main"><header className="console-top"><button className="menu-button" aria-label="Toggle navigation" onClick={()=>setMenu(!menu)}>☰</button><div><span className="eyebrow">CONTROL PANEL</span><h1>{titles[tab]}</h1></div>
+  <div className="actions"><button onClick={()=>{const next=theme==='dark'?'light':'dark';setTheme(next);localStorage.setItem('nsec_console_theme',next);}}>{theme==='dark'?'Light mode':'Dark mode'}</button><button disabled={busy} onClick={()=>void core()}>{busy?'Refreshing…':'Refresh'}</button></div></header>
+  {error&&<p className="error" role="alert">{error}</p>}
+  {tab==='overview'&&<section className="console-section"><div className="hero"><span className="eyebrow">NETWORK OPERATIONS</span><h2>Your network, at a glance.</h2><p>Health determines app visibility. Peer leases indicate allocated access, not proof of a live handshake.</p></div>
+   <div className="metrics">{[['Healthy nodes',nodesLoaded?healthy:null],['Total nodes',stats?.totalServers],['Registered devices',stats?.totalDevices],['Active peer leases',stats?.activeTunnels]].map(([label,value])=><article className="panel metric" key={String(label)}><span>{label}</span><strong>{value??'—'}</strong></article>)}</div>
+   <div className="settings-grid"><section className="panel"><h3>Node readiness</h3>{nodes.length?nodes.map(n=><div className="readiness-row" key={n.id}><div><strong>{n.name}</strong><small>{n.endpoint}</small></div><button onClick={()=>setTab('nodes')}>{!n.active?'Disabled':n.healthy?'Review health':'Needs attention'}</button></div>):<p>No nodes loaded. Add a real node to get started.</p>}</section>
+   <section className="panel"><h3>Monetization setup</h3><p>Rewarded access: {config?.rewardedPassMinutes??'—'} minutes</p><p>Rewarded unit: {config?.rewardedAdUnitId?'Configured':'Not configured'}</p><p>Completed rewards unlock ad-free VIP and premium nodes. One-use claims are authenticated; Google SSV confirms the event.</p><div className="actions"><button onClick={()=>setTab('settings')}>Manage AdMob</button><button onClick={()=>setTab('promos')}>Manage promotions</button></div></section></div>
+  </section>}
+  {tab==='nodes'&&<ControlNodes nodes={nodes} api={api} refresh={core} canWrite={canWrite}/>}
+  {tab==='settings'&&<ControlSettings config={config} api={api} onSaved={setConfig} canWrite={canWrite}/>}
+  {tab==='promos'&&<ControlPromos api={api} canWrite={canWrite}/>}
+  {tab==='devices'&&<section className="console-section"><div className="section-heading"><div><h2>Devices & entitlements</h2><p>Random installation identities. No browsing history or client-IP records.</p></div><button onClick={()=>void exportStats()}>Export aggregate stats</button></div>
+   <input aria-label="Search devices" placeholder="Search installation ID or model" value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}}/>
+   <div className="panel table-scroll"><table><thead><tr><th>Installation</th><th>Device</th><th>Entitlement</th><th>Expiry</th><th>Status</th><th>Actions</th></tr></thead><tbody>{devices.map(d=><tr key={d.id}><td><code>{d.deviceId}</code></td><td>{d.deviceModel||'Not provided'}<small>{d.osVersion||''} · {d.appVersion||''}</small></td><td>{d.tier}</td><td>{d.passExpiresAt?new Date(d.passExpiresAt).toLocaleString():'No expiry recorded'}</td><td>{d.isBlocked?'Blocked':'Allowed'}</td><td><div className="actions"><button onClick={()=>void deviceAction(d,'block')}>{d.isBlocked?'Unblock':'Block'}</button>{canWrite&&<button onClick={()=>void deviceAction(d,'tier')}>{d.tier==='FREE'?'Grant VIP (1 year)':'Remove premium'}</button>}</div></td></tr>)}</tbody></table>{!devices.length&&<p className="empty">No matching devices.</p>}</div>
+   <div className="actions"><button disabled={page<=1} onClick={()=>setPage(page-1)}>Previous</button><span>Page {page} of {pages}</span><button disabled={page>=pages} onClick={()=>setPage(page+1)}>Next</button></div>
+  </section>}
+  {tab==='audit'&&canWrite&&<section className="console-section"><h2>Administrative audit trail</h2><p>Latest 100 administrative actions. No client traffic logs.</p><div className="panel table-scroll"><table><thead><tr><th>Time</th><th>Administrator</th><th>Action</th><th>Resource</th></tr></thead><tbody>{logs.map(l=><tr key={l.id}><td>{new Date(l.createdAt).toLocaleString()}</td><td>{l.admin?.email||'Not available'}</td><td>{l.action}</td><td>{l.targetResource}<small>{l.targetId}</small></td></tr>)}</tbody></table>{!logs.length&&<p className="empty">No audit records loaded.</p>}</div></section>}
+ </main></div>}
+ </div>;
 }

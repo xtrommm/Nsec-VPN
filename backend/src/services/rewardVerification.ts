@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { z } from 'zod';
+import { prisma } from '../db';
 let cachedKeys: Map<string, crypto.KeyObject> = new Map();
 let cachedAt = 0;
 async function publicKeys() {
@@ -24,11 +25,12 @@ export async function verifyReward(query: string) {
   if (!key) { cachedAt = 0; key = (await publicKeys()).get(keyId || ''); }
   if (!key) throw new Error('SSV_KEY_UNKNOWN');
   const params = verifyRewardQuery(query, key);
-  const configured = process.env.ADMOB_REWARDED_UNIT_ID;
+  const config = await prisma.appConfig.findUnique({ where: { id: 'global_config' } });
+  const configured = config?.rewardedAdUnitId || process.env.ADMOB_REWARDED_UNIT_ID;
   if (!configured || ![configured, configured.split('/').pop()].includes(params.get('ad_unit') || '')) throw new Error('SSV_AD_UNIT_INVALID');
   const deviceId = z.string().min(8).max(128).parse(params.get('user_id'));
   const transactionId = z.string().min(8).max(256).parse(params.get('transaction_id'));
   const timestamp = Number(params.get('timestamp'));
   if (!Number.isFinite(timestamp) || Math.abs(Date.now() - timestamp) > 86400000) throw new Error('SSV_EXPIRED');
-  return { deviceId, transactionId };
+  return { deviceId, transactionId, timestamp, ticketId: params.get('custom_data') };
 }

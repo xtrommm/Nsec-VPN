@@ -2,6 +2,7 @@ package com.nsec.vpn.data.monetization
 
 import android.app.Activity
 import android.content.Context
+import androidx.core.content.edit
 import com.google.android.gms.ads.AdError
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.FullScreenContentCallback
@@ -28,13 +29,27 @@ data class AdMobConfig(
     val nativeAdUnitId: String = "ca-app-pub-3940256099942544/2247696110",
     val interstitialAdUnitId: String = "ca-app-pub-3940256099942544/1033173712",
     val rewardedAdUnitId: String = "ca-app-pub-3940256099942544/5224354917",
+    val rewardedPassMinutes: Int = 30,
+    val adFreeUntilEpochMillis: Long? = null,
     val appOpenAdUnitId: String = "ca-app-pub-3940256099942544/9257395921"
 )
 
 class AdMobManager(private val context: Context) {
     val nativeAdManager = NativeAdManager(context)
-    private val _config = MutableStateFlow(AdMobConfig())
+    private val _config = MutableStateFlow(AdMobConfig(
+        bannerEnabled = com.nsec.vpn.BuildConfig.DEBUG, nativeEnabled = com.nsec.vpn.BuildConfig.DEBUG,
+        interstitialEnabled = com.nsec.vpn.BuildConfig.DEBUG, rewardedEnabled = com.nsec.vpn.BuildConfig.DEBUG,
+        testMode = com.nsec.vpn.BuildConfig.DEBUG
+    ))
     val config: StateFlow<AdMobConfig> = _config.asStateFlow()
+
+    private var baseConfig = _config.value
+    private var configGeneration = 0
+    private val rewardPrefs = context.getSharedPreferences("nsec_ad_free_reward", Context.MODE_PRIVATE)
+    private val rewardHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val expiryCheck = object : Runnable {
+        override fun run() { refreshAdFreeConfig() }
+    }
 
     private var lastInterstitialTimeMs: Long = 0
     private var interstitialAd: InterstitialAd? = null
@@ -51,10 +66,60 @@ class AdMobManager(private val context: Context) {
             MobileAds.setRequestConfiguration(requestConfig)
             MobileAds.initialize(context) {}
         } catch (_: Throwable) {}
+        refreshAdFreeConfig()
     }
 
     fun updateConfig(newConfig: AdMobConfig) {
-        _config.value = newConfig
+        if (baseConfig != newConfig) {
+            configGeneration++
+            interstitialAd = null
+            rewardedAd = null
+            isPreloadingInterstitial = false
+            isPreloadingRewarded = false
+        }
+        baseConfig = newConfig
+        refreshAdFreeConfig()
+    }
+
+    fun grantAdFreeReward() {
+        val minutes = baseConfig.rewardedPassMinutes.coerceIn(1, 1440)
+        val now = System.currentTimeMillis()
+        val boot = android.provider.Settings.Global.getInt(context.contentResolver,
+            android.provider.Settings.Global.BOOT_COUNT, -1)
+        rewardPrefs.edit {
+            putLong("grantedWall", now)
+            putLong("expiresWall", now + minutes * 60000L)
+            putLong("expiresElapsed", android.os.SystemClock.elapsedRealtime() + minutes * 60000L)
+            putInt("boot", boot)
+        }
+        refreshAdFreeConfig()
+    }
+
+    private fun refreshAdFreeConfig() {
+        rewardHandler.removeCallbacks(expiryCheck)
+        val wasActive = _config.value.adFreeUntilEpochMillis != null
+        val active = AdFreeRewardClock.active(rewardPrefs.getLong("grantedWall", 0),
+            rewardPrefs.getLong("expiresWall", 0), rewardPrefs.getLong("expiresElapsed", 0),
+            rewardPrefs.getInt("boot", -1), android.provider.Settings.Global.getInt(context.contentResolver,
+                android.provider.Settings.Global.BOOT_COUNT, -1), System.currentTimeMillis(),
+            android.os.SystemClock.elapsedRealtime())
+        val config = if (active) baseConfig.copy(bannerEnabled = false, nativeEnabled = false,
+            interstitialEnabled = false, appOpenEnabled = false,
+            adFreeUntilEpochMillis = rewardPrefs.getLong("expiresWall", 0)) else baseConfig
+        _config.value = config
+        nativeAdManager.configure(config.nativeAdUnitId, config.nativeEnabled)
+        if (active) {
+            if (!wasActive) {
+                configGeneration++
+                isPreloadingInterstitial = false
+                isPreloadingRewarded = false
+                rewardedAd = null
+            }
+            interstitialAd = null
+            rewardHandler.postDelayed(expiryCheck, 1000)
+        } else if (wasActive) {
+            preloadInterstitial()
+        }
     }
 
     fun canShowInterstitial(): Boolean {
@@ -84,6 +149,7 @@ class AdMobManager(private val context: Context) {
         if (!_config.value.interstitialEnabled) return
 
         isPreloadingInterstitial = true
+        val generation = configGeneration
         try {
             val adRequest = AdRequest.Builder().build()
             InterstitialAd.load(
@@ -92,11 +158,13 @@ class AdMobManager(private val context: Context) {
                 adRequest,
                 object : InterstitialAdLoadCallback() {
                     override fun onAdLoaded(ad: InterstitialAd) {
+                        if (generation != configGeneration || !_config.value.interstitialEnabled) return
                         interstitialAd = ad
                         isPreloadingInterstitial = false
                     }
 
                     override fun onAdFailedToLoad(loadAdError: LoadAdError) {
+                        if (generation != configGeneration) return
                         interstitialAd = null
                         isPreloadingInterstitial = false
                     }
@@ -148,6 +216,7 @@ class AdMobManager(private val context: Context) {
         if (!_config.value.rewardedEnabled) return
 
         isPreloadingRewarded = true
+        val generation = configGeneration
         try {
             val adRequest = AdRequest.Builder().build()
             RewardedAd.load(
@@ -156,11 +225,13 @@ class AdMobManager(private val context: Context) {
                 adRequest,
                 object : RewardedAdLoadCallback() {
                     override fun onAdLoaded(ad: RewardedAd) {
+                        if (generation != configGeneration || !_config.value.rewardedEnabled) return
                         rewardedAd = ad
                         isPreloadingRewarded = false
                     }
 
                     override fun onAdFailedToLoad(loadAdError: LoadAdError) {
+                        if (generation != configGeneration) return
                         rewardedAd = null
                         isPreloadingRewarded = false
                     }
@@ -171,7 +242,7 @@ class AdMobManager(private val context: Context) {
         }
     }
 
-    fun showRewarded(activity: Activity, onRewarded: () -> Unit, onAdDismissed: () -> Unit) {
+    fun showRewarded(activity: Activity, onRewarded: () -> Unit, onAdDismissed: () -> Unit, verificationTicket: String? = null) {
         val ad = rewardedAd
         if (ad == null || activity.isFinishing || activity.isDestroyed) {
             rewardedAd = null
@@ -196,7 +267,9 @@ class AdMobManager(private val context: Context) {
             }
 
             val deviceId = com.nsec.vpn.core.network.ServiceLocator.getInstance(activity).keyStoreManager.getOrCreateDeviceId()
-            ad.setServerSideVerificationOptions(com.google.android.gms.ads.rewarded.ServerSideVerificationOptions.Builder().setUserId(deviceId).build())
+            val verification = com.google.android.gms.ads.rewarded.ServerSideVerificationOptions.Builder().setUserId(deviceId)
+            verificationTicket?.let { verification.setCustomData(it) }
+            ad.setServerSideVerificationOptions(verification.build())
             ad.show(activity) { _ ->
                 onRewarded()
             }

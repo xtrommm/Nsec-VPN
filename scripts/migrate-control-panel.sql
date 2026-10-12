@@ -1,0 +1,33 @@
+BEGIN;
+SET LOCAL lock_timeout = '5s';
+SET LOCAL statement_timeout = '30s';
+ALTER TABLE "AppConfig"
+ ADD COLUMN IF NOT EXISTS "nativeAdsEnabled" BOOLEAN NOT NULL DEFAULT true,
+ ADD COLUMN IF NOT EXISTS "bannerAdUnitId" TEXT,
+ ADD COLUMN IF NOT EXISTS "nativeAdUnitId" TEXT,
+ ADD COLUMN IF NOT EXISTS "interstitialAdUnitId" TEXT,
+ ADD COLUMN IF NOT EXISTS "rewardedAdUnitId" TEXT,
+ ADD COLUMN IF NOT EXISTS "rewardedPassMinutes" INTEGER NOT NULL DEFAULT 30;
+CREATE TABLE IF NOT EXISTS "PromoCode" (
+ "id" TEXT PRIMARY KEY, "codeHash" TEXT NOT NULL UNIQUE, "label" TEXT NOT NULL,
+ "passMinutes" INTEGER NOT NULL CHECK ("passMinutes" BETWEEN 1 AND 525600),
+ "maxRedemptions" INTEGER NOT NULL CHECK ("maxRedemptions" BETWEEN 1 AND 1000000),
+ "redemptionCount" INTEGER NOT NULL DEFAULT 0 CHECK ("redemptionCount" >= 0),
+ "expiresAt" TIMESTAMP(3), "active" BOOLEAN NOT NULL DEFAULT true,
+ "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL
+);
+CREATE TABLE IF NOT EXISTS "PromoRedemption" (
+ "id" TEXT PRIMARY KEY, "promoId" TEXT NOT NULL REFERENCES "PromoCode"("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+ "deviceId" TEXT NOT NULL REFERENCES "Device"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+ "redeemedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ CONSTRAINT "PromoRedemption_promoId_deviceId_key" UNIQUE ("promoId", "deviceId")
+);
+
+CREATE TABLE IF NOT EXISTS "RewardTicket" (
+ "id" TEXT PRIMARY KEY, "deviceId" TEXT NOT NULL REFERENCES "Device"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+ "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "expiresAt" TIMESTAMP(3) NOT NULL,
+ "claimedAt" TIMESTAMP(3), "grantExpiresAt" TIMESTAMP(3)
+);
+CREATE INDEX IF NOT EXISTS "RewardTicket_deviceId_createdAt_idx" ON "RewardTicket"("deviceId", "createdAt");
+
+COMMIT;

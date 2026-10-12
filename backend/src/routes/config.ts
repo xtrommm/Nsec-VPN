@@ -52,7 +52,8 @@ router.get('/config', async (_req: Request, res: Response) => {
       app: {
         minAppVersionCode: config.minAppVersionCode,
         latestAppVersionCode: config.latestAppVersionCode,
-        forceUpdate: config.forceUpdate
+        forceUpdate: config.forceUpdate,
+        maintenanceMode: config.maintenanceMode
       },
       announcement: {
         active: config.announcementActive,
@@ -62,6 +63,12 @@ router.get('/config', async (_req: Request, res: Response) => {
       },
       ads: {
         bannerEnabled: config.bannerAdsEnabled,
+        nativeEnabled: config.nativeAdsEnabled,
+        bannerAdUnitId: config.bannerAdUnitId,
+        nativeAdUnitId: config.nativeAdUnitId,
+        interstitialAdUnitId: config.interstitialAdUnitId,
+        rewardedAdUnitId: config.rewardedAdUnitId,
+        rewardedPassMinutes: config.rewardedPassMinutes,
         interstitialEnabled: config.interstitialAdsEnabled,
         interstitialIntervalSeconds: config.interstitialIntervalSeconds,
         rewardedEnabled: config.rewardedAdsEnabled

@@ -142,6 +142,7 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(Unit) {
                     remoteConfigManager.fetchRemoteConfig()
                     vpnRepo.refreshServers()
+                    vpnRepo.retryPendingReward()
                     adMobManager.preloadInterstitial(this@MainActivity)
                     adMobManager.preloadRewarded(this@MainActivity)
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -157,6 +158,7 @@ class MainActivity : ComponentActivity() {
                     while (true) {
                         kotlinx.coroutines.delay(30_000)
                         vpnRepo.checkRewardedPassExpiry()
+                        vpnRepo.retryPendingReward()
                     }
                 }
 
@@ -500,27 +502,34 @@ class MainActivity : ComponentActivity() {
                                         .fillMaxWidth()
                                         .clickable {
                                             showVipModal = false
-                                            adMobManager.showRewarded(
-                                                activity = this@MainActivity,
-                                                onRewarded = {
-                                                    coroutineScope.launch {
-                                                        var verified = false
-                                                        repeat(15) {
-                                                            if (!verified) {
-                                                                verified = try { vpnRepo.refreshVerifiedEntitlement() } catch (_: Exception) { false }
-                                                                if (!verified) kotlinx.coroutines.delay(1000)
+                                            coroutineScope.launch {
+                                                try {
+                                                    val ticket = vpnRepo.prepareReward()
+                                                    adMobManager.showRewarded(
+                                                        activity = this@MainActivity,
+                                                        verificationTicket = ticket,
+                                                        onRewarded = {
+                                                            adMobManager.grantAdFreeReward()
+                                                            coroutineScope.launch {
+                                                                try {
+                                                                    vpnRepo.claimReward(ticket)
+                                                                    Toast.makeText(this@MainActivity, "VIP activated: ad-free and premium servers unlocked.", Toast.LENGTH_LONG).show()
+                                                                } catch (error: Exception) {
+                                                                    Toast.makeText(this@MainActivity, error.message ?: "VIP claim will retry", Toast.LENGTH_LONG).show()
+                                                                }
                                                             }
-                                                        }
-                                                        Toast.makeText(this@MainActivity, if (verified) "Premium pass verified" else "Reward verification pending. Please try again shortly.", Toast.LENGTH_LONG).show()
-                                                    }
-                                                },
-                                                onAdDismissed = {}
-                                            )
+                                                        },
+                                                        onAdDismissed = {}
+                                                    )
+                                                } catch (error: Exception) {
+                                                    Toast.makeText(this@MainActivity, error.message ?: "Could not prepare VIP reward", Toast.LENGTH_LONG).show()
+                                                }
+                                            }
                                         }
                                 ) {
                                     Column(modifier = Modifier.padding(12.dp)) {
                                         Text("Watch Rewarded Ad for a Premium Pass", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue)
-                                        Text("Unlocks premium servers after server verification.", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text("Unlocks ad-free VIP and premium servers after successful completion.", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                 }
                             }
@@ -550,7 +559,7 @@ class MainActivity : ComponentActivity() {
                                 OutlinedTextField(
                                     value = promoCodeInput,
                                     onValueChange = { promoCodeInput = it },
-                                    placeholder = { Text("e.g. VIP2026", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                    placeholder = { Text("Enter promo code", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                                     singleLine = true,
                                     shape = RoundedCornerShape(10.dp),
                                     colors = OutlinedTextFieldDefaults.colors(
@@ -570,7 +579,15 @@ class MainActivity : ComponentActivity() {
                                 onClick = {
                                     showPromoDialog = false
                                     if (promoCodeInput.trim().isNotEmpty()) {
-                                        Toast.makeText(this@MainActivity, "Promo redemption is not configured", Toast.LENGTH_SHORT).show()
+                                        coroutineScope.launch {
+                                            try {
+                                                vpnRepo.redeemPromo(promoCodeInput)
+                                                Toast.makeText(this@MainActivity, "Promo redeemed. Premium access is active.", Toast.LENGTH_LONG).show()
+                                                promoCodeInput = ""
+                                            } catch (error: Exception) {
+                                                Toast.makeText(this@MainActivity, error.message ?: "Could not redeem code", Toast.LENGTH_LONG).show()
+                                            }
+                                        }
                                     }
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)

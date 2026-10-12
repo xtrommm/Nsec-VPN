@@ -83,13 +83,19 @@ data class AppRemoteConfigDto(
     val announcement: AnnouncementDto,
     val ads: AdsDto
 )
-data class AppVersionDto(val minAppVersionCode: Int, val latestAppVersionCode: Int, val forceUpdate: Boolean)
+data class AppVersionDto(val minAppVersionCode: Int, val latestAppVersionCode: Int, val forceUpdate: Boolean, val maintenanceMode: Boolean = false)
 data class AnnouncementDto(val active: Boolean, val title: String?, val body: String?, val dismissible: Boolean)
 data class AdsDto(
     val bannerEnabled: Boolean,
     val interstitialEnabled: Boolean,
     val interstitialIntervalSeconds: Int,
-    val rewardedEnabled: Boolean
+    val rewardedEnabled: Boolean,
+    val nativeEnabled: Boolean? = null,
+    val bannerAdUnitId: String? = null,
+    val nativeAdUnitId: String? = null,
+    val interstitialAdUnitId: String? = null,
+    val rewardedAdUnitId: String? = null,
+    val rewardedPassMinutes: Int = 30
 )
 
 data class LegalResponse(val success: Boolean, val data: LegalDocDto?)
@@ -99,7 +105,23 @@ data class VerifyPurchaseRequest(val packageName: String, val productId: String,
 data class VerifyPurchaseResponse(val success: Boolean)
 
 data class DeviceProfileResponse(val success: Boolean, val data: DeviceInfoDto?)
+data class RewardTicketData(val ticketId: String)
+data class RewardTicketResponse(val success: Boolean, val data: RewardTicketData?)
+data class ClaimRewardRequest(val ticketId: String)
+
+data class RedeemPromoRequest(val code: String)
+data class RedeemPromoData(val tier: String, val passExpiresAt: String?)
+data class RedeemPromoResponse(val success: Boolean, val data: RedeemPromoData?)
+
 interface NsecVpnApi {
+    @POST("billing/rewarded/prepare")
+    suspend fun prepareReward(@Header("Authorization") token: String): Response<RewardTicketResponse>
+    @POST("billing/rewarded/claim")
+    suspend fun claimReward(@Header("Authorization") token: String, @Body request: ClaimRewardRequest): Response<RedeemPromoResponse>
+
+    @POST("promos/redeem")
+    suspend fun redeemPromo(@Header("Authorization") token: String, @Body request: RedeemPromoRequest): Response<RedeemPromoResponse>
+
     @GET("auth/me")
     suspend fun getDeviceProfile(@Header("Authorization") token: String): Response<DeviceProfileResponse>
 
