@@ -51,7 +51,8 @@ fun ConnectedScreen(
     onDisconnect: () -> Unit,
     onBackToHome: () -> Unit,
     modifier: Modifier = Modifier,
-    connectedNode: com.nsec.vpn.data.model.TunnelConfig? = null
+    connectedNode: com.nsec.vpn.data.model.TunnelConfig? = null,
+    nativeAdContent: @Composable () -> Unit = {}
 ) {
     BackHandler {
         onBackToHome()
@@ -375,6 +376,11 @@ fun ConnectedScreen(
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+
+        if (vpnState is VpnState.Connected) {
+            Spacer(modifier = Modifier.height(16.dp))
+            nativeAdContent()
         }
     }
 }
