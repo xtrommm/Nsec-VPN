@@ -23,8 +23,8 @@ class VipRewardCardUiTest {
         compose.setContent { NsecVpnTheme {
             VipRewardCard(RewardOffer.from(true, true, 45, "FREE", false), false, { taps++ }, {}, compact = true)
         } }
-        compose.onNodeWithText("45 minutes of VIP").assertExists()
-        compose.onNodeWithText("Ad-free + VIP servers").assertExists()
+        compose.onNodeWithText("45 Minutes Of VIP").assertExists()
+        compose.onNodeWithText("Ad-Free + VIP Servers").assertExists()
         val height = compose.onNodeWithTag("home_reward_card").getUnclippedBoundsInRoot().let { it.bottom - it.top }
         assertTrue("Default Home offer must stay compact", height.value <= 104f)
         compose.onNodeWithTag("watch_vip_reward").performClick()

@@ -27,6 +27,13 @@ object NetworkModule {
         OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(10, TimeUnit.SECONDS)
+            .addInterceptor { chain ->
+                val request = chain.request()
+                // A location may try several agents; keep ordinary catalog requests fast.
+                val timed = if (request.url.encodedPath.endsWith("/vpn/connect"))
+                    chain.withReadTimeout(45, TimeUnit.SECONDS) else chain
+                timed.proceed(request)
+            }
             .addInterceptor(HttpLoggingInterceptor().apply {
                 level = HttpLoggingInterceptor.Level.NONE
             })

@@ -24,7 +24,7 @@ class NsecVpnService : Service() {
         super.onCreate()
         if (Build.VERSION.SDK_INT >= 26) {
             getSystemService(NotificationManager::class.java).createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "VPN connection", NotificationManager.IMPORTANCE_LOW))
+                NotificationChannel(CHANNEL_ID, "VPN Connection", NotificationManager.IMPORTANCE_LOW))
         }
         scope.launch {
             WireGuardTunnelManager.getInstance(this@NsecVpnService).vpnState.collect { state ->

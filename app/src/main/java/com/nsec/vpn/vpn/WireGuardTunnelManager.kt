@@ -78,10 +78,12 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
     }
     private suspend fun connectWithFailover(initial: Server, dns: List<String>, excludedApps: Set<String>) {
         val visited = mutableSetOf<String>()
-        var candidate: Server? = initial
+        var candidate: Server? = com.nsec.vpn.data.model.LocationSelection.ranked(
+            vpnRepository.servers.value.filter { com.nsec.vpn.data.model.LocationSelection.sameLocation(it, initial) },
+            vpnRepository.userTier.value).firstOrNull() ?: initial
         repeat(MAX_CONNECT_ATTEMPTS) {
             val server = candidate ?: return@repeat
-            visited.add(server.id)
+            var attemptedNodeId: String? = null
             activeServer = server
             _vpnState.value = VpnState.Connecting
             _vpnStats.value = VpnStats(); _connectedNode.value = null
@@ -91,13 +93,14 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
                 val publicKey = keyPair.publicKey.toBase64()
                 activeClientPublicKey = publicKey
                 val tc = TunnelNegotiation.establish(prepare = {
-                val (tc, peerId) = vpnRepository.fetchTunnelConfig(server, publicKey)
+                val (tc, peerId) = vpnRepository.fetchTunnelConfig(server, publicKey, visited)
+                attemptedNodeId = tc.nodeId ?: server.id
                 lastApiResponseSuccess = true; lastApiStatusCode = 200; activePeerId = peerId
                 val result = validateTunnelConfig(tc)
-                require(result.isValid) { result.errorMessage ?: "Invalid server data" }
+                require(result.isValid) { result.errorMessage ?: "Invalid Server Data" }
                 val addresses = InetAddress.getAllByName(tc.serverEndpoint.substringBeforeLast(':'))
-                require(addresses.isNotEmpty() && addresses.all { it is Inet4Address && !isPrivateOrDocumentationIp(it.hostAddress.orEmpty()) }) { "Server endpoint must resolve to public IPv4" }
-                require(addresses.any { it.hostAddress == tc.publicIpv4 }) { "Node public IP does not match endpoint" }
+                require(addresses.isNotEmpty() && addresses.all { it is Inet4Address && !isPrivateOrDocumentationIp(it.hostAddress.orEmpty()) }) { "Server Endpoint Must Resolve To Public IPv4" }
+                require(addresses.any { it.hostAddress == tc.publicIpv4 }) { "Node Public IP Does Not Match Endpoint" }
                 activeTunnelConfig = tc
                 tc
                 }, activate = { tc ->
@@ -124,23 +127,28 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
             } catch (cancelled: CancellationException) {
                 withContext(NonCancellable) { teardown() }; throw cancelled
             } catch (error: Exception) {
+                visited.add(attemptedNodeId ?: server.id)
                 lastError = when (error) {
-                    is java.net.SocketTimeoutException -> "Couldn't reach the server"
+                    is java.net.SocketTimeoutException -> "Couldn't Reach The Server"
                     is VpnApiException -> error.message
-                    is IllegalArgumentException -> "Invalid server configuration"
-                    else -> "Couldn't establish the VPN connection"
+                    is IllegalArgumentException -> "Invalid Server Configuration"
+                    else -> "Couldn't Establish The VPN Connection"
                 }
                 if (error is VpnApiException) lastApiStatusCode = error.statusCode
                 teardown()
+                if (error is VpnApiException && error.errorCode in setOf("ALL_SERVERS_FULL", "DEVICE_BLOCKED", "TIER_UPGRADE_REQUIRED", "MAINTENANCE_MODE")) {
+                    _vpnState.value = VpnState.Error(lastError ?: "Connection Failed")
+                    return
+                }
                 candidate = FailoverPolicy.next(initial, visited, vpnRepository.servers.value,
                     vpnRepository.userTier.value, MAX_CONNECT_ATTEMPTS)
                 if (candidate == null) {
-                    _vpnState.value = VpnState.Error(lastError ?: "Couldn't reach the server"); return
+                    _vpnState.value = VpnState.Error(lastError ?: "Couldn't Reach The Server"); return
                 }
                 delay(1000L * (it + 1))
             }
         }
-        _vpnState.value = VpnState.Error(lastError ?: "Couldn't reach the server")
+        _vpnState.value = VpnState.Error(lastError ?: "Couldn't Reach The Server")
     }
     private suspend fun waitForHandshakeOrTimeout(timeoutMs: Long, publicKey: String): Boolean {
         val start = SystemClock.elapsedRealtime()
@@ -187,7 +195,7 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
         statsJob?.cancel()
         connectJob = scope.launch {
             teardown()
-            if (reconnectCount >= MAX_RECONNECTS) { _vpnState.value = VpnState.Error("Couldn't reach the server"); return@launch }
+            if (reconnectCount >= MAX_RECONNECTS) { _vpnState.value = VpnState.Error("Couldn't Reach The Server"); return@launch }
             delay(1000L shl reconnectCount++)
             connectWithFailover(server, lastDns, lastExcludedApps)
         }
@@ -221,7 +229,7 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
     }
     @Synchronized
     fun updateDns(dns: List<String>) {
-        require(dns.size <= 4 && dns.none { it.contains(':') }) { "This node needs reachable IPv4 DNS resolvers." }
+        require(dns.size <= 4 && dns.none { it.contains(':') }) { "This Node Needs Reachable IPv4 DNS Resolvers." }
         if (dns == lastDns) return
         lastDns = dns
         if (_vpnState.value !is VpnState.Connected && _vpnState.value !is VpnState.Connecting) return
@@ -285,11 +293,11 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
             require(!tc.publicIpv4.isNullOrBlank() && tc.publicIpv4.matches(Regex("\\d+\\.\\d+\\.\\d+\\.\\d+")) && !isPrivateOrDocumentationIp(tc.publicIpv4))
             require(!tc.nodeId.isNullOrBlank() && !tc.nodeName.isNullOrBlank() && !tc.locationName.isNullOrBlank())
             TunnelValidationResult(true)
-        } catch (_: Exception) { TunnelValidationResult(false, "Invalid server tunnel configuration") }
+        } catch (_: Exception) { TunnelValidationResult(false, "Invalid Server Tunnel Configuration") }
     }
 }
 
 object HandshakeGate {
     fun confirmed(handshakeMillis: Long, nowMillis: Long): Boolean = handshakeMillis > 0 && nowMillis - handshakeMillis in 0..15_000
 }
-class VpnApiException(val statusCode: Int, message: String) : IllegalStateException(message)
+class VpnApiException(val statusCode: Int, message: String, val errorCode: String = "") : IllegalStateException(message)

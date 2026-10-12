@@ -109,7 +109,7 @@ fun SettingsScreen(
         SettingsClickableItem(
             icon = Icons.Default.Shield,
             title = "Android VPN Lockdown",
-            subtitle = "Configure Always-on VPN and blocking in Android settings",
+            subtitle = "Configure Always-On VPN And Blocking In Android Settings",
             onClick = { showKillSwitchDialog = true }
         )
 
@@ -123,7 +123,7 @@ fun SettingsScreen(
         SettingsToggleItem(
             icon = Icons.AutoMirrored.Filled.AltRoute,
             title = "Split Tunneling",
-            subtitle = "Allow select apps to bypass the VPN tunnel",
+            subtitle = "Allow Select Apps To Bypass The VPN Tunnel",
             isChecked = splitTunnelingEnabled,
             onCheckedChange = { onToggleSplitTunneling(it) },
             trailingAction = if (splitTunnelingEnabled) {
@@ -145,8 +145,8 @@ fun SettingsScreen(
 
         SettingsToggleItem(
             icon = Icons.Default.PowerSettingsNew,
-            title = "Auto-Connect on Launch",
-            subtitle = "Immediately secure your network when opening Nsec VPN",
+            title = "Auto-Connect On Launch",
+            subtitle = "Immediately Secure Your Network When Opening Nsec VPN",
             isChecked = autoConnectEnabled,
             onCheckedChange = onToggleAutoConnect
         )
@@ -154,7 +154,7 @@ fun SettingsScreen(
         SettingsClickableItem(
             icon = Icons.Default.Build,
             title = "Troubleshooting Assistant",
-            subtitle = "Check API access, handshake and tunnel observations",
+            subtitle = "Check API Access, Handshake And Tunnel Observations",
             onClick = onOpenTroubleshooting
         )
 
@@ -165,18 +165,18 @@ fun SettingsScreen(
         SettingsClickableItem(
             icon = Icons.Default.CardGiftcard,
             title = "Redeem Promo Code",
-            subtitle = "Enter code to unlock free Premium VIP access",
+            subtitle = "Enter Code To Unlock Free Premium VIP Access",
             onClick = onRedeemPromoCode
         )
 
         SettingsClickableItem(icon = Icons.Default.Email, title = "Support Email",
-            subtitle = supportEmail ?: "Support address has not been configured", onClick = {
-                if (supportEmail == null) Toast.makeText(context, "The operator has not configured support email yet.", Toast.LENGTH_LONG).show()
+            subtitle = supportEmail ?: "Support Address Has Not Been Configured", onClick = {
+                if (supportEmail == null) Toast.makeText(context, "The Operator Has Not Configured Support Email Yet.", Toast.LENGTH_LONG).show()
                 else try { context.startActivity(Intent(Intent.ACTION_SENDTO, ("mailto:" + android.net.Uri.encode(supportEmail, "@.")).toUri())) }
-                catch (_: android.content.ActivityNotFoundException) { Toast.makeText(context, "No email app installed. Use Copy email.", Toast.LENGTH_LONG).show() }
+                catch (_: android.content.ActivityNotFoundException) { Toast.makeText(context, "No Email App Installed. Use Copy Email.", Toast.LENGTH_LONG).show() }
             })
-        if (supportEmail != null) TextButton(onClick = { copy(supportEmail) }) { Text("Copy email") }
-        SettingsClickableItem(icon = Icons.Default.Public, title = "Request Server", subtitle = "Suggest a country and city", onClick = { showRequestDialog = true })
+        if (supportEmail != null) TextButton(onClick = { copy(supportEmail) }) { Text("Copy Email") }
+        SettingsClickableItem(icon = Icons.Default.Public, title = "Request Server", subtitle = "Suggest A Country And City", onClick = { showRequestDialog = true })
 
         SettingsClickableItem(
             icon = Icons.Default.Language,
@@ -186,21 +186,21 @@ fun SettingsScreen(
                 try {
                     val browserIntent = Intent(Intent.ACTION_VIEW, "https://nsecvpn.com".toUri())
                     context.startActivity(browserIntent)
-                } catch (_: android.content.ActivityNotFoundException) { Toast.makeText(context, "No browser installed.", Toast.LENGTH_SHORT).show() }
+                } catch (_: android.content.ActivityNotFoundException) { Toast.makeText(context, "No Browser Installed.", Toast.LENGTH_SHORT).show() }
             }
         )
 
         SettingsClickableItem(
             icon = Icons.Default.Description,
             title = "Zero-Logs Privacy Policy",
-            subtitle = "Verified no-log WireGuard infrastructure",
+            subtitle = "Verified No-Log WireGuard Infrastructure",
             onClick = onOpenPrivacyPolicy
         )
 
         SettingsClickableItem(
             icon = Icons.Default.Info,
             title = "App Version",
-            subtitle = "Nsec VPN v${com.nsec.vpn.BuildConfig.VERSION_NAME}",
+            subtitle = "Nsec VPN V${com.nsec.vpn.BuildConfig.VERSION_NAME}",
             onClick = { Toast.makeText(context, "Version ${com.nsec.vpn.BuildConfig.VERSION_NAME} (${com.nsec.vpn.BuildConfig.VERSION_CODE})", Toast.LENGTH_SHORT).show() }
         )
 
@@ -210,7 +210,7 @@ fun SettingsScreen(
             SettingsClickableItem(
                 icon = Icons.Default.BugReport,
                 title = "WireGuard & Peer Diagnostics",
-                subtitle = "View live handshake, peer API status, and endpoint",
+                subtitle = "View Live Handshake, Peer API Status, And Endpoint",
                 onClick = onOpenDebugDiagnostics
             )
         }
@@ -219,19 +219,19 @@ fun SettingsScreen(
         Text(deviceId, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         TextButton(enabled = deviceId.isNotBlank(), onClick = { copy(deviceId) }) {
             Icon(Icons.Default.ContentCopy, contentDescription = null)
-            Spacer(Modifier.width(6.dp)); Text("Copy device ID")
+            Spacer(Modifier.width(6.dp)); Text("Copy Device ID")
         }
 
     }
 
     if (showCustomDns) AlertDialog(
         onDismissRequest = { showCustomDns = false }, title = { Text("Custom DNS") },
-        text = { Column { Text("Enter public DNS IPs separated by commas. IPv4/IPv6 syntax is validated, but this IPv4-only node cannot route IPv6 resolvers.", fontSize = 12.sp)
-            OutlinedTextField(value = customDnsText, onValueChange = { customDnsText = it.take(200); dnsError = null }, label = { Text("DNS IP addresses") })
+        text = { Column { Text("Enter Public DNS IPs Separated By Commas. IPv4/IPv6 Syntax Is Validated, But This IPv4-Only Node Cannot Route IPv6 Resolvers.", fontSize = 12.sp)
+            OutlinedTextField(value = customDnsText, onValueChange = { customDnsText = it.take(200); dnsError = null }, label = { Text("DNS IP Addresses") })
             dnsError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         } }, confirmButton = { TextButton(onClick = {
-            try { onCustomDns(customDnsText); showCustomDns = false; Toast.makeText(context, "DNS saved. Reconnecting if active.", Toast.LENGTH_SHORT).show() }
-            catch (e: IllegalArgumentException) { dnsError = e.message ?: "Invalid DNS resolver." }
+            try { onCustomDns(customDnsText); showCustomDns = false; Toast.makeText(context, "DNS Saved. Reconnecting If Active.", Toast.LENGTH_SHORT).show() }
+            catch (e: IllegalArgumentException) { dnsError = e.message ?: "Invalid DNS Resolver." }
         }) { Text("Apply DNS") } }, dismissButton = { TextButton(onClick = { showCustomDns = false }) { Text("Cancel") } }
     )
 
@@ -330,7 +330,7 @@ fun SettingsScreen(
             title = { Text("Enable Android System Kill Switch", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
             text = {
                 Text(
-                    "Android's 'Always-on VPN' and 'Block connections without VPN' settings can block traffic when the VPN is unavailable. Lockdown can also block ads because Nsec stays excluded. Confirm the actual setting in Android; opening this page does not enable protection.",
+                    "Android's 'Always-On VPN' And 'Block Connections Without VPN' Settings Can Block Traffic When The VPN Is Unavailable. Lockdown Can Also Block Ads Because Nsec Stays Excluded. Confirm The Actual Setting In Android; Opening This Page Does Not Enable Protection.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 13.sp,
                     lineHeight = 18.sp

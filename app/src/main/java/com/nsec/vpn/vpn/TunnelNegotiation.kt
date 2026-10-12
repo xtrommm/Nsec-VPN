@@ -11,7 +11,7 @@ object TunnelNegotiation {
     ): T {
         val config = prepare()
         activate(config)
-        if (!handshake(config)) throw SocketTimeoutException("Couldn't reach the server")
+        if (!handshake(config)) throw SocketTimeoutException("Couldn't Reach The Server")
         return config
     }
 }

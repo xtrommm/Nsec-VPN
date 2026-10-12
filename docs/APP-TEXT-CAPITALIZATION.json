@@ -1,0 +1,999 @@
+{
+  "preservedHeadersAndMottos": [
+    "A better way to VIP",
+    "Choose Theme Mode",
+    "Custom DNS",
+    "Direct ISP Connection \u2022 UNENCRYPTED",
+    "Enable Android System Kill Switch",
+    "Made in Europe",
+    "Nsec -VPN",
+    "Nsec VPN",
+    "Run VPN speed test",
+    "SPEED TEST",
+    "Select DNS resolver",
+    "Settings",
+    "Split Tunneling Apps",
+    "Test your Connected VPN server Speed ",
+    "Troubleshooting Assistant",
+    "VPN Locations",
+    "WIREGUARD FOR ANDROID",
+    "Zero-Logs Privacy Policy"
+  ],
+  "changes": [
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/SplitTunnelScreen.kt",
+      "old": "Selected apps will route directly via your local network interface instead of WireGuard encryption.",
+      "new": "Selected Apps Will Route Directly Via Your Local Network Interface Instead Of WireGuard Encryption."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/LegalScreen.kt",
+      "old": "Nsec VPN does not store browsing activity, DNS queries, traffic content, or originating client IP addresses in its app, backend, or agent.",
+      "new": "Nsec VPN Does Not Store Browsing Activity, DNS Queries, Traffic Content, Or Originating Client IP Addresses In Its App, Backend, Or Agent."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/LegalScreen.kt",
+      "old": "We do not persist originating client IP addresses, DNS queries, browsing history, or traffic contents. WireGuard keeps current handshake and transfer statistics in kernel memory. Device registration and expiring peer configuration are persisted to authenticate access and restore peers after reboot; these are service records, not browsing logs.",
+      "new": "We Do Not Persist Originating Client IP Addresses, DNS Queries, Browsing History, Or Traffic Contents. WireGuard Keeps Current Handshake And Transfer Statistics In Kernel Memory. Device Registration And Expiring Peer Configuration Are Persisted To Authenticate Access And Restore Peers After Reboot; These Are Service Records, Not Browsing Logs."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/LegalScreen.kt",
+      "old": "Your Curve25519 private key is generated locally inside your device's secure environment. Only your public key is sent to the server for tunnel handshake configuration.",
+      "new": "Your Curve25519 Private Key Is Generated Locally Inside Your Device's Secure Environment. Only Your Public Key Is Sent To The Server For Tunnel Handshake Configuration."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/LegalScreen.kt",
+      "old": "You do not need an email address or password to use Nsec VPN. A randomly generated installation ID and a device-held registration secret authorize access. Android Keystore protects the local encryption key; hardware-backed storage depends on the device. Clearing local app data does not delete existing backend registration or billing records.",
+      "new": "You Do Not Need An Email Address Or Password To Use Nsec VPN. A Randomly Generated Installation ID And A Device-Held Registration Secret Authorize Access. Android Keystore Protects The Local Encryption Key; Hardware-Backed Storage Depends On The Device. Clearing Local App Data Does Not Delete Existing Backend Registration Or Billing Records."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/LegalScreen.kt",
+      "old": "Nsec VPN strictly utilizes the Android VpnService API solely for user-initiated VPN tunnel encapsulation per nsecvpn.com policies.",
+      "new": "Nsec VPN Strictly Utilizes The Android VpnService API Solely For User-Initiated VPN Tunnel Encapsulation Per nsecvpn.com Policies."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/ServerRequestSheet.kt",
+      "old": "Could not send your request. Please try again.",
+      "new": "Could Not Send Your Request. Please Try Again."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/ServerRequestSheet.kt",
+      "old": "Suggest a location",
+      "new": "Suggest A Location"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/ServerRequestSheet.kt",
+      "old": "Help shape our server network",
+      "new": "Help Shape Our Server Network"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/ServerRequestSheet.kt",
+      "old": "Close server request",
+      "new": "Close Server Request"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/ServerRequestSheet.kt",
+      "old": "Tell us where you\u2019d like to connect. Your request goes to our team for review; availability is not guaranteed.",
+      "new": "Tell Us Where You\u2019d Like To Connect. Your Request Goes To Our Team For Review; Availability Is Not Guaranteed."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/ServerRequestSheet.kt",
+      "old": "Enter a country using 2\u201380 characters.",
+      "new": "Enter A Country Using 2\u201380 Characters."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/ServerRequestSheet.kt",
+      "old": "Enter a city using 2\u201380 characters.",
+      "new": "Enter A City Using 2\u201380 Characters."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/ServerRequestSheet.kt",
+      "old": "Anything we should know? (optional)",
+      "new": "Anything We Should Know? (Optional)"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/ServerRequestSheet.kt",
+      "old": "Remove unsupported characters.",
+      "new": "Remove Unsupported Characters."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/ServerRequestSheet.kt",
+      "old": "Please avoid personal or sensitive details.",
+      "new": "Please Avoid Personal Or Sensitive Details."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/ServerRequestSheet.kt",
+      "old": "One request every 10 minutes. Your installation ID and app version are attached so we can review your request.",
+      "new": "One Request Every 10 Minutes. Your Installation ID And App Version Are Attached So We Can Review Your Request."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/ServerRequestSheet.kt",
+      "old": "Sending request\u2026",
+      "new": "Sending Request\u2026"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/ServerRequestSheet.kt",
+      "old": "Send location request",
+      "new": "Send Location Request"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/SettingsScreen.kt",
+      "old": "Configure Always-on VPN and blocking in Android settings",
+      "new": "Configure Always-On VPN And Blocking In Android Settings"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/SettingsScreen.kt",
+      "old": "Allow select apps to bypass the VPN tunnel",
+      "new": "Allow Select Apps To Bypass The VPN Tunnel"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/SettingsScreen.kt",
+      "old": "Auto-Connect on Launch",
+      "new": "Auto-Connect On Launch"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/SettingsScreen.kt",
+      "old": "Immediately secure your network when opening Nsec VPN",
+      "new": "Immediately Secure Your Network When Opening Nsec VPN"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/SettingsScreen.kt",
+      "old": "Check API access, handshake and tunnel observations",
+      "new": "Check API Access, Handshake And Tunnel Observations"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/SettingsScreen.kt",
+      "old": "Enter code to unlock free Premium VIP access",
+      "new": "Enter Code To Unlock Free Premium VIP Access"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/SettingsScreen.kt",
+      "old": "Support address has not been configured",
+      "new": "Support Address Has Not Been Configured"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/SettingsScreen.kt",
+      "old": "The operator has not configured support email yet.",
+      "new": "The Operator Has Not Configured Support Email Yet."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/SettingsScreen.kt",
+      "old": "No email app installed. Use Copy email.",
+      "new": "No Email App Installed. Use Copy Email."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/SettingsScreen.kt",
+      "old": "Copy email",
+      "new": "Copy Email"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/SettingsScreen.kt",
+      "old": "Suggest a country and city",
+      "new": "Suggest A Country And City"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/SettingsScreen.kt",
+      "old": "No browser installed.",
+      "new": "No Browser Installed."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/SettingsScreen.kt",
+      "old": "Verified no-log WireGuard infrastructure",
+      "new": "Verified No-Log WireGuard Infrastructure"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/SettingsScreen.kt",
+      "old": "Nsec VPN v${com.nsec.vpn.BuildConfig.VERSION_NAME}",
+      "new": "Nsec VPN V${com.nsec.vpn.BuildConfig.VERSION_NAME}"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/SettingsScreen.kt",
+      "old": "View live handshake, peer API status, and endpoint",
+      "new": "View Live Handshake, Peer API Status, And Endpoint"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/SettingsScreen.kt",
+      "old": "Copy device ID",
+      "new": "Copy Device ID"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/SettingsScreen.kt",
+      "old": "Enter public DNS IPs separated by commas. IPv4/IPv6 syntax is validated, but this IPv4-only node cannot route IPv6 resolvers.",
+      "new": "Enter Public DNS IPs Separated By Commas. IPv4/IPv6 Syntax Is Validated, But This IPv4-Only Node Cannot Route IPv6 Resolvers."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/SettingsScreen.kt",
+      "old": "DNS IP addresses",
+      "new": "DNS IP Addresses"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/SettingsScreen.kt",
+      "old": "DNS saved. Reconnecting if active.",
+      "new": "DNS Saved. Reconnecting If Active."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/SettingsScreen.kt",
+      "old": "Invalid DNS resolver.",
+      "new": "Invalid DNS Resolver."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/SettingsScreen.kt",
+      "old": "Android's 'Always-on VPN' and 'Block connections without VPN' settings can block traffic when the VPN is unavailable. Lockdown can also block ads because Nsec stays excluded. Confirm the actual setting in Android; opening this page does not enable protection.",
+      "new": "Android's 'Always-On VPN' And 'Block Connections Without VPN' Settings Can Block Traffic When The VPN Is Unavailable. Lockdown Can Also Block Ads Because Nsec Stays Excluded. Confirm The Actual Setting In Android; Opening This Page Does Not Enable Protection."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/HomeScreen.kt",
+      "old": "VPN disconnected",
+      "new": "VPN Disconnected"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/HomeScreen.kt",
+      "old": "Ping: ${selectedServer.pingMs?.let { \"${it}ms\" } ?: \"Unavailable\"} \u2022 Peer capacity: ${ServerStatus.loadText(selectedServer, serverStatusNow)}",
+      "new": "Ping: ${selectedServer.pingMs?.let { \"${it}ms\" } ?: \"Unavailable\"} \u2022 Peer Capacity: ${ServerStatus.loadText(selectedServer, serverStatusNow)}"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/ConnectedScreen.kt",
+      "old": "VPN server IP: ${connectedNode.publicIpv4.orEmpty()}",
+      "new": "VPN Server IP: ${connectedNode.publicIpv4.orEmpty()}"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/ConnectedScreen.kt",
+      "old": "Back to Home",
+      "new": "Back To Home"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/ConnectedScreen.kt",
+      "old": "Connection duration: $durationText",
+      "new": "Connection Duration: $durationText"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/ConnectedScreen.kt",
+      "old": "Download speed",
+      "new": "Download Speed"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/ConnectedScreen.kt",
+      "old": "Upload speed",
+      "new": "Upload Speed"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/ConnectedScreen.kt",
+      "old": "Keep Connected & Back to Home",
+      "new": "Keep Connected & Back To Home"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/SpeedTestScreen.kt",
+      "old": "VPN disconnected. Reconnect and retry.",
+      "new": "VPN Disconnected. Reconnect And Retry."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/SpeedTestScreen.kt",
+      "old": "The connected node has no verified name. Reconnect and retry.",
+      "new": "The Connected Node Has No Verified Name. Reconnect And Retry."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/SpeedTestScreen.kt",
+      "old": "Speed test timed out. Retry when the connection is stable.",
+      "new": "Speed Test Timed Out. Retry When The Connection Is Stable."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/SpeedTestScreen.kt",
+      "old": "Speed test failed. Please retry.",
+      "new": "Speed Test Failed. Please Retry."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/SpeedTestScreen.kt",
+      "old": "Tests inside this app using the separately installed Nsec VPN Speed Helper. Up to 192 MiB of test payload plus network overhead may be used. Cloudflare sees the VPN node's exit IP. Ads remain outside the VPN. HTTP latency includes provider response time.",
+      "new": "Tests Inside This App Using The Separately Installed Nsec VPN Speed Helper. Up To 192 MiB Of Test Payload Plus Network Overhead May Be Used. Cloudflare Sees The VPN Node's Exit IP. Ads Remain Outside The VPN. HTTP Latency Includes Provider Response Time."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/TroubleshootScreen.kt",
+      "old": "API / ad network",
+      "new": "API / Ad Network"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/TroubleshootScreen.kt",
+      "old": "Android reports a validated internet connection. This app\u2019s own traffic stays outside the VPN.",
+      "new": "Android Reports A Validated Internet Connection. This App\u2019s Own Traffic Stays Outside The VPN."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/TroubleshootScreen.kt",
+      "old": "Android has not validated the ordinary internet connection. Check Wi-Fi or mobile data.",
+      "new": "Android Has Not Validated The Ordinary Internet Connection. Check Wi-Fi Or Mobile Data."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/TroubleshootScreen.kt",
+      "old": "The actual HTTPS configuration request succeeded.",
+      "new": "The Actual HTTPS Configuration Request Succeeded."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/TroubleshootScreen.kt",
+      "old": "API returned HTTP ${response.code()}.",
+      "new": "API Returned HTTP ${response.code()}."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/TroubleshootScreen.kt",
+      "old": "Request timed out. Check connectivity and backend availability.",
+      "new": "Request Timed Out. Check Connectivity And Backend Availability."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/TroubleshootScreen.kt",
+      "old": "Could not reach the HTTPS API. Check internet access, date/time and backend availability.",
+      "new": "Could Not Reach The HTTPS API. Check Internet Access, Date/Time And Backend Availability."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/TroubleshootScreen.kt",
+      "old": "WireGuard handshake / UDP",
+      "new": "WireGuard Handshake / UDP"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/TroubleshootScreen.kt",
+      "old": "Actual WireGuard handshake: ${age}s ago. UDP transport worked for that handshake.",
+      "new": "Actual WireGuard Handshake: ${age}s Ago. UDP Transport Worked For That Handshake."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/TroubleshootScreen.kt",
+      "old": "No current verified tunnel. Connect first. A failed handshake alone cannot identify an ISP block or cloud firewall.",
+      "new": "No Current Verified Tunnel. Connect First. A Failed Handshake Alone Cannot Identify An ISP Block Or Cloud Firewall."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/TroubleshootScreen.kt",
+      "old": "Tunnel traffic",
+      "new": "Tunnel Traffic"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/TroubleshootScreen.kt",
+      "old": "WireGuard counters: RX ${stats.totalBytesReceived} bytes, TX ${stats.totalBytesSent} bytes. Use another included app to confirm exit IP.",
+      "new": "WireGuard Counters: RX ${stats.totalBytesReceived} Bytes, TX ${stats.totalBytesSent} Bytes. Use Another Included App To Confirm Exit IP."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/TroubleshootScreen.kt",
+      "old": "Not measured: no active tunnel.",
+      "new": "Not Measured: No Active Tunnel."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/TroubleshootScreen.kt",
+      "old": "DNS configuration",
+      "new": "DNS Configuration"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/TroubleshootScreen.kt",
+      "old": "Active VPN DNS: ${it.joinToString()}. This excluded app cannot prove DNS resolution inside the tunnel; use an included browser DNS leak test.",
+      "new": "Active VPN DNS: ${it.joinToString()}. This Excluded App Cannot Prove DNS Resolution Inside The Tunnel; Use An Included Browser DNS Leak Test."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/TroubleshootScreen.kt",
+      "old": "Not measured: connect first. VPN DNS is ordinary DNS carried inside encrypted WireGuard; it is not DNS-over-TLS.",
+      "new": "Not Measured: Connect First. VPN DNS Is Ordinary DNS Carried Inside Encrypted WireGuard; It Is Not DNS-Over-TLS."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/TroubleshootScreen.kt",
+      "old": "Configured MTU: ${it.mtu}. Path MTU and fragmentation have not been measured. Do not infer that MTU is optimal from a successful API request.",
+      "new": "Configured MTU: ${it.mtu}. Path MTU And Fragmentation Have Not Been Measured. Do Not Infer That MTU Is Optimal From A Successful API Request."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/TroubleshootScreen.kt",
+      "old": "No active configuration. MTU cannot be tested before connecting.",
+      "new": "No Active Configuration. MTU Cannot Be Tested Before Connecting."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/TroubleshootScreen.kt",
+      "old": "Could not complete checks. Retry without changing network settings.",
+      "new": "Could Not Complete Checks. Retry Without Changing Network Settings."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/TroubleshootScreen.kt",
+      "old": "Checks report real observations. Unmeasured checks remain unverified; no client IPs, keys or traffic content are logged.",
+      "new": "Checks Report Real Observations. Unmeasured Checks Remain Unverified; No Client IPs, Keys Or Traffic Content Are Logged."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/TroubleshootScreen.kt",
+      "old": "Run checks to inspect network access, the API and the current WireGuard tunnel.",
+      "new": "Run Checks To Inspect Network Access, The API And The Current WireGuard Tunnel."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/TroubleshootScreen.kt",
+      "old": "Running checks\u2026",
+      "new": "Running Checks\u2026"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/TroubleshootScreen.kt",
+      "old": "Run diagnostics",
+      "new": "Run Diagnostics"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/ServerListScreen.kt",
+      "old": "Saved server list \u00b7 refreshing availability",
+      "new": "Saved Server List \u00b7 Refreshing Availability"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/ServerListScreen.kt",
+      "old": "Loading servers\u2026",
+      "new": "Loading Servers\u2026"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/ServerListScreen.kt",
+      "old": "Search country or city...",
+      "new": "Search Country Or City..."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/ServerListScreen.kt",
+      "old": "Connects to lowest latency & lowest load gateway",
+      "new": "Connects To Lowest Latency & Lowest Load Gateway"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/screens/ServerListScreen.kt",
+      "old": "Tap the star icon on any server location to save it to your favorites list for quick access.",
+      "new": "Tap The Star Icon On Any Server Location To Save It To Your Favorites List For Quick Access."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/components/VipAccessPanel.kt",
+      "old": "Ad-free",
+      "new": "Ad-Free"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/components/VipAccessPanel.kt",
+      "old": "VIP servers",
+      "new": "VIP Servers"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/components/VipAccessPanel.kt",
+      "old": "Preparing your reward\u2026",
+      "new": "Preparing Your Reward\u2026"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/components/VipAccessPanel.kt",
+      "old": "Watch ad & unlock",
+      "new": "Watch Ad & Unlock"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/components/VipAccessPanel.kt",
+      "old": "Explore VIP options",
+      "new": "Explore VIP Options"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/components/VipAccessPanel.kt",
+      "old": "Ad-free + VIP servers",
+      "new": "Ad-Free + VIP Servers"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/components/VipAccessPanel.kt",
+      "old": "Watch ad",
+      "new": "Watch Ad"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/components/VipAccessPanel.kt",
+      "old": "Choose a rewarded pass or a paid plan. Both include ad-free access and VIP servers.",
+      "new": "Choose A Rewarded Pass Or A Paid Plan. Both Include Ad-Free Access And VIP Servers."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/components/VipAccessPanel.kt",
+      "old": "Google Play shows the exact price and purchase terms before you pay. Availability and network performance depend on the node.",
+      "new": "Google Play Shows The Exact Price And Purchase Terms Before You Pay. Availability And Network Performance Depend On The Node."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/components/VipAccessPanel.kt",
+      "old": "View plan \u2192",
+      "new": "View Plan \u2192"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/components/RewardOffer.kt",
+      "old": "Your VIP is active",
+      "new": "Your VIP Is Active"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/components/RewardOffer.kt",
+      "old": "Ad-free access and VIP servers are unlocked.",
+      "new": "Ad-Free Access And VIP Servers Are Unlocked."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/components/RewardOffer.kt",
+      "old": "Reward completed",
+      "new": "Reward Completed"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/components/RewardOffer.kt",
+      "old": "Ad-free access is active. Your VIP server access is being activated.",
+      "new": "Ad-Free Access Is Active. Your VIP Server Access Is Being Activated."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/components/RewardOffer.kt",
+      "old": "Your next VIP pass",
+      "new": "Your Next VIP Pass"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/components/RewardOffer.kt",
+      "old": "Loading the current reward offer\u2026",
+      "new": "Loading The Current Reward Offer\u2026"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/components/RewardOffer.kt",
+      "old": "VIP, your way",
+      "new": "VIP, Your Way"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/components/RewardOffer.kt",
+      "old": "Rewarded ads are unavailable right now. Paid plans are still available.",
+      "new": "Rewarded Ads Are Unavailable Right Now. Paid Plans Are Still Available."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/components/RewardOffer.kt",
+      "old": "$minutes minutes of VIP",
+      "new": "$minutes Minutes Of VIP"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/ui/components/RewardOffer.kt",
+      "old": "Watch a rewarded ad to unlock ad-free access and VIP servers.",
+      "new": "Watch A Rewarded Ad To Unlock Ad-Free Access And VIP Servers."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/MainActivity.kt",
+      "old": "Invalid DNS settings.",
+      "new": "Invalid DNS Settings."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/MainActivity.kt",
+      "old": "VPN permission is required to secure your connection.",
+      "new": "VPN Permission Is Required To Secure Your Connection."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/MainActivity.kt",
+      "old": "App settings are still loading. Please retry shortly.",
+      "new": "App Settings Are Still Loading. Please Retry Shortly."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/MainActivity.kt",
+      "old": "VPN maintenance is in progress. Please try again later.",
+      "new": "VPN Maintenance Is In Progress. Please Try Again Later."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/MainActivity.kt",
+      "old": "Update Nsec VPN before connecting.",
+      "new": "Update Nsec VPN Before Connecting."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/MainActivity.kt",
+      "old": "Invalid DNS settings.",
+      "new": "Invalid DNS Settings."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/MainActivity.kt",
+      "old": "The ad is loading. Please try again shortly.",
+      "new": "The Ad Is Loading. Please Try Again Shortly."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/MainActivity.kt",
+      "old": "VIP activated: ad-free and VIP servers unlocked.",
+      "new": "VIP Activated: Ad-Free And VIP Servers Unlocked."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/MainActivity.kt",
+      "old": "Ad-free is active; VIP activation will retry.",
+      "new": "Ad-Free Is Active; VIP Activation Will Retry."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/MainActivity.kt",
+      "old": "Complete the rewarded ad to unlock VIP.",
+      "new": "Complete The Rewarded Ad To Unlock VIP."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/MainActivity.kt",
+      "old": "Could not prepare the VIP reward.",
+      "new": "Could Not Prepare The VIP Reward."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/MainActivity.kt",
+      "old": "DNS saved. Active tunnels reconnect to apply it.",
+      "new": "DNS Saved. Active Tunnels Reconnect To Apply It."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/MainActivity.kt",
+      "old": "Purchase verified; entitlement refresh pending",
+      "new": "Purchase Verified; Entitlement Refresh Pending"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/MainActivity.kt",
+      "old": "Enter your invite or promotional code to unlock Premium access.",
+      "new": "Enter Your Invite Or Promotional Code To Unlock Premium Access."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/MainActivity.kt",
+      "old": "Enter promo code",
+      "new": "Enter Promo Code"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/MainActivity.kt",
+      "old": "Promo redeemed. Premium access is active.",
+      "new": "Promo Redeemed. Premium Access Is Active."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/MainActivity.kt",
+      "old": "Could not redeem code",
+      "new": "Could Not Redeem Code"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/repository/VpnRepository.kt",
+      "old": "Server list unavailable (${response.code()})",
+      "new": "Server List Unavailable (${response.code()})"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/repository/VpnRepository.kt",
+      "old": "Server list unavailable; check your internet connection",
+      "new": "Server List Unavailable; Check Your Internet Connection"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/repository/VpnRepository.kt",
+      "old": "VPN maintenance is in progress. Please try again later.",
+      "new": "VPN Maintenance Is In Progress. Please Try Again Later."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/repository/VpnRepository.kt",
+      "old": "Server is disabled",
+      "new": "Server Is Disabled"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/repository/VpnRepository.kt",
+      "old": "Server is offline",
+      "new": "Server Is Offline"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/repository/VpnRepository.kt",
+      "old": "This server requires an active premium pass",
+      "new": "This Server Requires An Active Premium Pass"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/repository/VpnRepository.kt",
+      "old": "Peer creation failed (${response.code()})",
+      "new": "Peer Creation Failed (${response.code()})"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/repository/VpnRepository.kt",
+      "old": "Device registration failed",
+      "new": "Device Registration Failed"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/repository/VpnRepository.kt",
+      "old": "Enter a valid country and city (2\u201380 characters).",
+      "new": "Enter A Valid Country And City (2\u201380 Characters)."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/repository/VpnRepository.kt",
+      "old": "Your note must be 500 characters or fewer.",
+      "new": "Your Note Must Be 500 Characters Or Fewer."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/repository/VpnRepository.kt",
+      "old": "Please wait ${(remaining / 60000) + 1} minutes before another request.",
+      "new": "Please Wait ${(remaining / 60000) + 1} Minutes Before Another Request."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/repository/VpnRepository.kt",
+      "old": "Please reopen the app to sign in again.",
+      "new": "Please Reopen The App To Sign In Again."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/repository/VpnRepository.kt",
+      "old": "Request submitted: ${body.data.city}, ${body.data.country} (Pending).",
+      "new": "Request Submitted: ${body.data.city}, ${body.data.country} (Pending)."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/repository/VpnRepository.kt",
+      "old": "Please wait ${(seconds + 59) / 60} minutes before another request.",
+      "new": "Please Wait ${(seconds + 59) / 60} Minutes Before Another Request."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/repository/VpnRepository.kt",
+      "old": "This device is blocked. Contact support.",
+      "new": "This Device Is Blocked. Contact Support."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/repository/VpnRepository.kt",
+      "old": "Could not submit the request (${response.code()}). Try again.",
+      "new": "Could Not Submit The Request (${response.code()}). Try Again."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/repository/VpnRepository.kt",
+      "old": "Please sign in again",
+      "new": "Please Sign In Again"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/repository/VpnRepository.kt",
+      "old": "VIP reward preparation is unavailable. Please try again",
+      "new": "VIP Reward Preparation Is Unavailable. Please Try Again"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/repository/VpnRepository.kt",
+      "old": "Please sign in again",
+      "new": "Please Sign In Again"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/repository/VpnRepository.kt",
+      "old": "VIP grant unavailable. A completed reward will retry when the service returns",
+      "new": "VIP Grant Unavailable. A Completed Reward Will Retry When The Service Returns"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/repository/VpnRepository.kt",
+      "old": "Please sign in again",
+      "new": "Please Sign In Again"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/repository/VpnRepository.kt",
+      "old": "You already redeemed this code",
+      "new": "You Already Redeemed This Code"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/repository/VpnRepository.kt",
+      "old": "This code has expired",
+      "new": "This Code Has Expired"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/repository/VpnRepository.kt",
+      "old": "This promotion has not started yet.",
+      "new": "This Promotion Has Not Started Yet."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/repository/VpnRepository.kt",
+      "old": "You already have VIP without an expiry; this code was not consumed.",
+      "new": "You Already Have VIP Without An Expiry; This Code Was Not Consumed."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/repository/VpnRepository.kt",
+      "old": "This code has reached its redemption limit",
+      "new": "This Code Has Reached Its Redemption Limit"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/repository/VpnRepository.kt",
+      "old": "Too many attempts. Try again later",
+      "new": "Too Many Attempts. Try Again Later"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/repository/VpnRepository.kt",
+      "old": "Code is invalid or disabled",
+      "new": "Code Is Invalid Or Disabled"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/repository/VpnRepository.kt",
+      "old": "Could not redeem the code. Please try again",
+      "new": "Could Not Redeem The Code. Please Try Again"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/repository/VpnRepository.kt",
+      "old": "Invalid entitlement response",
+      "new": "Invalid Entitlement Response"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/vpn/WireGuardTunnelManager.kt",
+      "old": "Invalid server data",
+      "new": "Invalid Server Data"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/vpn/WireGuardTunnelManager.kt",
+      "old": "Server endpoint must resolve to public IPv4",
+      "new": "Server Endpoint Must Resolve To Public IPv4"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/vpn/WireGuardTunnelManager.kt",
+      "old": "Node public IP does not match endpoint",
+      "new": "Node Public IP Does Not Match Endpoint"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/vpn/WireGuardTunnelManager.kt",
+      "old": "Couldn't reach the server",
+      "new": "Couldn't Reach The Server"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/vpn/WireGuardTunnelManager.kt",
+      "old": "Invalid server configuration",
+      "new": "Invalid Server Configuration"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/vpn/WireGuardTunnelManager.kt",
+      "old": "Couldn't establish the VPN connection",
+      "new": "Couldn't Establish The VPN Connection"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/vpn/WireGuardTunnelManager.kt",
+      "old": "Couldn't reach the server",
+      "new": "Couldn't Reach The Server"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/vpn/WireGuardTunnelManager.kt",
+      "old": "Couldn't reach the server",
+      "new": "Couldn't Reach The Server"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/vpn/WireGuardTunnelManager.kt",
+      "old": "Couldn't reach the server",
+      "new": "Couldn't Reach The Server"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/vpn/WireGuardTunnelManager.kt",
+      "old": "This node needs reachable IPv4 DNS resolvers.",
+      "new": "This Node Needs Reachable IPv4 DNS Resolvers."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/vpn/WireGuardTunnelManager.kt",
+      "old": "Invalid server tunnel configuration",
+      "new": "Invalid Server Tunnel Configuration"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/network/SpeedTestClient.kt",
+      "old": "Connect to a VPN server first.",
+      "new": "Connect To A VPN Server First."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/network/SpeedTestClient.kt",
+      "old": "Include Nsec VPN Speed Helper in split tunneling and reconnect.",
+      "new": "Include Nsec VPN Speed Helper In Split Tunneling And Reconnect."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/network/SpeedTestClient.kt",
+      "old": "The connected node has no verified public IP.",
+      "new": "The Connected Node Has No Verified Public IP."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/network/SpeedTestClient.kt",
+      "old": "VPN changed or disconnected. Reconnect and retry.",
+      "new": "VPN Changed Or Disconnected. Reconnect And Retry."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/network/SpeedTestClient.kt",
+      "old": "The speed helper stopped. Retry the test.",
+      "new": "The Speed Helper Stopped. Retry The Test."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/network/SpeedTestClient.kt",
+      "old": "The speed helper disconnected.",
+      "new": "The Speed Helper Disconnected."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/network/SpeedTestClient.kt",
+      "old": "The speed helper could not start.",
+      "new": "The Speed Helper Could Not Start."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/network/SpeedTestClient.kt",
+      "old": "The speed helper was updated. Retry the test.",
+      "new": "The Speed Helper Was Updated. Retry The Test."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/network/SpeedTestClient.kt",
+      "old": "Install the speed helper signed with the same key as Nsec VPN.",
+      "new": "Install The Speed Helper Signed With The Same Key As Nsec VPN."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/network/SpeedTestClient.kt",
+      "old": "Install Nsec VPN Speed Helper from the same build first.",
+      "new": "Install Nsec VPN Speed Helper From The Same Build First."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/data/model/VpnModels.kt",
+      "old": "Automatic (server DNS)",
+      "new": "Automatic (Server DNS)"
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/vpn/DnsPolicy.kt",
+      "old": "Enter one to four DNS IP addresses.",
+      "new": "Enter One To Four DNS IP Addresses."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/vpn/DnsPolicy.kt",
+      "old": "DNS must be a numeric IPv4 or IPv6 address, not a hostname.",
+      "new": "DNS Must Be A Numeric IPv4 Or IPv6 Address, Not A Hostname."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/vpn/DnsPolicy.kt",
+      "old": "Invalid DNS IPv4 address.",
+      "new": "Invalid DNS IPv4 Address."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/vpn/DnsPolicy.kt",
+      "old": "Invalid DNS IP address.",
+      "new": "Invalid DNS IP Address."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/vpn/DnsPolicy.kt",
+      "old": "Use a reachable public DNS resolver.",
+      "new": "Use A Reachable Public DNS Resolver."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/vpn/DnsPolicy.kt",
+      "old": "Private or documentation DNS is not supported on this node.",
+      "new": "Private Or Documentation DNS Is Not Supported On This Node."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/vpn/DnsPolicy.kt",
+      "old": "Use a reachable public IPv6 resolver.",
+      "new": "Use A Reachable Public IPv6 Resolver."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/vpn/DnsPolicy.kt",
+      "old": "Invalid DNS address.",
+      "new": "Invalid DNS Address."
+    },
+    {
+      "file": "app/src/main/java/com/nsec/vpn/vpn/DnsPolicy.kt",
+      "old": "This VPN node supports IPv4 only. IPv6 DNS requires a real IPv6 tunnel; enter an IPv4 resolver.",
+      "new": "This VPN Node Supports IPv4 Only. IPv6 DNS Requires A Real IPv6 Tunnel; Enter An IPv4 Resolver."
+    },
+    {
+      "file": "speedtest-helper/src/main/java/com/nsec/vpn/speedtest/SpeedTestService.java",
+      "old": "Test cancelled or VPN network changed.",
+      "new": "Test Cancelled Or VPN Network Changed."
+    },
+    {
+      "file": "speedtest-helper/src/main/java/com/nsec/vpn/speedtest/SpeedTestService.java",
+      "old": "Speed test timed out.",
+      "new": "Speed Test Timed Out."
+    },
+    {
+      "file": "speedtest-helper/src/main/java/com/nsec/vpn/speedtest/SpeedTestService.java",
+      "old": "The VPN network was lost. Reconnect and retry.",
+      "new": "The VPN Network Was Lost. Reconnect And Retry."
+    },
+    {
+      "file": "speedtest-helper/src/main/java/com/nsec/vpn/speedtest/SpeedTestService.java",
+      "old": "Speed provider returned HTTP ",
+      "new": "Speed Provider Returned HTTP "
+    },
+    {
+      "file": "speedtest-helper/src/main/java/com/nsec/vpn/speedtest/SpeedTestService.java",
+      "old": ". Try again later.",
+      "new": ". Try Again Later."
+    },
+    {
+      "file": "speedtest-helper/src/main/java/com/nsec/vpn/speedtest/SpeedTestService.java",
+      "old": "Unexpected provider response.",
+      "new": "Unexpected Provider Response."
+    },
+    {
+      "file": "speedtest-helper/src/main/java/com/nsec/vpn/speedtest/SpeedTestService.java",
+      "old": "VPN network lost. Reconnect and retry.",
+      "new": "VPN Network Lost. Reconnect And Retry."
+    },
+    {
+      "file": "speedtest-helper/src/main/java/com/nsec/vpn/speedtest/SpeedTestService.java",
+      "old": "The helper is not included in the VPN. Update split tunneling and reconnect.",
+      "new": "The Helper Is Not Included In The VPN. Update Split Tunneling And Reconnect."
+    },
+    {
+      "file": "speedtest-helper/src/main/java/com/nsec/vpn/speedtest/SpeedTestService.java",
+      "old": "Verifying VPN exit",
+      "new": "Verifying VPN Exit"
+    },
+    {
+      "file": "speedtest-helper/src/main/java/com/nsec/vpn/speedtest/SpeedTestService.java",
+      "old": "A verified node public IP is required.",
+      "new": "A Verified Node Public IP Is Required."
+    },
+    {
+      "file": "speedtest-helper/src/main/java/com/nsec/vpn/speedtest/SpeedTestService.java",
+      "old": "The test did not exit from the connected node. No speed result was saved.",
+      "new": "The Test Did Not Exit From The Connected Node. No Speed Result Was Saved."
+    },
+    {
+      "file": "speedtest-helper/src/main/java/com/nsec/vpn/speedtest/SpeedTestService.java",
+      "old": "HTTP latency",
+      "new": "HTTP Latency"
+    },
+    {
+      "file": "speedtest-helper/src/main/java/com/nsec/vpn/speedtest/SpeedTestService.java",
+      "old": "Speed provider could not be reached through the VPN. Try again.",
+      "new": "Speed Provider Could Not Be Reached Through The VPN. Try Again."
+    },
+    {
+      "file": "speedtest-helper/src/main/java/com/nsec/vpn/speedtest/SpeedTestService.java",
+      "old": "The provider returned no download payload.",
+      "new": "The Provider Returned No Download Payload."
+    },
+    {
+      "file": "speedtest-helper/src/main/java/com/nsec/vpn/speedtest/SpeedTestService.java",
+      "old": "Unexpected upload acknowledgement.",
+      "new": "Unexpected Upload Acknowledgement."
+    },
+    {
+      "file": "speedtest-helper/src/main/java/com/nsec/vpn/speedtest/SpeedTestService.java",
+      "old": "No upload was acknowledged.",
+      "new": "No Upload Was Acknowledged."
+    }
+  ]
+}

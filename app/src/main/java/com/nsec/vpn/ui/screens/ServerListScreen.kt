@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nsec.vpn.data.model.Server
+import com.nsec.vpn.data.model.LocationSelection
 import com.nsec.vpn.data.model.VpnState
 import com.nsec.vpn.data.monetization.AdMobConfig
 import com.nsec.vpn.data.monetization.NativeAdManager
@@ -56,13 +57,14 @@ fun ServerListScreen(
     var searchQuery by remember { mutableStateOf("") }
     var selectedTab by remember { mutableIntStateOf(0) }
 
-    val favCount = remember(servers) { servers.count { it.isFavorite } }
+    val locations = remember(servers, userTier) { LocationSelection.group(servers, userTier) }
+    val favCount = remember(locations) { locations.count { it.isFavorite } }
     val tabs = remember(favCount) {
         listOf("All", "Free", "VIP", if (favCount > 0) "Favorites ($favCount)" else "Favorites")
     }
 
-    val filteredServers = remember(servers, searchQuery, selectedTab) {
-        servers.filter { s ->
+    val filteredServers = remember(locations, searchQuery, selectedTab) {
+        locations.filter { s ->
             val matchesQuery = s.name.contains(searchQuery, ignoreCase = true) ||
                     s.countryName.contains(searchQuery, ignoreCase = true) ||
                     s.city.contains(searchQuery, ignoreCase = true)
@@ -83,7 +85,7 @@ fun ServerListScreen(
         var adCounter = 0
         filteredServers.forEachIndexed { index, server ->
             items.add(ServerListItem.ServerItem(server))
-            if (userTier == "FREE" && adMobConfig.nativeEnabled && (index + 1) % 8 == 0 && adCounter < 3) {
+            if (userTier == "FREE" && adMobConfig.nativeEnabled && (index == 0 || (index + 1) % 8 == 0) && adCounter < 3) {
                 items.add(ServerListItem.AdSlot("ad_slot_$adCounter"))
                 adCounter++
             }
@@ -120,18 +122,18 @@ fun ServerListScreen(
             }
         }
 
-        if (usingCache) Text("Saved server list · refreshing availability", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (usingCache) Text("Saved Server List · Refreshing Availability", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         errorMessage?.let { Text(it, fontSize = 12.sp, color = MaterialTheme.colorScheme.error) }
         if (isLoading && servers.isEmpty()) Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             repeat(3) { Box(Modifier.fillMaxWidth().height(64.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant)) }
-            Text("Loading servers…", fontSize = 12.sp)
+            Text("Loading Servers…", fontSize = 12.sp)
         }
         Spacer(modifier = Modifier.height(12.dp))
 
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            placeholder = { Text("Search country or city...", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp) },
+            placeholder = { Text("Search Country Or City...", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp) },
             leadingIcon = {
                 Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             },
@@ -186,7 +188,7 @@ fun ServerListScreen(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "Connects to lowest latency & lowest load gateway",
+                    text = "Connects To Lowest Latency & Lowest Load Gateway",
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -259,7 +261,7 @@ fun ServerListScreen(
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "Tap the star icon on any server location to save it to your favorites list for quick access.",
+                        text = "Tap The Star Icon On Any Server Location To Save It To Your Favorites List For Quick Access.",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
@@ -294,7 +296,7 @@ fun ServerListScreen(
                             val server = item.server
                             ServerCard(
                                 server = server,
-                                isSelected = selectedServer?.id == server.id,
+                                isSelected = selectedServer?.let { LocationSelection.sameLocation(it, server) } == true,
                                 onSelect = {
                                     if (server.isPremiumOnly && userTier == "FREE") {
                                         onUpgradeRequired()

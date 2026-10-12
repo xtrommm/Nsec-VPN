@@ -40,6 +40,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.nsec.vpn.data.model.ServerStatus
 import com.nsec.vpn.ui.components.VipAccessSheet
+import com.nsec.vpn.ui.components.StartupScreen
 import com.nsec.vpn.ui.components.RewardOffer
 
 class MainActivity : ComponentActivity() {
@@ -70,6 +71,11 @@ class MainActivity : ComponentActivity() {
             val remoteConfigError by remoteConfigManager.error.collectAsStateWithLifecycle()
 
             NsecVpnTheme(themeMode = themeMode) {
+                var showStartup by remember { mutableStateOf(savedInstanceState == null) }
+                LaunchedEffect(Unit) { kotlinx.coroutines.delay(250); showStartup = false }
+                if (showStartup) {
+                    StartupScreen()
+                } else {
                 val coroutineScope = rememberCoroutineScope()
 
                 val vpnState by tunnelManager.vpnState.collectAsStateWithLifecycle()
@@ -116,7 +122,7 @@ class MainActivity : ComponentActivity() {
                         val server = selectedServer ?: servers.firstOrNull()
                         if (server != null) {
                             val dns = try { vpnRepo.dnsServersForConnection() } catch (error: IllegalArgumentException) {
-                                Toast.makeText(this@MainActivity, error.message ?: "Invalid DNS settings.", Toast.LENGTH_LONG).show()
+                                Toast.makeText(this@MainActivity, error.message ?: "Invalid DNS Settings.", Toast.LENGTH_LONG).show()
                                 return@rememberLauncherForActivityResult
                             }
                             tunnelManager.startConnect(
@@ -127,28 +133,28 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     } else {
-                        Toast.makeText(this, "VPN permission is required to secure your connection.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this, "VPN Permission Is Required To Secure Your Connection.", Toast.LENGTH_SHORT).show()
                     }
                 }
 
                 fun startConnectInternal(isUserInitiated: Boolean) {
                     if (!remoteConfigLoaded) {
-                        Toast.makeText(this@MainActivity, "App settings are still loading. Please retry shortly.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@MainActivity, "App Settings Are Still Loading. Please Retry Shortly.", Toast.LENGTH_SHORT).show()
                         return
                     }
                     if (remoteConfig.maintenanceMode) {
-                        Toast.makeText(this@MainActivity, "VPN maintenance is in progress. Please try again later.", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@MainActivity, "VPN Maintenance Is In Progress. Please Try Again Later.", Toast.LENGTH_LONG).show()
                         return
                     }
                     if (remoteConfig.forceUpdate && BuildConfig.VERSION_CODE < remoteConfig.minAppVersionCode) {
-                        Toast.makeText(this@MainActivity, "Update Nsec VPN before connecting.", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@MainActivity, "Update Nsec VPN Before Connecting.", Toast.LENGTH_LONG).show()
                         return
                     }
                     isUserInitiatedConnect = isUserInitiated
                     val server = selectedServer ?: servers.firstOrNull()
                     if (server != null) {
                         val dns = try { vpnRepo.dnsServersForConnection() } catch (error: IllegalArgumentException) {
-                            Toast.makeText(this@MainActivity, error.message ?: "Invalid DNS settings.", Toast.LENGTH_LONG).show()
+                            Toast.makeText(this@MainActivity, error.message ?: "Invalid DNS Settings.", Toast.LENGTH_LONG).show()
                             return
                         }
                         tunnelManager.startConnect(
@@ -183,7 +189,7 @@ class MainActivity : ComponentActivity() {
                     if (rewardBusy || !rewardOffer.available) return
                     if (!adMobManager.isRewardedReady()) {
                         adMobManager.preloadRewarded(this@MainActivity)
-                        Toast.makeText(this@MainActivity, "The ad is loading. Please try again shortly.", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@MainActivity, "The Ad Is Loading. Please Try Again Shortly.", Toast.LENGTH_LONG).show()
                         return
                     }
                     rewardBusy = true
@@ -202,10 +208,10 @@ class MainActivity : ComponentActivity() {
                                     coroutineScope.launch {
                                         try {
                                             vpnRepo.claimReward(ticket)
-                                            Toast.makeText(this@MainActivity, "VIP activated: ad-free and VIP servers unlocked.", Toast.LENGTH_LONG).show()
+                                            Toast.makeText(this@MainActivity, "VIP Activated: Ad-Free And VIP Servers Unlocked.", Toast.LENGTH_LONG).show()
                                         } catch (error: kotlinx.coroutines.CancellationException) { throw error }
                                         catch (error: Exception) {
-                                            Toast.makeText(this@MainActivity, error.message ?: "Ad-free is active; VIP activation will retry.", Toast.LENGTH_LONG).show()
+                                            Toast.makeText(this@MainActivity, error.message ?: "Ad-Free Is Active; VIP Activation Will Retry.", Toast.LENGTH_LONG).show()
                                         }
                                     }
                                 },
@@ -215,13 +221,13 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onAdDismissed = {
                                     rewardBusy = false
-                                    if (!earned && !adFailed) Toast.makeText(this@MainActivity, "Complete the rewarded ad to unlock VIP.", Toast.LENGTH_SHORT).show()
+                                    if (!earned && !adFailed) Toast.makeText(this@MainActivity, "Complete The Rewarded Ad To Unlock VIP.", Toast.LENGTH_SHORT).show()
                                 }
                             )
                         } catch (error: kotlinx.coroutines.CancellationException) { rewardBusy = false; throw error }
                         catch (error: Exception) {
                             rewardBusy = false
-                            Toast.makeText(this@MainActivity, error.message ?: "Could not prepare the VIP reward.", Toast.LENGTH_LONG).show()
+                            Toast.makeText(this@MainActivity, error.message ?: "Could Not Prepare The VIP Reward.", Toast.LENGTH_LONG).show()
                         }
                     }
                 }
@@ -447,7 +453,7 @@ class MainActivity : ComponentActivity() {
                                             onSelectThemeMode = { vpnRepo.setThemeMode(it) },
                                             selectedDns = selectedDns,
                                             onSelectDns = { provider ->
-                                                try { vpnRepo.setDns(provider); tunnelManager.updateDns(vpnRepo.dnsServersForConnection()); Toast.makeText(this@MainActivity, "DNS saved. Active tunnels reconnect to apply it.", Toast.LENGTH_SHORT).show() }
+                                                try { vpnRepo.setDns(provider); tunnelManager.updateDns(vpnRepo.dnsServersForConnection()); Toast.makeText(this@MainActivity, "DNS Saved. Active Tunnels Reconnect To Apply It.", Toast.LENGTH_SHORT).show() }
                                                 catch (e: IllegalArgumentException) { Toast.makeText(this@MainActivity, e.message, Toast.LENGTH_LONG).show() }
                                             },
                                             customDns = vpnRepo.customDns(),
@@ -528,7 +534,7 @@ class MainActivity : ComponentActivity() {
                                         coroutineScope.launch {
                                             try { vpnRepo.refreshVerifiedEntitlement() }
                                             catch (error: kotlinx.coroutines.CancellationException) { throw error }
-                                            catch (_: Exception) { Toast.makeText(this@MainActivity, "Purchase verified; entitlement refresh pending", Toast.LENGTH_LONG).show() }
+                                            catch (_: Exception) { Toast.makeText(this@MainActivity, "Purchase Verified; Entitlement Refresh Pending", Toast.LENGTH_LONG).show() }
                                         }
                                     },
                                     onError = { error -> Toast.makeText(this@MainActivity, error, Toast.LENGTH_LONG).show() }
@@ -551,11 +557,11 @@ class MainActivity : ComponentActivity() {
                         },
                         text = {
                             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Text("Enter your invite or promotional code to unlock Premium access.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                                Text("Enter Your Invite Or Promotional Code To Unlock Premium Access.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
                                 OutlinedTextField(
                                     value = promoCodeInput,
                                     onValueChange = { promoCodeInput = it },
-                                    placeholder = { Text("Enter promo code", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                    placeholder = { Text("Enter Promo Code", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                                     singleLine = true,
                                     shape = RoundedCornerShape(10.dp),
                                     colors = OutlinedTextFieldDefaults.colors(
@@ -578,10 +584,10 @@ class MainActivity : ComponentActivity() {
                                         coroutineScope.launch {
                                             try {
                                                 vpnRepo.redeemPromo(promoCodeInput)
-                                                Toast.makeText(this@MainActivity, "Promo redeemed. Premium access is active.", Toast.LENGTH_LONG).show()
+                                                Toast.makeText(this@MainActivity, "Promo Redeemed. Premium Access Is Active.", Toast.LENGTH_LONG).show()
                                                 promoCodeInput = ""
                                             } catch (error: Exception) {
-                                                Toast.makeText(this@MainActivity, error.message ?: "Could not redeem code", Toast.LENGTH_LONG).show()
+                                                Toast.makeText(this@MainActivity, error.message ?: "Could Not Redeem Code", Toast.LENGTH_LONG).show()
                                             }
                                         }
                                     }
@@ -597,6 +603,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     )
+                }
                 }
             }
         }

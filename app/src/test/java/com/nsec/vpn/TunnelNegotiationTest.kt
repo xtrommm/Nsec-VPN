@@ -29,6 +29,6 @@ class TunnelNegotiationTest {
         try {
             TunnelNegotiation.establish(prepare = { "test-config" }, activate = {}, handshake = { false })
             fail("No handshake must be a timeout")
-        } catch (error: SocketTimeoutException) { assertEquals("Couldn't reach the server", error.message) }
+        } catch (error: SocketTimeoutException) { assertEquals("Couldn't Reach The Server", error.message) }
     }
 }

@@ -202,7 +202,7 @@ fun HomeScreen(
             } else {
                 Icon(
                     imageVector = Icons.Default.Warning,
-                    contentDescription = "VPN disconnected",
+                    contentDescription = "VPN Disconnected",
                     tint = AmberWarning,
                     modifier = Modifier.size(18.dp)
                 )
@@ -273,7 +273,7 @@ fun HomeScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Ping: ${selectedServer.pingMs?.let { "${it}ms" } ?: "Unavailable"} • Peer capacity: ${ServerStatus.loadText(selectedServer, serverStatusNow)}",
+                            text = "Ping: ${selectedServer.pingMs?.let { "${it}ms" } ?: "Unavailable"} • Peer Capacity: ${ServerStatus.loadText(selectedServer, serverStatusNow)}",
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

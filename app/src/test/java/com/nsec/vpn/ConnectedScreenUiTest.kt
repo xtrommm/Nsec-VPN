@@ -33,7 +33,7 @@ class ConnectedScreenUiTest {
             countryCode = "US",
             countryName = "United States",
             city = "New York",
-            flagEmoji = "🇺🇸",
+            flagEmoji = "ðŸ‡ºðŸ‡¸",
             currentLoad = 35,
             isPremiumOnly = false
         )
@@ -58,7 +58,7 @@ class ConnectedScreenUiTest {
             }
         }
 
-        composeTestRule.onNodeWithTag("vpn_server_ip").assertTextEquals("VPN server IP: 47.85.109.170")
+        composeTestRule.onNodeWithTag("vpn_server_ip").assertTextEquals("VPN Server IP: 47.85.109.170")
         composeTestRule.onNodeWithText("10.8.0.2/32", substring = true).assertDoesNotExist()
 
         // Verify timer is displayed ("02:05")
