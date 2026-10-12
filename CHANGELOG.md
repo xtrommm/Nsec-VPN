@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — Charcoal appearance update
+
+- Reskinned dark mode with neutral charcoal surfaces, brighter text and theme-aware navigation/server accents.
+- Replaced the compact server-request dialog with a scrollable bottom sheet, validation feedback, character counter and submitting state.
+- Documented support-email publishing through Remote config & ads.
+
 ## Unreleased — Android experience phase 2
 
 - Fixed Connection Status footer, selected tab, Back behavior and saved navigation.
