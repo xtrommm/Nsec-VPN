@@ -57,9 +57,13 @@ fun SettingsScreen(
     supportEmail: String? = null,
     deviceId: String = "",
     customDns: String = "",
-    activeDns: List<String> = emptyList()
+    activeDns: List<String> = emptyList(),
+    onRecoveryStatus: suspend () -> Boolean = { error("Recovery Unavailable") },
+    onSetRecoveryPin: suspend (String, String?) -> Unit = { _, _ -> error("Recovery Unavailable") },
+    onRecoverDevice: suspend (String, String) -> Unit = { _, _ -> error("Recovery Unavailable") }
 ) {
     val context = LocalContext.current
+    var showRecovery by remember { mutableStateOf(false) }
     var showRequestDialog by remember { mutableStateOf(false) }
     fun copy(value: String) {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -215,6 +219,8 @@ fun SettingsScreen(
             )
         }
         Spacer(modifier = Modifier.height(24.dp))
+        SettingsClickableItem(icon = Icons.Default.Lock, title = "Device VIP Recovery",
+            subtitle = "Protect Or Restore VIP With Device ID And A Private PIN", onClick = { showRecovery = true })
         SectionHeader("YOUR DEVICE ID")
         Text(deviceId, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         TextButton(enabled = deviceId.isNotBlank(), onClick = { copy(deviceId) }) {
@@ -223,6 +229,10 @@ fun SettingsScreen(
         }
 
     }
+
+    if (showRecovery) com.nsec.vpn.ui.components.DeviceRecoverySheet(deviceId,
+        onDismiss = { showRecovery = false }, onStatus = onRecoveryStatus,
+        onSetPin = onSetRecoveryPin, onRecover = onRecoverDevice)
 
     if (showCustomDns) AlertDialog(
         onDismissRequest = { showCustomDns = false }, title = { Text("Custom DNS") },

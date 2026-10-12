@@ -40,7 +40,6 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.nsec.vpn.data.model.ServerStatus
 import com.nsec.vpn.ui.components.VipAccessSheet
-import com.nsec.vpn.ui.components.StartupScreen
 import com.nsec.vpn.ui.components.RewardOffer
 
 class MainActivity : ComponentActivity() {
@@ -71,11 +70,6 @@ class MainActivity : ComponentActivity() {
             val remoteConfigError by remoteConfigManager.error.collectAsStateWithLifecycle()
 
             NsecVpnTheme(themeMode = themeMode) {
-                var showStartup by remember { mutableStateOf(savedInstanceState == null) }
-                LaunchedEffect(Unit) { kotlinx.coroutines.delay(250); showStartup = false }
-                if (showStartup) {
-                    StartupScreen()
-                } else {
                 val coroutineScope = rememberCoroutineScope()
 
                 val vpnState by tunnelManager.vpnState.collectAsStateWithLifecycle()
@@ -91,7 +85,7 @@ class MainActivity : ComponentActivity() {
                 val selectedDns by vpnRepo.selectedDns.collectAsStateWithLifecycle()
                 val splitTunnelingEnabled by vpnRepo.splitTunnelingEnabled.collectAsStateWithLifecycle()
                 val autoConnectEnabled by vpnRepo.autoConnectEnabled.collectAsStateWithLifecycle()
-                val installationId = remember { serviceLocator.keyStoreManager.getOrCreateDeviceId() }
+                val installationId by vpnRepo.deviceIdentity.collectAsStateWithLifecycle()
                 val excludedPackages by vpnRepo.excludedPackages.collectAsStateWithLifecycle()
 
                 var currentTab by rememberSaveable(stateSaver = Saver<Screen, String>(save = { it.route }, restore = { route -> listOf(Screen.Home, Screen.Servers, Screen.SpeedTest, Screen.Settings).firstOrNull { it.route == route } ?: Screen.Home })) { mutableStateOf<Screen>(Screen.Home) }
@@ -469,6 +463,12 @@ class MainActivity : ComponentActivity() {
                                             onRedeemPromoCode = { showPromoDialog = true },
                                             supportEmail = remoteConfig.supportEmail,
                                             deviceId = installationId,
+                                            onRecoveryStatus = { vpnRepo.recoveryConfigured() },
+                                            onSetRecoveryPin = { pin, oldPin -> vpnRepo.setRecoveryPin(pin, oldPin) },
+                                            onRecoverDevice = { id, pin ->
+                                                require(vpnState !is VpnState.Connected && vpnState !is VpnState.Connecting && vpnState !is VpnState.Disconnecting) { "Disconnect The VPN Before Restoring A Device." }
+                                                vpnRepo.recoverDevice(id, pin)
+                                            },
                                             onRequestServer = { country, city, note -> vpnRepo.requestServer(country, city, note) },
                                             onOpenDebugDiagnostics = { activeSubScreen = "debug_diagnostics" }
                                         )
@@ -507,7 +507,7 @@ class MainActivity : ComponentActivity() {
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
                             ) {
-                                Text("Accept & Continue")
+                                Text("Continue")
                             }
                         },
                         dismissButton = {
@@ -603,7 +603,6 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     )
-                }
                 }
             }
         }
