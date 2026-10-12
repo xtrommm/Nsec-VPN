@@ -43,8 +43,8 @@ fun VipRewardCard(offer: RewardOffer, busy: Boolean, onWatchReward: () -> Unit,
             Text(offer.title, fontSize = if (compact) 22.sp else 27.sp, fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onPrimaryContainer)
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Benefit("Ad-free", Modifier.weight(1f))
-                Benefit("VIP servers", Modifier.weight(1f))
+                Benefit("Ad-Free", Modifier.weight(1f))
+                Benefit("VIP Servers", Modifier.weight(1f))
             }
             Text(offer.detail, color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 13.sp)
             if (offer.available || busy) {
@@ -54,11 +54,11 @@ fun VipRewardCard(offer: RewardOffer, busy: Boolean, onWatchReward: () -> Unit,
                     if (busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                     else Icon(Icons.Default.PlayArrow, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text(if (busy) "Preparing your reward…" else "Watch ad & unlock", fontWeight = FontWeight.Bold)
+                    Text(if (busy) "Preparing Your Reward…" else "Watch Ad & Unlock", fontWeight = FontWeight.Bold)
                 }
             }
             if (showMoreOptions) TextButton(onClick = onMoreOptions, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                Text("Explore VIP options")
+                Text("Explore VIP Options")
             }
         }
     }
@@ -79,7 +79,7 @@ private fun CompactVipOffer(offer: RewardOffer, busy: Boolean, onWatchReward: ()
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(offer.title, fontSize = 16.sp, fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer)
-                Text(if (offer.available) "Ad-free + VIP servers" else offer.detail,
+                Text(if (offer.available) "Ad-Free + VIP Servers" else offer.detail,
                     fontSize = 12.sp, color = MaterialTheme.colorScheme.onPrimaryContainer)
             }
             if (offer.available || busy) {
@@ -87,7 +87,7 @@ private fun CompactVipOffer(offer: RewardOffer, busy: Boolean, onWatchReward: ()
                     modifier = Modifier.heightIn(min = 48.dp).testTag("watch_vip_reward"),
                     contentPadding = PaddingValues(horizontal = 12.dp), shape = RoundedCornerShape(12.dp)) {
                     if (busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                    else Text("Watch ad", fontWeight = FontWeight.Bold)
+                    else Text("Watch Ad", fontWeight = FontWeight.Bold)
                 }
             } else {
                 TextButton(onClick = onMoreOptions, modifier = Modifier.heightIn(min = 48.dp)) {
@@ -123,14 +123,14 @@ fun VipAccessSheet(offer: RewardOffer, busy: Boolean, onDismiss: () -> Unit,
             .padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text("A better way to VIP", fontSize = 26.sp, fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface)
-            Text("Choose a rewarded pass or a paid plan. Both include ad-free access and VIP servers.",
+            Text("Choose A Rewarded Pass Or A Paid Plan. Both Include Ad-Free Access And VIP Servers.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
             VipRewardCard(offer, busy, onWatchReward, onDismiss, showMoreOptions = false)
             Text("PREFER A PAID PLAN?", fontSize = 11.sp, fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, letterSpacing = 1.sp)
             Plan("Monthly VIP", "nsecvpn_premium_monthly", onPurchase)
             Plan("Yearly VIP", "nsecvpn_premium_yearly", onPurchase)
-            Text("Google Play shows the exact price and purchase terms before you pay. Availability and network performance depend on the node.",
+            Text("Google Play Shows The Exact Price And Purchase Terms Before You Pay. Availability And Network Performance Depend On The Node.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
         }
     }
@@ -143,7 +143,7 @@ private fun Plan(label: String, product: String, onPurchase: (String) -> Unit) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
             Text(label, fontWeight = FontWeight.Bold)
-            Text("View plan →")
+            Text("View Plan →")
         }
     }
 }

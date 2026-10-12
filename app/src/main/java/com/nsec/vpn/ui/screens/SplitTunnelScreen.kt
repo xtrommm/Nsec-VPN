@@ -92,7 +92,7 @@ fun SplitTunnelScreen(
                 .padding(horizontal = 20.dp)
         ) {
             Text(
-                text = "Selected apps will route directly via your local network interface instead of WireGuard encryption.",
+                text = "Selected Apps Will Route Directly Via Your Local Network Interface Instead Of WireGuard Encryption.",
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 16.dp)

@@ -66,12 +66,12 @@ public final class SpeedTestService extends Service {
         Session(Messenger reply, String expectedIp) { this.reply = reply; this.expectedIp = expectedIp; }
         void cancel() { cancelled = true; HttpsURLConnection c = connection; if (c != null) c.disconnect(); }
         void check() {
-            if (cancelled) throw new IllegalStateException("Test cancelled or VPN network changed.");
-            if (SystemClock.elapsedRealtime() >= deadline) throw new IllegalStateException("Speed test timed out.");
+            if (cancelled) throw new IllegalStateException("Test Cancelled Or VPN Network Changed.");
+            if (SystemClock.elapsedRealtime() >= deadline) throw new IllegalStateException("Speed Test Timed Out.");
             ConnectivityManager cm = getSystemService(ConnectivityManager.class);
             NetworkCapabilities caps = cm.getNetworkCapabilities(vpn);
             if (caps == null || !caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN))
-                throw new IllegalStateException("The VPN network was lost. Reconnect and retry.");
+                throw new IllegalStateException("The VPN Network Was Lost. Reconnect And Retry.");
         }
         HttpsURLConnection open(String suffix) throws Exception {
             check();
@@ -83,7 +83,7 @@ public final class SpeedTestService extends Service {
         }
         void status(HttpsURLConnection c) throws Exception {
             int code = c.getResponseCode();
-            if (code < 200 || code >= 300) throw new IllegalStateException("Speed provider returned HTTP " + code + ". Try again later.");
+            if (code < 200 || code >= 300) throw new IllegalStateException("Speed Provider Returned HTTP " + code + ". Try Again Later.");
         }
         byte[] smallGet(String suffix, int limit) throws Exception {
             HttpsURLConnection c = open(suffix);
@@ -92,7 +92,7 @@ public final class SpeedTestService extends Service {
                 try (InputStream input = c.getInputStream(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
                     byte[] buffer = new byte[1024]; int n;
                     while ((n = input.read(buffer)) != -1) {
-                        check(); if (out.size() + n > limit) throw new IllegalStateException("Unexpected provider response.");
+                        check(); if (out.size() + n > limit) throw new IllegalStateException("Unexpected Provider Response.");
                         out.write(buffer, 0, n);
                     }
                     return out.toByteArray();
@@ -110,24 +110,24 @@ public final class SpeedTestService extends Service {
         @Override public void run() {
             ConnectivityManager cm = getSystemService(ConnectivityManager.class);
             ConnectivityManager.NetworkCallback callback = new ConnectivityManager.NetworkCallback() {
-                @Override public void onLost(Network network) { if (network.equals(vpn)) { emit("error", 0, "VPN network lost. Reconnect and retry."); cancel(); } }
+                @Override public void onLost(Network network) { if (network.equals(vpn)) { emit("error", 0, "VPN Network Lost. Reconnect And Retry."); cancel(); } }
             };
             boolean registered = false;
             deadline = SystemClock.elapsedRealtime() + 60000;
             try {
                 vpn = cm.getActiveNetwork();
-                if (vpn == null) throw new IllegalStateException("The helper is not included in the VPN. Update split tunneling and reconnect.");
+                if (vpn == null) throw new IllegalStateException("The Helper Is Not Included In The VPN. Update Split Tunneling And Reconnect.");
                 check();
                 cm.registerNetworkCallback(new NetworkRequest.Builder().removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
                     .addTransportType(NetworkCapabilities.TRANSPORT_VPN).build(), callback);
                 registered = true;
-                emit("Verifying VPN exit", 0, null);
-                if (!expectedIp.matches("[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+")) throw new IllegalStateException("A verified node public IP is required.");
+                emit("Verifying VPN Exit", 0, null);
+                if (!expectedIp.matches("[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+")) throw new IllegalStateException("A Verified Node Public IP Is Required.");
                 String trace = new String(smallGet("/cdn-cgi/trace", 16384), StandardCharsets.UTF_8);
                 String observed = "";
                 for (String line : trace.split("\n")) if (line.startsWith("ip=")) observed = line.substring(3).trim();
-                if (!expectedIp.equals(observed)) throw new IllegalStateException("The test did not exit from the connected node. No speed result was saved.");
-                emit("HTTP latency", 0, null);
+                if (!expectedIp.equals(observed)) throw new IllegalStateException("The Test Did Not Exit From The Connected Node. No Speed Result Was Saved.");
+                emit("HTTP Latency", 0, null);
                 List<Double> samples = new ArrayList<>();
                 smallGet("/__down?bytes=0", 1024); // Warm connection; not included in latency samples.
                 for (int i = 0; i < 5; i++) {
@@ -138,7 +138,7 @@ public final class SpeedTestService extends Service {
                 download = download(); upload = upload(); check(); emit("complete", upload, null);
             } catch (Exception error) {
                 if (!cancelled) {
-                    String detail = error instanceof IllegalStateException ? error.getMessage() : "Speed provider could not be reached through the VPN. Try again.";
+                    String detail = error instanceof IllegalStateException ? error.getMessage() : "Speed Provider Could Not Be Reached Through The VPN. Try Again.";
                     emit("error", 0, detail);
                 }
             } finally {
@@ -161,7 +161,7 @@ public final class SpeedTestService extends Service {
                     }
                 } finally { c.disconnect(); connection = null; }
             }
-            if (bytes == 0) throw new IllegalStateException("The provider returned no download payload.");
+            if (bytes == 0) throw new IllegalStateException("The Provider Returned No Download Payload.");
             return SpeedMetrics.mbps(bytes, System.nanoTime() - start);
         }
         double upload() throws Exception {
@@ -178,14 +178,14 @@ public final class SpeedTestService extends Service {
                     check(); status(c);
                     try (InputStream in = c.getInputStream()) {
                         byte[] buffer = new byte[1024]; int total = 0, n;
-                        while ((n = in.read(buffer)) != -1) { check(); total += n; if (total > 65536) throw new IllegalStateException("Unexpected upload acknowledgement."); }
+                        while ((n = in.read(buffer)) != -1) { check(); total += n; if (total > 65536) throw new IllegalStateException("Unexpected Upload Acknowledgement."); }
                     }
                     acknowledged += chunk;
                     if (chunk < payload.length) chunk = Math.min(payload.length, chunk * 2);
                     emit("Upload", SpeedMetrics.mbps(acknowledged, System.nanoTime() - start), null);
                 } finally { c.disconnect(); connection = null; }
             }
-            if (acknowledged == 0) throw new IllegalStateException("No upload was acknowledged.");
+            if (acknowledged == 0) throw new IllegalStateException("No Upload Was Acknowledged.");
             return SpeedMetrics.mbps(acknowledged, System.nanoTime() - start);
         }
     }

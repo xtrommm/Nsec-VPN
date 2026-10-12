@@ -87,7 +87,7 @@ fun ConnectedScreen(
         if (vpnState is VpnState.Connected && connectedNode != null) {
             Text(connectedNode.nodeName.orEmpty(), fontWeight = FontWeight.Bold)
             Text(connectedNode.locationName.orEmpty())
-            Text("VPN server IP: ${connectedNode.publicIpv4.orEmpty()}", modifier = Modifier.padding(vertical = 8.dp).testTag("vpn_server_ip"))
+            Text("VPN Server IP: ${connectedNode.publicIpv4.orEmpty()}", modifier = Modifier.padding(vertical = 8.dp).testTag("vpn_server_ip"))
         }
 
         // Top Navigation Header
@@ -102,7 +102,7 @@ fun ConnectedScreen(
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back to Home",
+                    contentDescription = "Back To Home",
                     tint = MaterialTheme.colorScheme.onBackground
                 )
             }
@@ -189,7 +189,7 @@ fun ConnectedScreen(
             modifier = Modifier
                 .size(230.dp)
                 .semantics {
-                    contentDescription = "Connection duration: $durationText"
+                    contentDescription = "Connection Duration: $durationText"
                 },
             contentAlignment = Alignment.Center
         ) {
@@ -266,7 +266,7 @@ fun ConnectedScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             imageVector = Icons.Default.ArrowDownward,
-                            contentDescription = "Download speed",
+                            contentDescription = "Download Speed",
                             tint = EmeraldGreen,
                             modifier = Modifier.size(16.dp)
                         )
@@ -304,7 +304,7 @@ fun ConnectedScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             imageVector = Icons.Default.ArrowUpward,
-                            contentDescription = "Upload speed",
+                            contentDescription = "Upload Speed",
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(16.dp)
                         )
@@ -370,7 +370,7 @@ fun ConnectedScreen(
             modifier = Modifier.padding(8.dp)
         ) {
             Text(
-                text = "Keep Connected & Back to Home",
+                text = "Keep Connected & Back To Home",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant

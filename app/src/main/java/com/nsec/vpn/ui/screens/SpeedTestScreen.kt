@@ -33,7 +33,6 @@ import com.nsec.vpn.data.monetization.NativeAdManager
 import com.nsec.vpn.ui.components.SmartNativeAd
 import com.nsec.vpn.ui.theme.*
 import com.nsec.vpn.data.network.SpeedTestClient
-import com.nsec.vpn.data.local.SpeedTestHistory
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
@@ -64,12 +63,10 @@ fun SpeedTestScreen(
     var confirmTest by remember { mutableStateOf(false) }
     var testJob by remember { mutableStateOf<Job?>(null) }
     var phase by remember { mutableStateOf("Ready") }
-    val historyStore = remember(context) { SpeedTestHistory(context) }
-    var history by remember { mutableStateOf(historyStore.read()) }
     DisposableEffect(Unit) { onDispose { testJob?.cancel() } }
     LaunchedEffect(tunnelState) {
         if (tunnelState !is VpnState.Connected && isTesting) {
-            testJob?.cancel(); errorMessage = "VPN disconnected. Reconnect and retry."
+            testJob?.cancel(); errorMessage = "VPN Disconnected. Reconnect And Retry."
         }
     }
 
@@ -85,7 +82,7 @@ fun SpeedTestScreen(
         if (isTesting) return
         errorMessage = null
         val nodeName = manager.connectedNode.value?.nodeName
-        if (nodeName.isNullOrBlank()) { errorMessage = "The connected node has no verified name. Reconnect and retry."; return }
+        if (nodeName.isNullOrBlank()) { errorMessage = "The Connected Node Has No Verified Name. Reconnect And Retry."; return }
         isTesting = true
         currentSpeedMbps = 0f; pingMs = null; jitterMs = null
         averageDownloadMbps = null; averageUploadMbps = null
@@ -99,19 +96,16 @@ fun SpeedTestScreen(
                         if (result.upload > 0) averageUploadMbps = result.upload
                         result.error?.let { errorMessage = it }
                         if (result.completed) {
-                            history = historyStore.append(SpeedTestHistory.Result(
-                                nodeName,
-                                System.currentTimeMillis(), result.ping, result.jitter, result.download, result.upload))
                             phase = "Complete"
                         }
                     }
                 }
             } catch (_: TimeoutCancellationException) {
-                errorMessage = "Speed test timed out. Retry when the connection is stable."
+                errorMessage = "Speed Test Timed Out. Retry When The Connection Is Stable."
             } catch (cancelled: CancellationException) {
                 phase = "Cancelled"; throw cancelled
             } catch (error: Exception) {
-                errorMessage = error.message ?: "Speed test failed. Please retry."
+                errorMessage = error.message ?: "Speed Test Failed. Please Retry."
             } finally { isTesting = false }
         }
     }
@@ -120,7 +114,7 @@ fun SpeedTestScreen(
         AlertDialog(
             onDismissRequest = { confirmTest = false },
             title = { Text("Run VPN speed test") },
-            text = { Text("Tests inside this app using the separately installed Nsec VPN Speed Helper. Up to 192 MiB of test payload plus network overhead may be used. Cloudflare sees the VPN node's exit IP. Ads remain outside the VPN. HTTP latency includes provider response time.") },
+            text = { Text("Tests Inside This App Using The Separately Installed Nsec VPN Speed Helper. Up To 192 MiB Of Test Payload Plus Network Overhead May Be Used. Cloudflare Sees The VPN Node's Exit IP. Ads Remain Outside The VPN. HTTP Latency Includes Provider Response Time.") },
             confirmButton = { TextButton(onClick = { confirmTest = false; runSpeedTest() }) { Text("START") } },
             dismissButton = { TextButton(onClick = { confirmTest = false }) { Text("CANCEL") } }
         )
@@ -131,7 +125,7 @@ fun SpeedTestScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 16.dp),
+            .padding(horizontal = 20.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
@@ -148,14 +142,14 @@ fun SpeedTestScreen(
             modifier = Modifier.padding(top = 4.dp),
         )
 
-        Spacer(modifier = Modifier.height(30.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier.size(240.dp),
+            modifier = Modifier.size(190.dp),
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
-                val strokeWidth = 14.dp.toPx()
+                val strokeWidth = 11.dp.toPx()
                 val radius = (size.minDimension - strokeWidth) / 2
                 val center = Offset(size.width / 2, size.height / 2)
 
@@ -188,7 +182,7 @@ fun SpeedTestScreen(
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = String.format(Locale.US, "%.1f", animatedSpeed),
-                    fontSize = 42.sp,
+                    fontSize = 34.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
@@ -201,7 +195,7 @@ fun SpeedTestScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(36.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
         Row(
             modifier = Modifier
@@ -209,19 +203,19 @@ fun SpeedTestScreen(
                 .clip(RoundedCornerShape(16.dp))
                 .background(MaterialTheme.colorScheme.surface)
                 .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
-                .padding(16.dp),
+                .padding(12.dp),
             horizontalArrangement = Arrangement.SpaceAround,
         ) {
-            MetricColumn(label = "PING", value = pingMs?.let { "$it ms" } ?: "N/A")
+            MetricColumn(modifier = Modifier.weight(1f), label = "PING", value = pingMs?.let { "$it ms" } ?: "N/A")
             Box(modifier = Modifier.width(1.dp).height(30.dp).background(MaterialTheme.colorScheme.outline))
-            MetricColumn(label = "JITTER", value = jitterMs?.let { "$it ms" } ?: "N/A")
+            MetricColumn(modifier = Modifier.weight(1f), label = "JITTER", value = jitterMs?.let { "$it ms" } ?: "N/A")
             Box(modifier = Modifier.width(1.dp).height(30.dp).background(MaterialTheme.colorScheme.outline))
-            MetricColumn(label = "DOWN AVG", value = averageDownloadMbps?.let { String.format(Locale.US, "%.1f M", it) } ?: "N/A")
+            MetricColumn(modifier = Modifier.weight(1f), label = "DOWN AVG", value = averageDownloadMbps?.let { String.format(Locale.US, "%.1f M", it) } ?: "N/A")
             Box(modifier = Modifier.width(1.dp).height(30.dp).background(MaterialTheme.colorScheme.outline))
-            MetricColumn(label = "UP AVG", value = averageUploadMbps?.let { String.format(Locale.US, "%.1f M", it) } ?: "N/A")
+            MetricColumn(modifier = Modifier.weight(1f), label = "UP AVG", value = averageUploadMbps?.let { String.format(Locale.US, "%.1f M", it) } ?: "N/A")
         }
 
-        Spacer(modifier = Modifier.height(36.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
         Button(
             onClick = { confirmTest = true },
@@ -244,19 +238,11 @@ fun SpeedTestScreen(
 
         Text(phase, modifier = Modifier.padding(top = 8.dp))
         if (isTesting) OutlinedButton(onClick = { testJob?.cancel() }) { Text("CANCEL TEST") }
-        if (history.isNotEmpty()) {
-            Text("Recent results", fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 16.dp))
-            history.forEach { result ->
-                Text("${result.nodeName} · ${java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT, java.text.DateFormat.SHORT).format(java.util.Date(result.timestamp))} · " +
-                    String.format(Locale.US, "↓ %.1f / ↑ %.1f Mbps", result.download, result.upload),
-                    fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
-            }
-        }
         errorMessage?.let { message ->
             Text(message, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 12.dp))
         }
 
-        Spacer(modifier = Modifier.height(28.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         SmartNativeAd(
             nativeAdManager = nativeAdManager,
@@ -269,8 +255,8 @@ fun SpeedTestScreen(
 }
 
 @Composable
-private fun MetricColumn(label: String, value: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+private fun MetricColumn(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(text = label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(modifier = Modifier.height(4.dp))
         Text(text = value, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)

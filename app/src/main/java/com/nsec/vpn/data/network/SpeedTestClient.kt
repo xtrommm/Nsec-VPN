@@ -26,13 +26,13 @@ object SpeedTestClient {
 
     fun measure(context: Context, manager: WireGuardTunnelManager): Flow<Progress> = callbackFlow {
         val node = manager.connectedNode.value
-        require(manager.vpnState.value is VpnState.Connected && node != null) { "Connect to a VPN server first." }
-        require(manager.isApplicationTunneled(HELPER_PACKAGE)) { "Include Nsec VPN Speed Helper in split tunneling and reconnect." }
-        val ip = requireNotNull(node.publicIpv4) { "The connected node has no verified public IP." }
+        require(manager.vpnState.value is VpnState.Connected && node != null) { "Connect To A VPN Server First." }
+        require(manager.isApplicationTunneled(HELPER_PACKAGE)) { "Include Nsec VPN Speed Helper In Split Tunneling And Reconnect." }
+        val ip = requireNotNull(node.publicIpv4) { "The Connected Node Has No Verified Public IP." }
         var remote: Messenger? = null
         val responseHandler = Handler(Looper.getMainLooper()) { message ->
                 if (manager.vpnState.value !is VpnState.Connected || manager.connectedNode.value != node) {
-                    close(IllegalStateException("VPN changed or disconnected. Reconnect and retry.")); return@Handler true
+                    close(IllegalStateException("VPN Changed Or Disconnected. Reconnect And Retry.")); return@Handler true
                 }
                 val b = message.data
                 trySend(Progress(b.getString("phase") ?: "Testing", b.getDouble("speed").toFloat(),
@@ -50,16 +50,16 @@ object SpeedTestClient {
                     messenger.send(Message.obtain(null, 1).apply {
                         replyTo = receiver; data = Bundle().apply { putString("expectedIp", ip) }
                     })
-                } catch (_: RemoteException) { close(IllegalStateException("The speed helper stopped. Retry the test.")) }
+                } catch (_: RemoteException) { close(IllegalStateException("The Speed Helper Stopped. Retry The Test.")) }
             }
-            override fun onServiceDisconnected(name: ComponentName) { close(IllegalStateException("The speed helper disconnected.")) }
-            override fun onNullBinding(name: ComponentName) { close(IllegalStateException("The speed helper could not start.")) }
-            override fun onBindingDied(name: ComponentName) { close(IllegalStateException("The speed helper was updated. Retry the test.")) }
+            override fun onServiceDisconnected(name: ComponentName) { close(IllegalStateException("The Speed Helper Disconnected.")) }
+            override fun onNullBinding(name: ComponentName) { close(IllegalStateException("The Speed Helper Could Not Start.")) }
+            override fun onBindingDied(name: ComponentName) { close(IllegalStateException("The Speed Helper Was Updated. Retry The Test.")) }
         }
         val intent = Intent().setComponent(ComponentName(HELPER_PACKAGE, "$HELPER_PACKAGE.SpeedTestService"))
         val bound = try { context.bindService(intent, connection, Context.BIND_AUTO_CREATE) }
-        catch (_: SecurityException) { throw IllegalStateException("Install the speed helper signed with the same key as Nsec VPN.") }
-        if (!bound) { close(IllegalStateException("Install Nsec VPN Speed Helper from the same build first.")) }
+        catch (_: SecurityException) { throw IllegalStateException("Install The Speed Helper Signed With The Same Key As Nsec VPN.") }
+        if (!bound) { close(IllegalStateException("Install Nsec VPN Speed Helper From The Same Build First.")) }
         awaitClose {
             responseHandler.removeCallbacksAndMessages(null)
             try { remote?.send(Message.obtain(null, 2)) } catch (_: RemoteException) { /* Already stopped. */ }
