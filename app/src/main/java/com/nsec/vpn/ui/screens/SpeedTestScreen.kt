@@ -119,7 +119,7 @@ fun SpeedTestScreen(
         AlertDialog(
             onDismissRequest = { confirmTest = false },
             title = { Text("Run VPN speed test") },
-            text = { Text("Tests inside this app using the separately installed Nsec VPN Speed Helper. Up to 192 MiB of data may be used. Cloudflare sees the VPN node's exit IP. Ads remain outside the VPN. HTTP latency includes provider response time.") },
+            text = { Text("Tests inside this app using the separately installed Nsec VPN Speed Helper. Up to 192 MiB of test payload plus network overhead may be used. Cloudflare sees the VPN node's exit IP. Ads remain outside the VPN. HTTP latency includes provider response time.") },
             confirmButton = { TextButton(onClick = { confirmTest = false; runSpeedTest() }) { Text("START") } },
             dismissButton = { TextButton(onClick = { confirmTest = false }) { Text("CANCEL") } }
         )

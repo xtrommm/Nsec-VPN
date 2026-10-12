@@ -30,18 +30,18 @@ object SpeedTestClient {
         require(manager.isApplicationTunneled(HELPER_PACKAGE)) { "Include Nsec VPN Speed Helper in split tunneling and reconnect." }
         val ip = requireNotNull(node.publicIpv4) { "The connected node has no verified public IP." }
         var remote: Messenger? = null
-        val receiver = Messenger(object : Handler(Looper.getMainLooper()) {
-            override fun handleMessage(message: Message) {
+        val responseHandler = Handler(Looper.getMainLooper()) { message ->
                 if (manager.vpnState.value !is VpnState.Connected || manager.connectedNode.value != node) {
-                    close(IllegalStateException("VPN changed or disconnected. Reconnect and retry.")); return
+                    close(IllegalStateException("VPN changed or disconnected. Reconnect and retry.")); return@Handler true
                 }
                 val b = message.data
                 trySend(Progress(b.getString("phase") ?: "Testing", b.getDouble("speed").toFloat(),
                     b.getDouble("ping"), b.getDouble("jitter"), b.getDouble("download").toFloat(),
                     b.getDouble("upload").toFloat(), message.what == 4, b.getString("error")))
                 if (message.what == 4 || message.what == 5) close()
-            }
-        })
+                true
+        }
+        val receiver = Messenger(responseHandler)
         val connection = object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName, binder: IBinder) {
                 remote = Messenger(binder)
@@ -60,6 +60,7 @@ object SpeedTestClient {
         catch (_: SecurityException) { throw IllegalStateException("Install the speed helper signed with the same key as Nsec VPN.") }
         if (!bound) { close(IllegalStateException("Install Nsec VPN Speed Helper from the same build first.")) }
         awaitClose {
+            responseHandler.removeCallbacksAndMessages(null)
             try { remote?.send(Message.obtain(null, 2)) } catch (_: RemoteException) { /* Already stopped. */ }
             if (bound) context.unbindService(connection)
         }

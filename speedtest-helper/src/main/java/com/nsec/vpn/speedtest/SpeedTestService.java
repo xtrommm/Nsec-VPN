@@ -30,8 +30,10 @@ import javax.net.ssl.HttpsURLConnection;
 public final class SpeedTestService extends Service {
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private Session active;
-    private final Messenger endpoint = new Messenger(new Handler(Looper.getMainLooper()) {
-        @Override public void handleMessage(Message message) {
+    private final Messenger endpoint = new Messenger(new Handler(Looper.getMainLooper(), message -> {
+        handleRequest(message); return true;
+    }));
+    private void handleRequest(Message message) {
             String[] packages = getPackageManager().getPackagesForUid(message.sendingUid);
             boolean trusted = false;
             if (packages != null) for (String pkg : packages) {
@@ -45,8 +47,7 @@ public final class SpeedTestService extends Service {
             Session session = new Session(message.replyTo, message.getData().getString("expectedIp", ""));
             active = session;
             worker.execute(session);
-        }
-    });
+    }
     @Override public IBinder onBind(Intent intent) { return endpoint.getBinder(); }
     @Override public boolean onUnbind(Intent intent) { if (active != null) active.cancel(); return false; }
     @Override public void onDestroy() {
@@ -168,6 +169,7 @@ public final class SpeedTestService extends Service {
             byte[] payload = new byte[4 * 1024 * 1024]; new java.security.SecureRandom().nextBytes(payload);
             int chunk = 262144;
             while (System.nanoTime() - start < 8_000_000_000L && acknowledged < 64L * 1024 * 1024) {
+                chunk = (int) Math.min(chunk, 64L * 1024 * 1024 - acknowledged);
                 HttpsURLConnection c = open("/__up");
                 try {
                     c.setRequestMethod("POST"); c.setDoOutput(true); c.setFixedLengthStreamingMode(chunk);
