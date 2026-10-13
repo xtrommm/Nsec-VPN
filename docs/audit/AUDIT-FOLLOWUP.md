@@ -26,7 +26,7 @@ No logo, ad unit IDs, signing settings or third-party notices were changed. No d
 
 - New `X-App-Version-Code` request header; new nullable Device.appVersionCode. HTTP 426 `APP_UPDATE_REQUIRED` only when the existing forceUpdate switch is enabled. Keep it OFF until compatible builds are published. Version is self-reported, not device attestation.
 - `POST /api/v1/billing/rtdn`: Google authenticated Pub/Sub push; 204 accepted, 400 invalid event, 403 unauthorized, 503 unconfigured/retryable verification. Notifications cannot grant VIP directly: current Google state is queried.
-- Billing verification adds receipt protection failures: 503 `BILLING_ENCRYPTION_REQUIRED`, 409 ownership conflict and 400 product mismatch; exact literals are in billing route/service. Existing device-owned receipt binding is preserved.
+- Billing verification adds receipt protection failures: 503 `BILLING_TOKEN_ENCRYPTION_REQUIRED`, 409 `PURCHASE_ALREADY_BOUND`, 400 `PURCHASE_PRODUCT_MISMATCH`, and 503 `BILLING_VERIFICATION_UNAVAILABLE` for other verification failures. Existing device-owned receipt binding is preserved.
 - Promo duration remains configured in days. Promo/reward VIP and paid VIP now overlap independently rather than appending promo time to a paid subscription end. This is the policy selected by the owner.
 - `RETENTION_DAYS=90` default; expired records become eligible after 90 days. Replay/ownership hashes, recovery-protected and blocked devices are deliberately retained. This is not a promise to erase all account data at 90 days.
 - New `PLAY_TOKEN_ENCRYPTION_KEY`: 64 hexadecimal characters, retain permanently while receipt ciphertext exists. Never paste this key, receipts, service-account JSON or environment contents into chat.
