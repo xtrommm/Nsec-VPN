@@ -109,7 +109,7 @@ fun ConnectedScreen(
             }
 
             Text(
-                text = if (vpnState is VpnState.Connected) "VPN CONNECTED" else "CONNECTING",
+                text = "VPN ${com.nsec.vpn.ui.components.ConnectionPresentation.status(vpnState).uppercase(java.util.Locale.ROOT)}",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp,
@@ -170,7 +170,7 @@ fun ConnectedScreen(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "${if (vpnState is VpnState.Connected) "Connected" else "Connecting"} • Ping: ${selectedServer?.pingMs?.let { "${it}ms" } ?: "Unavailable"}",
+                    text = "${com.nsec.vpn.ui.components.ConnectionPresentation.status(vpnState)} • Ping: ${selectedServer?.pingMs?.let { "${it}ms" } ?: "Unavailable"}",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -218,7 +218,7 @@ fun ConnectedScreen(
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = "CONNECTED",
+                    text = com.nsec.vpn.ui.components.ConnectionPresentation.status(vpnState).uppercase(java.util.Locale.ROOT),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.2.sp,

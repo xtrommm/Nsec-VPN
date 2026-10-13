@@ -13,6 +13,7 @@ import com.google.android.gms.ads.interstitial.InterstitialAd
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 import com.google.android.gms.ads.rewarded.RewardedAd
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -44,7 +45,6 @@ class AdMobManager(private val context: Context, private val initializeSdk: ((()
     val config: StateFlow<AdMobConfig> = _config.asStateFlow()
 
     private var baseConfig = _config.value
-    private var consentAllowed = false
     private var sdkInitialized = false
     private var sdkInitializationStarted = false
     private var configGeneration = 0
@@ -65,28 +65,35 @@ class AdMobManager(private val context: Context, private val initializeSdk: ((()
         refreshAdFreeConfig()
     }
 
-    fun applyConsent(allowed: Boolean) {
-        if (consentAllowed != allowed) {
-            configGeneration++
-            interstitialAd = null; rewardedAd = null
-            isPreloadingInterstitial = false; isPreloadingRewarded = false
+    /** Explicit, idempotent SDK initialization; no UMP form or inferred consent state. */
+    fun initialize() {
+        if (sdkInitializationStarted) return
+        sdkInitializationStarted = true
+        val ready = {
+            val finish = Runnable {
+                sdkInitialized = true
+                refreshAdFreeConfig()
+                preloadInterstitial()
+                preloadRewarded()
+            }
+            if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) finish.run()
+            else rewardHandler.post(finish)
+            Unit
         }
-        consentAllowed = allowed
-        if (allowed && !sdkInitializationStarted) {
-            try {
-                sdkInitializationStarted = true
-                val ready = {
-                    sdkInitialized = true
-                    refreshAdFreeConfig()
-                    preloadInterstitial()
-                    preloadRewarded()
-                }
-                if (initializeSdk != null) initializeSdk.invoke(ready) else {
+        if (initializeSdk != null) {
+            try { initializeSdk.invoke(ready) }
+            catch (_: Exception) { sdkInitializationStarted = false }
+        } else {
+            // Google recommends initialization off the UI thread. Ad requests remain on Main.
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default).launch {
+                try {
                     MobileAds.setRequestConfiguration(RequestConfiguration.Builder()
                         .setTestDeviceIds(listOf(AdRequest.DEVICE_ID_EMULATOR)).build())
                     MobileAds.initialize(context) { ready() }
+                } catch (_: Exception) {
+                    rewardHandler.post { sdkInitializationStarted = false }
                 }
-            } catch (_: Exception) { sdkInitializationStarted = false; consentAllowed = false }
+            }
         }
         refreshAdFreeConfig()
     }
@@ -125,7 +132,7 @@ class AdMobManager(private val context: Context, private val initializeSdk: ((()
             rewardPrefs.getInt("boot", -1), android.provider.Settings.Global.getInt(context.contentResolver,
                 android.provider.Settings.Global.BOOT_COUNT, -1), System.currentTimeMillis(),
             android.os.SystemClock.elapsedRealtime())
-        val config = if (!consentAllowed || !sdkInitialized) baseConfig.copy(bannerEnabled = false, nativeEnabled = false,
+        val config = if (!sdkInitialized) baseConfig.copy(bannerEnabled = false, nativeEnabled = false,
             interstitialEnabled = false, rewardedEnabled = false, appOpenEnabled = false) else if (active) baseConfig.copy(bannerEnabled = false, nativeEnabled = false,
             interstitialEnabled = false, appOpenEnabled = false,
             adFreeUntilEpochMillis = rewardPrefs.getLong("expiresWall", 0)) else baseConfig
@@ -176,7 +183,7 @@ class AdMobManager(private val context: Context, private val initializeSdk: ((()
         isPreloadingInterstitial = true
         val generation = configGeneration
         try {
-            val adRequest = AdRequest.Builder().build()
+            val adRequest = AdRequests.create()
             InterstitialAd.load(
                 appContext.applicationContext,
                 _config.value.interstitialAdUnitId,
@@ -243,7 +250,7 @@ class AdMobManager(private val context: Context, private val initializeSdk: ((()
         isPreloadingRewarded = true
         val generation = configGeneration
         try {
-            val adRequest = AdRequest.Builder().build()
+            val adRequest = AdRequests.create()
             RewardedAd.load(
                 appContext.applicationContext,
                 _config.value.rewardedAdUnitId,

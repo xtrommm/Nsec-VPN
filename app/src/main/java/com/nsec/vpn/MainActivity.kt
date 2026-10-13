@@ -87,8 +87,6 @@ class MainActivity : ComponentActivity() {
                 val splitTunnelingEnabled by vpnRepo.splitTunnelingEnabled.collectAsStateWithLifecycle()
                 val autoConnectEnabled by vpnRepo.autoConnectEnabled.collectAsStateWithLifecycle()
                 val installationId by vpnRepo.deviceIdentity.collectAsStateWithLifecycle()
-                val privacyOptionsRequired by serviceLocator.adConsentManager.privacyOptionsRequired.collectAsStateWithLifecycle()
-                val consentError by serviceLocator.adConsentManager.error.collectAsStateWithLifecycle()
                 val excludedPackages by vpnRepo.excludedPackages.collectAsStateWithLifecycle()
 
                 var currentTab by rememberSaveable(stateSaver = Saver<Screen, String>(save = { it.route }, restore = { route -> listOf(Screen.Home, Screen.Servers, Screen.SpeedTest, Screen.Settings).firstOrNull { it.route == route } ?: Screen.Home })) { mutableStateOf<Screen>(Screen.Home) }
@@ -166,6 +164,7 @@ class MainActivity : ComponentActivity() {
                 fun triggerConnectSequence(isUserInitiated: Boolean = true) {
                     when (vpnState) {
                         is VpnState.Connected, is VpnState.Connecting -> {
+                            isUserInitiatedConnect = false
                             tunnelManager.disconnect()
                         }
                         is VpnState.Disconnected, is VpnState.Error -> {
@@ -223,7 +222,7 @@ class MainActivity : ComponentActivity() {
                 }
 
                 LaunchedEffect(Unit) {
-                    serviceLocator.adConsentManager.request(this@MainActivity)
+                    adMobManager.initialize()
                     val configRefresh = launch { remoteConfigManager.fetchRemoteConfig() }
                     vpnRepo.refreshServers()
                     configRefresh.join()
@@ -276,10 +275,6 @@ class MainActivity : ComponentActivity() {
                     operationError?.let { Toast.makeText(this@MainActivity, it, Toast.LENGTH_LONG).show() }
                 }
 
-                LaunchedEffect(consentError) {
-                    consentError?.let { Toast.makeText(this@MainActivity, it, Toast.LENGTH_LONG).show() }
-                }
-
                 LaunchedEffect(remoteConfigError) {
                     remoteConfigError?.let { Toast.makeText(this@MainActivity, it, Toast.LENGTH_LONG).show() }
                 }
@@ -293,7 +288,9 @@ class MainActivity : ComponentActivity() {
                                 val adAllowed = !isPremium && adMobConfig.interstitialEnabled && adMobManager.canShowInterstitial() && adMobManager.isInterstitialReady()
                                 if (adAllowed) {
                                     adMobManager.showInterstitial(this@MainActivity) {
-                                        currentTab = Screen.Home; activeSubScreen = "connected"
+                                        if (tunnelManager.vpnState.value is VpnState.Connected) {
+                                            currentTab = Screen.Home; activeSubScreen = "connected"
+                                        }
                                     }
                                 } else {
                                     currentTab = Screen.Home; activeSubScreen = "connected"
@@ -359,27 +356,58 @@ class MainActivity : ComponentActivity() {
                     containerColor = MaterialTheme.colorScheme.background
                 ) { innerPadding ->
                     Box(modifier = Modifier.padding(innerPadding)) {
-                        when (activeSubScreen) {
-                            "connected" -> {
-                                ConnectedScreen(
-                                    vpnState = vpnState,
-                                    vpnStats = vpnStats,
-                                    connectedNode = connectedNode,
-                                    selectedServer = displayedServer,
-                                    userTier = userTier,
-                                    onDisconnect = { tunnelManager.disconnect() },
-                                    onBackToHome = { activeSubScreen = null; currentTab = Screen.Home },
-                                    nativeAdContent = {
-                                        com.nsec.vpn.ui.components.SmartNativeAd(
-                                            nativeAdManager = adMobManager.nativeAdManager,
-                                            adMobConfig = adMobConfig,
-                                            userTier = userTier,
-                                            vpnState = vpnState,
-                                            modifier = Modifier.fillMaxWidth()
-                                        )
-                                    }
-                                )
-                            }
+                        val showHome = activeSubScreen == "connected" || (activeSubScreen == null && currentTab == Screen.Home)
+                        if (showHome) {
+                            com.nsec.vpn.ui.components.HomeConnectionHost(
+                                showConnection = activeSubScreen == "connected",
+                                home = { visible ->
+                                    HomeScreen(
+                                        vpnState = vpnState,
+                                        tunnelManager = tunnelManager,
+                                        selectedServer = displayedServer,
+                                        userTier = userTier,
+                                        adMobConfig = adMobConfig,
+                                        nativeAdManager = adMobManager.nativeAdManager,
+                                        announcementTitle = if (remoteConfig.announcementActive) remoteConfig.announcementTitle else null,
+                                        announcementBody = if (remoteConfig.announcementActive) remoteConfig.announcementBody else null,
+                                        onToggleVpn = { triggerConnectSequence(isUserInitiated = true) },
+                                        onNavigateToServers = { currentTab = Screen.Servers },
+                                        onNavigateToConnected = { currentTab = Screen.Home; activeSubScreen = "connected" },
+                                        onUpgradeClicked = { showVipModal = true },
+                                        rewardOffer = rewardOffer,
+                                        rewardBusy = rewardBusy,
+                                        onWatchReward = { watchReward() },
+                                        serverStatusNow = serverStatusNow,
+                                        isVisible = visible
+                                    )
+                                },
+                                connection = {
+                                    ConnectedScreen(
+                                        vpnState = vpnState,
+                                        vpnStats = vpnStats,
+                                        connectedNode = connectedNode,
+                                        selectedServer = displayedServer,
+                                        userTier = userTier,
+                                        onDisconnect = {
+                                            isUserInitiatedConnect = false
+                                            tunnelManager.disconnect()
+                                            currentTab = Screen.Home
+                                            activeSubScreen = null
+                                        },
+                                        onBackToHome = { activeSubScreen = null; currentTab = Screen.Home },
+                                        nativeAdContent = {
+                                            com.nsec.vpn.ui.components.SmartNativeAd(
+                                                nativeAdManager = adMobManager.nativeAdManager,
+                                                adMobConfig = adMobConfig,
+                                                userTier = userTier,
+                                                vpnState = vpnState,
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                        }
+                                    )
+                                }
+                            )
+                        } else when (activeSubScreen) {
                             "split_tunnel" -> {
                                 SplitTunnelScreen(
                                     excludedPackages = excludedPackages,
@@ -407,26 +435,7 @@ class MainActivity : ComponentActivity() {
                             }
                             else -> {
                                 when (currentTab) {
-                                    Screen.Home -> {
-                                        HomeScreen(
-                                            vpnState = vpnState,
-                                            tunnelManager = tunnelManager,
-                                            selectedServer = displayedServer,
-                                            userTier = userTier,
-                                            adMobConfig = adMobConfig,
-                                            nativeAdManager = adMobManager.nativeAdManager,
-                                            announcementTitle = if (remoteConfig.announcementActive) remoteConfig.announcementTitle else null,
-                                            announcementBody = if (remoteConfig.announcementActive) remoteConfig.announcementBody else null,
-                                            onToggleVpn = { triggerConnectSequence(isUserInitiated = true) },
-                                            onNavigateToServers = { currentTab = Screen.Servers },
-                                            onNavigateToConnected = { currentTab = Screen.Home; activeSubScreen = "connected" },
-                                            onUpgradeClicked = { showVipModal = true },
-                                            rewardOffer = rewardOffer,
-                                            rewardBusy = rewardBusy,
-                                            onWatchReward = { watchReward() },
-                                            serverStatusNow = serverStatusNow
-                                        )
-                                    }
+                                    Screen.Home -> Unit
                                     Screen.Servers -> {
                                         ServerListScreen(
                                             servers = servers,
@@ -484,14 +493,11 @@ class MainActivity : ComponentActivity() {
                                             onOpenPrivacyPolicy = { activeSubScreen = "legal" },
                                             onRedeemPromoCode = { showPromoDialog = true },
                                             supportEmail = remoteConfig.supportEmail,
-                                            privacyOptionsRequired = privacyOptionsRequired,
-                                            privacyUpdateFailed = consentError != null,
                                             onRestorePurchases = {
                                                 vpnRepo.refreshVerifiedEntitlement()
                                                 try { playBillingManager.restorePurchases() }
                                                 finally { vpnRepo.refreshVerifiedEntitlement() }
                                             },
-                                            onPrivacyOptions = { serviceLocator.adConsentManager.showPrivacyOptions(this@MainActivity) },
                                             deviceId = installationId,
                                             onRecoveryStatus = { vpnRepo.recoveryConfigured() },
                                             onSetRecoveryPin = { pin, oldPin -> vpnRepo.setRecoveryPin(pin, oldPin) },

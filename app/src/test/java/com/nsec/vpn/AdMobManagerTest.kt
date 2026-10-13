@@ -3,6 +3,7 @@ package com.nsec.vpn
 import androidx.test.core.app.ApplicationProvider
 import com.nsec.vpn.data.monetization.AdMobConfig
 import com.nsec.vpn.data.monetization.AdMobManager
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -15,18 +16,21 @@ import org.robolectric.annotation.Config
 class AdMobManagerTest {
 
     @Test
-    fun adsStayDisabledUntilConsentAndSdkInitializationAndRevocationClearsThem() {
+    fun adsStayDisabledUntilSdkInitializationAndRemoteKillSwitchClearsThem() {
         var ready: (() -> Unit)? = null
-        val manager = AdMobManager(ApplicationProvider.getApplicationContext(), initializeSdk = { ready = it })
+        var initializationCount = 0
+        val manager = AdMobManager(ApplicationProvider.getApplicationContext(), initializeSdk = { initializationCount++; ready = it })
         manager.updateConfig(AdMobConfig(nativeEnabled = true, rewardedEnabled = true, interstitialEnabled = true))
         assertFalse(manager.config.value.nativeEnabled)
         assertFalse(manager.config.value.rewardedEnabled)
         assertFalse(manager.canShowInterstitial())
-        manager.applyConsent(true)
+        manager.initialize()
+        manager.initialize()
+        assertEquals(1, initializationCount)
         assertFalse(manager.config.value.nativeEnabled)
         ready!!.invoke()
         assertTrue(manager.config.value.nativeEnabled)
-        manager.applyConsent(false)
+        manager.updateConfig(AdMobConfig(nativeEnabled = false, rewardedEnabled = false, interstitialEnabled = false))
         assertFalse(manager.config.value.nativeEnabled)
         assertFalse(manager.config.value.rewardedEnabled)
         assertFalse(manager.canShowInterstitial())
@@ -35,7 +39,7 @@ class AdMobManagerTest {
     @Test
     fun canShowInterstitial_respectsFrequencyCapping() {
         val manager = AdMobManager(ApplicationProvider.getApplicationContext(), initializeSdk = { it() })
-        manager.applyConsent(true)
+        manager.initialize()
         manager.updateConfig(
             AdMobConfig(
                 interstitialEnabled = true,

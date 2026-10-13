@@ -241,3 +241,17 @@ update
 - Add an isolated Git publisher and complete Android Studio transport package for the audit follow-up branch.
 
 - Fix Android billing setup indentation reported by PR #17 lint.
+
+### Remove owner-requested AdMob consent UI
+- Remove UMP forms, settings callbacks and direct UMP dependency without changing ad unit IDs.
+- Initialize the SDK off the UI thread, preserve readiness gating and use non-personalized ad requests; retain backend-verified rewards and remote ad controls.
+
+### Disconnect navigation and rendering
+- Retain the Home layout/state behind connection details without hidden ads or pulse work; return on the tap rather than waiting for teardown navigation.
+- Show Disconnecting accurately, disable reconnect until DOWN and remove delayed connect-control colour feedback.
+- Reject stale interstitial navigation after disconnect and defer native load work past the first rendered frame.
+- Add Compose retention/disabled-control and connection-state presentation regression tests.
+
+### Disconnect update delivery
+- Add a guarded separate-checkout publisher and document video evidence, SDK/privacy trade-offs, runtime limits and phone test steps.
+- Add SDK initialization idempotence regression coverage.

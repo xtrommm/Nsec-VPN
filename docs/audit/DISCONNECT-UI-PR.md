@@ -1,0 +1,5 @@
+Disconnecting from connection details previously showed CONNECTING and rebuilt Home after teardown. Return to a retained, unplaced-while-hidden Home on the tap, keep honest Disconnecting state and disable reconnect until confirmed DOWN. Remove the 500ms colour transition and hidden pulse work; block stale interstitial navigation and defer native preloading beyond the first navigation frame.
+
+Remove the owner-requested UMP consent UI/settings and direct dependency. Keep SDK readiness, remote ad controls, IDs and backend reward verification; use non-personalized requests without recording inferred consent. Publisher requirements remain a manual review item.
+
+Validation: ten Android configuration tests and both backup checks passed; Compose retention/control-state and SDK readiness regression tests added. Android compilation/lint/Robolectric require CI because Gradle download is blocked locally. No database migration, API or node change. Read docs/audit/DISCONNECT-UI-FIX.md for evidence and device checks.
