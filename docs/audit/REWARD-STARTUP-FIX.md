@@ -1,6 +1,6 @@
 # Reward card startup correction
 
-Base: 00b0d478c9beb80206f14d70615837faf836d669. Branch: fix/reward-offer-startup. Includes the owner-requested EU flag alignment correction, with logo size and day/night colours retained.
+Base: 0e3ec6d61e5ce02205f11d25309ed4364547467d. Branch: fix/reward-offer-startup. Includes the owner-requested EU flag alignment correction, with logo size and day/night colours retained.
 
 The two supplied screenshots show the temporary Your Next VIP Pass / Loading The Current Reward Offer card changing to the real 45 Minutes Of VIP offer. These still frames establish the display change, not a CPU/frame-time profile or measured one-second duration.
 
@@ -22,7 +22,7 @@ Android compilation, lint and Robolectric tests are NOT verified locally because
 
 ## Install
 
-Extract the ZIP in Windows Downloads, run apply-reward-startup.py with the existing Git project root and --publish. The updater creates a separate Nsec-VPN-reward-startup-repair checkout and leaves existing edits untouched. It pushes only the new branch; authenticated gh creates a draft PR, otherwise click the printed comparison URL and Create Pull Request.
+Extract the ZIP in Windows Downloads, run apply-reward-startup-v2.py with the existing Git project root and --publish. The updater creates a separate Nsec-VPN-reward-startup-final checkout and leaves existing edits untouched. It pushes only the new branch; authenticated gh creates a draft PR, otherwise click the printed comparison URL and Create Pull Request.
 
 Open the printed checkout in Android Studio, Sync, then Run app on the phone. Keep app data. The already installed speedtest-helper is unchanged. No CloudPanel command or database migration is needed for this Android update.
 

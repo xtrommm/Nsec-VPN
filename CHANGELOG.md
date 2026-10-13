@@ -267,3 +267,5 @@ update
 
 ### Reward startup delivery
 - Package the startup and splash alignment corrections with an isolated Git publisher, runtime verification limits and a phone checklist.
+
+- Refresh reward-startup transport against merged splash PR #19; use a separate final checkout and v2 updater to avoid stale files.

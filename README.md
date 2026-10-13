@@ -255,3 +255,5 @@ Reward-offer startup: validated real settings are restored off Main before the f
 The startup regression uses an isolated test boot count to exercise the real monotonic reward-expiry policy; production expiry rules are unchanged.
 
 See [Reward startup fix](docs/audit/REWARD-STARTUP-FIX.md) for screenshot findings, validated cache bootstrap, SDK-independent offer text, preserved splash alignment and installation. `scripts/publish-reward-startup.py` prepares an isolated checkout; no migration is required.
+
+- Refresh reward-startup transport against merged splash PR #19; use a separate final checkout and v2 updater to avoid stale files.

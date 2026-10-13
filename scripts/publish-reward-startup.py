@@ -32,14 +32,14 @@ def prepare(project, package):
     bundle = package / 'reward-startup.bundle'
     if hashlib.sha256(bundle.read_bytes()).hexdigest() != manifest.get('bundleSha256'):
         raise SystemExit('Repair bundle failed its integrity check; download it again.')
-    destination = project.parent / 'Nsec-VPN-reward-startup-repair'
+    destination = project.parent / 'Nsec-VPN-reward-startup-final'
     if destination.exists():
         try:
             matches = git(destination, 'rev-parse', 'HEAD', capture=True) == manifest['head'] and git(destination, 'branch', '--show-current', capture=True) == BRANCH
         except subprocess.CalledProcessError:
             matches = False
         if not matches:
-            destination = project.parent / ('Nsec-VPN-reward-startup-repair-' + manifest['head'][:8])
+            destination = project.parent / ('Nsec-VPN-reward-startup-final-' + manifest['head'][:8])
             if destination.exists():
                 raise SystemExit('Repair destination already exists. Keep it and review it; nothing was overwritten.')
     if not destination.exists():
