@@ -1,4 +1,5 @@
 import { prisma } from '../db';
+import { readSnapshot } from './readSnapshot';
 
 export class StatsService {
   /**
@@ -47,7 +48,9 @@ export class StatsService {
   /**
    * Retrieves aggregated dashboard KPI metrics for the Admin Panel.
    */
-  static async getDashboardMetrics() {
+  static getDashboardMetrics() { return dashboardSnapshot.read(); }
+
+  static async loadDashboardMetrics() {
     const [totalDevices, vipCount, activeTunnels, servers, topCountries] = await Promise.all([
       prisma.device.count(),
       prisma.device.count({ where: { tier: 'VIP', OR: [{ passExpiresAt: null }, { passExpiresAt: { gt: new Date() } }] } }),
@@ -91,3 +94,5 @@ export class StatsService {
     };
   }
 }
+
+const dashboardSnapshot = readSnapshot(2000, () => StatsService.loadDashboardMetrics());

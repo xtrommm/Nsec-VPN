@@ -1,5 +1,5 @@
 jest.mock('../secrets', () => ({ JWT_SECRET: require('crypto').randomBytes(32).toString('hex') }));
-jest.mock('../db', () => ({ prisma: { $transaction: jest.fn(), serverNode: { findUniqueOrThrow: jest.fn(), updateMany: jest.fn() } } }));
+jest.mock('../db', () => ({ prisma: { $transaction: jest.fn(), serverNode: { findUniqueOrThrow: jest.fn(), findMany: jest.fn(), updateMany: jest.fn() } } }));
 jest.mock('../services/agentClient', () => ({ AgentClient: { getNodeHealth: jest.fn() } }));
 jest.mock('dns/promises', () => ({ lookup: jest.fn().mockResolvedValue([{address:'47.85.109.170'}]) }));
 import { prisma } from '../db';
@@ -65,4 +65,11 @@ it('blocking delegates to locked cleanup instead of deleting a current-key-only 
   (prisma as any).peerSession={findMany:jest.fn().mockResolvedValue([{peerId:'owned-lease',clientPublicKey:'current-fixture',pendingPublicKey:'pending-fixture'}]),delete:jest.fn()};
   const res=response();await route('put','/devices/:id/block')({params:{id:current.id},body:{isBlocked:true},admin:{adminId:'admin'}},res);
   expect(res.code).toBe(200);expect(cleanup).toHaveBeenCalledWith(current.id,'owned-lease');expect((prisma as any).peerSession.delete).not.toHaveBeenCalled();cleanup.mockRestore();
+});
+
+it('node management selects no agent credentials while preserving all public management fields',async()=>{
+ (prisma.serverNode.findMany as jest.Mock).mockResolvedValue([{id:'real-node',name:'Node'}]);
+ const res=response();await route('get','/servers')({},res);
+ expect(res.body.servers).toEqual([{id:'real-node',name:'Node'}]);
+ const query=(prisma.serverNode.findMany as jest.Mock).mock.calls[0][0];expect(query.select).not.toHaveProperty('agentSecretHash');expect(query.select).toMatchObject({endpoint:true,publicKey:true,dnsServers:true,agentUrl:true,maxPeers:true,healthy:true});
 });

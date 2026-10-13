@@ -359,3 +359,5 @@ CI fixture correction: generated audit promo codes respect the existing 32-chara
 ## Admin layout follow-up
 
 Aligned toolbars, responsive headers, cards, forms, identifiers and modal tables; added dialog focus/body-scroll handling and dirty-draft preservation with scoped validation. Superseded searches are cancelled and first loads skip the typing debounce. See docs/audit/ADMIN-LAYOUT-API-PERFORMANCE.md.
+
+Admin/API performance: server results render independently of statistics; hidden/off-screen dashboard polling stops, node-only polling skips stats, aggregate reads use a two-second single-flight snapshot, and management queries omit agent credentials. Ten concurrent dashboard calls require five DB queries instead of fifty. Live p50/p95 remains unmeasured. No schema/API-field change or migration.
