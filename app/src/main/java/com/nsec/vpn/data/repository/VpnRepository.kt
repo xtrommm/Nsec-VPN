@@ -509,6 +509,7 @@ class VpnRepository(
     suspend fun claimReward(ticketId: String) = withContext(Dispatchers.IO) {
         rewardClaimMutex.withLock {
             savePendingReward(ticketId)
+            try {
             kotlinx.coroutines.withTimeout(35_000) {
                 repeat(21) { attempt ->
                     var token = keyStoreManager.getAccessToken() ?: authenticateDevice()
@@ -541,6 +542,9 @@ class VpnRepository(
                     savePendingReward(null)
                     return@withTimeout
                 }
+            }
+            } catch (_: kotlinx.coroutines.TimeoutCancellationException) {
+                throw IllegalStateException("Reward Confirmation Timed Out. We’ll Retry Automatically.")
             }
         }
     }
