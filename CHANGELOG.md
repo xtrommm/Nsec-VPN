@@ -353,3 +353,5 @@ Public server metadata uses a two-second, invalidated single-flight catalog with
 Reskinned the admin workspace with responsive grouped navigation and separate Ads & Rewards, App Controls, Announcements and Account Security tabs. Scoped validated config publishing detects stale saves. Added local-only authenticator QR generation (qrcode and @types/qrcode), theme/focus/empty/error states, and self-only CSP/no-framing headers. Existing role guards and management actions are retained.
 
 Audit delivery: 31 backend suites/181 unit tests, 5 panel tests and 23 deployment tests passed locally; backend/panel type checks and builds passed. Dependency audits report zero advisories. Current targeted secret scan found zero matches, with eight historical default-credential matches retained as metadata for rotation review. Added read-only latency benchmark, optional runtime-role SQL, endpoint mapping, rollout/rollback guide and explicit real-DB/browser/provider verification limits.
+
+CI fixture correction: generated audit promo codes respect the existing 32-character limit and validate before database setup. Production validation unchanged.

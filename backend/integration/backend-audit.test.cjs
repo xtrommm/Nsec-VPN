@@ -9,7 +9,9 @@ const {consumeAdminTotp}=require('../dist/services/adminMfa');
 const {rotateRefreshToken}=require('../dist/services/refreshTokens');
 const {encryptTotpSeed}=require('../dist/services/totp');
 const tag=crypto.randomUUID();let devices=[],promo,admin;
-const code='TEST-'+tag.toUpperCase();
+const code='TEST-'+tag.replace(/-/g,'').slice(0,24).toUpperCase();
+// Validate fixture before writing any isolated database rows.
+promoHash(code);
 before(async()=>{
  devices=await Promise.all([0,1].map(i=>prisma.device.create({data:{deviceId:`test-${tag}-${i}`}})));
  promo=await prisma.promoCode.create({data:{codeHash:promoHash(code),label:'Isolated audit test',passMinutes:1440,passDays:1,maxRedemptions:1}});
