@@ -297,3 +297,7 @@ App Version is inside Developer / Debug and remains visible in release; debug di
 
 ### In-place theme switching
 MainActivity handles `uiMode` configuration changes so Compose updates the palette without activity recreation. Existing native splash preference synchronization remains intact. System-bar appearance updates only when theme/view changes, and native ad XML views refresh for new night-mode resources. Routing, data models, consent and ad IDs are unchanged; confirm real transition timing on the phone.
+
+
+### VIP sheet and verified reward feedback
+The VIP options sheet is compact with a close action and balanced plan rows. Pending VIP now comes from an actual reward ticket, not ad-free time. Claims check verified grants more promptly, serialize requests, bound waiting, retry while foregrounded without the prior five-minute throttle, and reject expired/free responses rather than showing false activation. Both benefits start from a confirmed VIP grant. This requested reward follow-up changes only Android reward coordination; backend signature verification remains mandatory and unchanged. Live SSV delivery/configuration still requires verification; debug test-unit rewards are not production VIP proof.

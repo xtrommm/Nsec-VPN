@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
@@ -149,19 +150,42 @@ fun VipAccessSheet(offer: RewardOffer, busy: Boolean, onDismiss: () -> Unit,
     ModalBottomSheet(onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = MaterialTheme.colorScheme.surface) {
-        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp)
-            .padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text("A better way to VIP", fontSize = 26.sp, fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface)
-            Text("Choose A Rewarded Pass Or A Paid Plan. Both Include Ad-Free Access And VIP Servers.",
-                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
-            VipRewardCard(offer, busy, onWatchReward, onDismiss, showMoreOptions = false)
-            Text("PREFER A PAID PLAN?", fontSize = 11.sp, fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant, letterSpacing = 1.sp)
+        Column(Modifier.fillMaxWidth().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp)
+            .padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                    Icon(Icons.Default.Star, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(12.dp).size(24.dp))
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Nsec VIP", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Text("Ad-Free Access • VIP Servers", style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                IconButton(onClick = onDismiss) {
+                    Icon(androidx.compose.material.icons.Icons.Default.Close, contentDescription = "Close VIP Options")
+                }
+            }
+            Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(offer.title.ifEmpty { "Loading Your VIP Offer…" }, fontSize = 22.sp, fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    Text(offer.detail.ifEmpty { "Getting The Current Reward Options." }, fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    if (offer.available || busy) Button(onClick = onWatchReward, enabled = offer.available && !busy,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("sheet_vip_reward"), shape = RoundedCornerShape(12.dp)) {
+                        if (busy) CircularProgressIndicator(Modifier.size(18.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+                        else Icon(Icons.Default.PlayArrow, contentDescription = null)
+                        Spacer(Modifier.width(8.dp)); Text(if (busy) "Preparing Your Reward…" else "Watch Ad & Unlock VIP")
+                    }
+                }
+            }
+            Text("PAID VIP PLANS", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Plan("Monthly VIP", "nsecvpn_premium_monthly", onPurchase)
             Plan("Yearly VIP", "nsecvpn_premium_yearly", onPurchase)
-            Text("Google Play Shows The Exact Price And Purchase Terms Before You Pay. Availability And Network Performance Depend On The Node.",
-                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+            Text("Google Play Shows The Price And Terms Before Purchase.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
         }
     }
 }
@@ -172,7 +196,8 @@ private fun Plan(label: String, product: String, onPurchase: (String) -> Unit) {
         shape = RoundedCornerShape(14.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
-            Text(label, fontWeight = FontWeight.Bold)
+            Text(label, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            Spacer(Modifier.width(12.dp))
             Text("View Plan →")
         }
     }

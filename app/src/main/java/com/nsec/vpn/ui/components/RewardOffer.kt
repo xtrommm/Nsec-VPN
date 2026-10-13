@@ -5,7 +5,7 @@ data class RewardOffer(val minutes: Int?, val available: Boolean, val title: Str
     companion object {
         fun from(loaded: Boolean, enabled: Boolean, minutes: Int, tier: String, pending: Boolean, failed: Boolean = false): RewardOffer = when {
             tier != "FREE" -> RewardOffer(null, false, "Your VIP Is Active", "Ad-Free Access And VIP Servers Are Unlocked.")
-            pending -> RewardOffer(null, false, "Reward Completed", "Ad-Free Access Is Active. Your VIP Server Access Is Being Activated.")
+            pending -> RewardOffer(null, false, "Confirming Your Reward", "Your Ad Is Complete. Your VIP Pass Activates When Verification Succeeds.")
             !loaded && failed -> RewardOffer(null, false, "Reward Offer Unavailable", "Check Your Connection. VIP Options Remain Available.")
             !loaded || minutes !in 1..1440 -> RewardOffer(null, false, "", "", loading = true)
             !enabled -> RewardOffer(null, false, "VIP, Your Way", "Rewarded Ads Are Unavailable Right Now. Paid Plans Are Still Available.")
