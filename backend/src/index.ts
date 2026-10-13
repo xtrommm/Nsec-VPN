@@ -8,6 +8,7 @@ import pino from 'pino';
 import { refreshNodeHealth } from './services/nodeHealth';
 import { expirePeers } from './services/peerProvisioning';
 import { prisma } from './db';
+import { trustedProxyCidrs } from './services/proxyTrust';
 import { globalLimiter } from './middleware/rateLimit';
 
 // Import Route Handlers
@@ -32,6 +33,7 @@ const logger = pino({
 });
 
 const app = express();
+app.set('trust proxy', trustedProxyCidrs(process.env.TRUSTED_PROXY_CIDRS));
 const PORT = process.env.PORT || 4000;
 
 // Security and Performance Middleware
@@ -44,7 +46,6 @@ app.use(cors({
 app.use(compression());
 app.use(express.json({ limit: '1mb' }));
 // No HTTP access logging; source addresses, headers, URLs and bodies are never persisted.
-app.use(globalLimiter);
 
 // Health & Readiness Endpoints (Docker / Kubernetes)
 app.get('/health', (_req: Request, res: Response) => {
@@ -59,6 +60,9 @@ app.get('/ready', async (_req: Request, res: Response) => {
     res.status(503).json({ status: 'UNAVAILABLE', error: 'Database connection failed' });
   }
 });
+
+// Health probes must not share an exhausted user API quota.
+app.use(globalLimiter);
 
 // Mount Production API Routes
 app.use('/api/v1/auth', authRoutes);

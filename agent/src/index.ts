@@ -116,6 +116,7 @@ async function remove(publicKey: string) {
   await saveLeases();
 }
 app.post('/api/v1/agent/peers', auth, async (req, res) => {
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) return res.status(400).json({ success: false, error: 'INVALID_INPUT' });
   const { publicKey, allocatedIp, expiresAt } = req.body;
   // Legacy backend requests get a real, bounded lease, never a simulated peer.
   const expiry = expiresAt === undefined ? Date.now() + 86400000 : Date.parse(expiresAt);
@@ -125,6 +126,7 @@ app.post('/api/v1/agent/peers', auth, async (req, res) => {
   catch { return res.status(503).json({ success: false, error: 'PEER_PERSISTENCE_FAILED' }); }
 });
 app.delete('/api/v1/agent/peers', auth, async (req, res) => {
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) return res.status(400).json({ success: false, error: 'INVALID_INPUT' });
   const { publicKey } = req.body;
   if (!validKey(publicKey)) return res.status(400).json({ success: false, error: 'INVALID_PUBLIC_KEY' });
   try { await serialize(() => remove(publicKey)); return res.json({ success: true, persisted: true }); }
@@ -155,6 +157,9 @@ app.get('/api/v1/agent/health', auth, async (_req, res) => {
       peerCount: peers.stdout.trim().split('\n').filter(Boolean).length, handshakeCount,
       loadPercent: Math.min(Math.round(os.loadavg()[0] / Math.max(os.cpus().length, 1) * 100), 100) });
   } catch { return res.status(503).json({ online: false, error: 'NODE_HEALTH_FAILED' }); }
+});
+app.use((error: { status?: number }, _req: Request, res: Response, _next: NextFunction) => {
+  res.status(error.status === 400 ? 400 : 500).json({ success: false, error: error.status === 400 ? 'INVALID_INPUT' : 'AGENT_REQUEST_FAILED' });
 });
 async function start() {
   try { leases = JSON.parse(await readFile(leaseFile, 'utf8')); }

@@ -2,6 +2,8 @@
 
 ## Unreleased — Deep audit
 
+- Add opt-in CIDR-based proxy trust, separate readiness from user API quotas, and reject malformed agent request bodies with safe errors.
+
 
 
 - Protect entitlement expiry against concurrent grants/recovery, preserve longer VIP on purchase verification, and handle profile database failures without unhandled async rejections.

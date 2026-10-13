@@ -74,3 +74,14 @@ test('legacy unbound signatures are disabled unless explicitly enabled for migra
   auth({get:()=>undefined},res,()=>accepted=true);
   assert.equal(code,426);assert.equal(accepted,false);
 });
+
+test('missing, null, array or scalar signed bodies fail before command execution', async () => {
+  const before = calls.length;
+  for (const body of [undefined,null,[],true,'invalid']) {
+    let code = 200;
+    const res = { status(value) { code = value; return this; }, json() { return this; } };
+    await handler({body},res);
+    assert.equal(code,400);
+  }
+  assert.equal(calls.length,before);
+});
