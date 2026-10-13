@@ -48,6 +48,9 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
     var lastError: String? = null; private set
     var latestHandshakeAgeSeconds = 0L; private set
     var activeTunnelConfig: TunnelConfig? = null; private set
+    private val operations = TunnelOperations()
+    private val _operationError = MutableStateFlow<String?>(null)
+    val operationError: StateFlow<String?> = _operationError.asStateFlow()
     private var connectJob: Job? = null
     private var statsJob: Job? = null
     private var connectionStartTime = 0L
@@ -73,8 +76,27 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
         lastExcludedApps = excludedApps; lastDns = dnsServers
         reconnectCount = 0
         _vpnState.value = VpnState.Connecting
-        connectJob = scope.launch { connectWithFailover(server, dnsServers, excludedApps) }
+        connectJob = launchOperation { connectWithFailover(server, dnsServers, excludedApps) }
     }
+    private fun launchOperation(previous: Job? = null, work: suspend () -> Unit): Job = scope.launch {
+        previous?.cancelAndJoin()
+        operations.exclusive {
+            _operationError.value = null
+            try { work() }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) {
+                lastError = "VPN Operation Failed. The Tunnel May Still Be Active; Retry Disconnecting."
+                _operationError.value = lastError
+                val verified = _connectedNode.value
+                val stillUp = runCatching { backend.getState(tunnel) == Tunnel.State.UP }.getOrDefault(false)
+                if (stillUp && verified != null) {
+                    _vpnState.value = VpnState.Connected
+                    startStatsMonitoring(verified.serverPublicKey)
+                } else _vpnState.value = VpnState.Error(lastError.orEmpty())
+            }
+        }
+    }
+
     private suspend fun connectWithFailover(initial: Server, dns: List<String>, excludedApps: Set<String>) {
         val visited = mutableSetOf<String>()
         var candidate: Server? = com.nsec.vpn.data.model.LocationSelection.ranked(
@@ -185,12 +207,11 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
     private fun recoverStaleTunnel() {
         if (_vpnState.value !is VpnState.Connected) return
         val server = activeServer ?: return
-        _connectedNode.value = null
         _vpnState.value = VpnState.Connecting
         statsJob?.cancel()
-        connectJob = scope.launch {
+        connectJob = launchOperation {
             teardown()
-            if (reconnectCount >= MAX_RECONNECTS) { _vpnState.value = VpnState.Error("Couldn't Reach The Server"); return@launch }
+            if (reconnectCount >= MAX_RECONNECTS) { _vpnState.value = VpnState.Error("Couldn't Reach The Server"); return@launchOperation }
             delay(1000L shl reconnectCount++)
             connectWithFailover(server, lastDns, lastExcludedApps)
         }
@@ -203,8 +224,12 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
     }
     private suspend fun teardown() {
         stopping = true
-        try { backend.setState(tunnel, Tunnel.State.DOWN, null) } catch (_: Exception) { /* Already down. */ }
-        stopping = false
+        try {
+            TunnelShutdown.stop(
+                setDown = { backend.setState(tunnel, Tunnel.State.DOWN, null) },
+                isDown = { backend.getState(tunnel) == Tunnel.State.DOWN }
+            )
+        } finally { stopping = false }
         val id = activePeerId; val key = activeClientPublicKey
         if (id != null && key != null) vpnRepository.notifyDisconnect(id, key)
         activePeerId = null; activeTunnelConfig = null; _connectedNode.value = null; _activeDns.value = emptyList()
@@ -216,8 +241,8 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
         _vpnState.value = VpnState.Disconnecting
         statsJob?.cancel()
         val job = connectJob; connectJob = null
-        scope.launch {
-            job?.cancelAndJoin(); teardown()
+        launchOperation(previous = job) {
+            teardown()
             activeClientPublicKey = null; activeServer = null
             _vpnStats.value = VpnStats(); _vpnState.value = VpnState.Disconnected
         }
@@ -232,14 +257,10 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
         val previous = connectJob
         statsJob?.cancel()
         _vpnState.value = VpnState.Connecting
-        _connectedNode.value = null
-        connectJob = scope.launch {
-            try {
-                previous?.cancelAndJoin()
-                teardown()
-                currentCoroutineContext().ensureActive()
-                connectWithFailover(server, dns, lastExcludedApps)
-            } catch (e: CancellationException) { withContext(NonCancellable) { teardown() }; throw e }
+        connectJob = launchOperation(previous = previous) {
+            teardown()
+            currentCoroutineContext().ensureActive()
+            connectWithFailover(server, dns, lastExcludedApps)
         }
     }
 

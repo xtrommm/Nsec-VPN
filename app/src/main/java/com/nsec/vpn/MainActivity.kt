@@ -73,6 +73,7 @@ class MainActivity : ComponentActivity() {
                 val coroutineScope = rememberCoroutineScope()
 
                 val vpnState by tunnelManager.vpnState.collectAsStateWithLifecycle()
+                val operationError by tunnelManager.operationError.collectAsStateWithLifecycle()
                 val vpnStats by tunnelManager.vpnStats.collectAsStateWithLifecycle()
                 val connectedNode by tunnelManager.connectedNode.collectAsStateWithLifecycle()
                 val serversLoading by vpnRepo.serversLoading.collectAsStateWithLifecycle()
@@ -266,6 +267,10 @@ class MainActivity : ComponentActivity() {
                     if (currentTab == Screen.Servers) {
                         vpnRepo.refreshServers()
                     }
+                }
+
+                LaunchedEffect(operationError) {
+                    operationError?.let { Toast.makeText(this@MainActivity, it, Toast.LENGTH_LONG).show() }
                 }
 
                 LaunchedEffect(remoteConfigError) {

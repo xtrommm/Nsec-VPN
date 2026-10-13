@@ -2,6 +2,10 @@
 
 ## Unreleased — Deep audit
 
+- Correct unsupported privacy/compliance/latency/disclosure documentation claims; distinguish operational records from traffic logs and list publishing verification gaps.
+
+- Serialize tunnel activation/cleanup, retain notification/peer state on failed shutdown, expose operation errors, and add cancellation/shutdown regressions. Add a speed-helper deadline watchdog and suppress stale loss callbacks.
+
 - Fix dual-stack endpoint validation and first-sample throughput, share permission-return eligibility checks, synchronize displayed grants, clarify split-exclusion reconnect requirements, recover error tile actions and remove the unused boot permission.
 
 - Ignore older profile results after a newer grant is applied; add a delayed-profile/promo regression.
@@ -36,7 +40,7 @@
 - Add persistent failed-proof locks, credential rotation, auth-epoch enforcement for access/refresh tokens, and safe old-peer lease cleanup.
 - Add a Settings recovery sheet and update the displayed identity after recovery.
 - Move Europe/EU branding onto the original native day/night launch window and remove the extra Compose splash and delay.
-- Rename Accept & Continue to Continue, retaining disclosure and Android VPN permission.
+- Initially renamed Accept & Continue to Continue; a later update removed the extra in-app disclosure. Android VPN permission remains.
 - Add an additive recovery migration, exact schema-approval helper, privacy disclosures, regression tests and rollout guide.
 
 ## Unreleased — App polish and location pools

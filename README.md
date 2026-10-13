@@ -6,9 +6,9 @@
 [![Protocol](https://img.shields.io/badge/VPN_Engine-WireGuard®_Core-emerald.svg)](https://www.wireguard.com)
 [![Architecture](https://img.shields.io/badge/UI-Jetpack_Compose_Material_3-blue.svg)](https://developer.android.com/jetpack/compose)
 [![Backend](https://img.shields.io/badge/Server-Node.js_•_Docker_•_PostgreSQL-indigo.svg)](https://docker.com)
-[![Zero-Logs](https://img.shields.io/badge/Security-Zero--Logs_Verified-success.svg)](https://nsecvpn.com/privacy)
+[![Zero-Logs](https://img.shields.io/badge/Privacy-No_Traffic_Logs-blue.svg)](https://nsecvpn.com/privacy)
 
-**Nsec VPN** (`com.nsec.vpn`) is a modern, production-grade, zero-logs WireGuard® VPN application designed for Android devices, paired with a web management portal and scalable gateway orchestration backend.
+**Nsec VPN** (`com.nsec.vpn`) is a WireGuard-based WireGuard® VPN application designed for Android devices, paired with a web management portal and scalable gateway orchestration backend.
 
 Official Website: **[nsecvpn.com](https://nsecvpn.com)**
 
@@ -29,10 +29,10 @@ Official Website: **[nsecvpn.com](https://nsecvpn.com)**
 ### 📱 Android Client (`/app`)
 - **Modern Pro UI**: High-contrast Material 3 Light/Dark theme with responsive cards, micro-animations, and live stats.
 - **WireGuard® Protocol Engine**: Userspace Go backend (`wireguard-android`) using ChaCha20-Poly1305 encryption and Curve25519 key exchanges.
-- **Android 14-16 & 16 KB Page Size Compliant**: Fully compliant with Android 14, 15, and 16 (`systemExempted` foreground service type) and 16 KB memory page size alignment for JNI binaries (`useLegacyPackaging = true`).
+- **Android compatibility**: Release validation must cover supported Android versions, foreground-service restrictions and actual native-library page alignment. Build flags alone do not establish compliance.
 - **Smart Native Ads Monetization**: Google Native Ads integration (`SmartNativeAd`) with compact, medium, and large layouts, shimmer states, lifecycle caching, and robust null-safety across Home, Server List, and Speed Test screens.
-- **AdMob Traffic Split Tunneling Bypass**: Automatic package and domain exclusion rules in `WireGuardTunnelManager` and `NsecVpnService` routing Google Mobile Ads SDK calls outside the VPN tunnel to prevent ad request timeouts or policy flags.
-- **Smart Connect**: Automatically checks global node latencies via UDP socket handshakes and connects to the optimal gateway.
+- **AdMob Traffic Split Tunneling Bypass**: Automatic package exclusion in `WireGuardTunnelManager` and `NsecVpnService` routing Google Mobile Ads SDK calls outside the VPN tunnel to prevent ad request timeouts or policy flags.
+- **Smart Connect**: Ranks eligible nodes by capacity and measured endpoint latency; successful connection requires a real WireGuard handshake. Latency checks are ICMP measurements and can be unavailable when a provider blocks probes.
 - **Custom Encrypted DNS**: One-tap selection between Cloudflare (`1.1.1.1`), Google (`8.8.8.8`), AdGuard (`94.140.14.14`), and Quad9 (`9.9.9.9`).
 - **App Split Tunneling**: Exclude banking, local entertainment, or ad SDK apps from the VPN tunnel.
 - **Kill Switch Deep-Link**: Native deep-linking into Android system *Always-On VPN* settings.
@@ -135,7 +135,7 @@ Open the project in Android Studio, sync Gradle, and run `:app` on your Android 
 
 ## 🔒 License & Privacy Guarantee
 
-Nsec VPN is built with strict zero-logs guarantees. WireGuard® is a registered trademark of Jason A. Donenfeld.
+The code avoids traffic, browsing and DNS-query persistence. Operational device/authentication/entitlement/peer records are retained; hosting and third-party logging settings require operator verification. WireGuard® is a registered trademark of Jason A. Donenfeld.
 Distributed under the Apache 2.0 License.
 update
 
@@ -173,7 +173,7 @@ The Android catalog displays one country/city location backed by individual node
 
 ### VIP recovery after clearing storage
 
-Use Settings → Device VIP Recovery to configure a private PIN before clearing app data. Save the original Device ID and PIN; restore with both to recover the same backend VIP record and expiry. Device ID alone cannot authorize recovery. The required additive SQL migration and reviewed-schema deployment steps are in [DEVICE-VIP-RECOVERY-NATIVE-SPLASH.md](docs/DEVICE-VIP-RECOVERY-NATIVE-SPLASH.md). Europe branding now appears on the original native launch window; the extra splash page is removed. The disclosure action reads Continue while consent and Android VPN permission remain.
+Use Settings → Device VIP Recovery to configure a private PIN before clearing app data. Save the original Device ID and PIN; restore with both to recover the same backend VIP record and expiry. Device ID alone cannot authorize recovery. The required additive SQL migration and reviewed-schema deployment steps are in [DEVICE-VIP-RECOVERY-NATIVE-SPLASH.md](docs/DEVICE-VIP-RECOVERY-NATIVE-SPLASH.md). Europe branding now appears on the original native launch window; the extra splash page is removed. The extra in-app disclosure was removed in a later update; Android VPN permission remains. Review current Play VPN and advertising disclosure requirements before publishing.
 
 ## Deep audit and repair
 
@@ -206,3 +206,5 @@ Catalog refreshes coalesce for five seconds and manual refresh bypasses that win
 A delayed profile response cannot overwrite a newer promo/reward response in the app. The backend remains the authority for actual premium access.
 
 The client accepts dual-stack hostnames only through their verified public IPv4, baselines throughput counters before displaying rates, and rechecks connection eligibility after Android permission returns. Split-exclusion edits explicitly require reconnect; automatic live reconfiguration is deferred to device-tested lifecycle work. Error tiles reopen the app, tile scopes are cancelled on destruction, and the unused boot permission is removed.
+
+Tunnel activation, DNS reconnect and teardown now run exclusively, with cancellation joined before the next operation. Peer/notification state is cleared only after the backend confirms DOWN; shutdown failures remain visible and retain the tracked tunnel. This improves lifecycle consistency but is not an OS kill switch or process-death restoration. Speed helper sessions disconnect at their deadline and ignore late network-loss callbacks; verify blocked upload/network switching on a phone.

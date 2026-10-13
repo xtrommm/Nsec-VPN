@@ -6,7 +6,7 @@ const router = Router();
 // In-memory cache for high-throughput config queries
 let cachedConfig: any = null;
 let cachedConfigExpiry = 0;
-const CACHE_TTL_MS = 5 * 1000; // 60 seconds
+const CACHE_TTL_MS = 5 * 1000; // 5 seconds
 
 export function invalidateConfigCache() {
   cachedConfig = null;
