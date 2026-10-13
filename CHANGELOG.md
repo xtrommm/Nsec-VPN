@@ -2,6 +2,10 @@
 
 ## Unreleased — Deep audit
 
+- Refill released native ads, replace loading polls with state events, use media layouts for video, recreate changed templates and test the actual layout policy instead of a duplicated test implementation.
+
+- Clamp promo/usage/audit pages after results shrink and preserve modal keyboard focus while operations are busy.
+
 - Guard health results against stale credentials/capacity/DNS, return committed node writes with explicit health errors, support legacy safe device IDs in admin lookup, and neutralize spreadsheet formula injection.
 
 - Serialize Android authentication/recovery and reuse concurrent renewal results; propagate cancellation and retain pending rewards during transient rate limits. Add concurrent-refresh and cancelled-refresh regressions.

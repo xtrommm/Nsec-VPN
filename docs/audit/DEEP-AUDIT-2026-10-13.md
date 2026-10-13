@@ -38,6 +38,8 @@ Read-only baseline: `89a2fc3a19a51944ade35429d6e747a2410141c0` (main, including 
 | A30 | Medium | backend/src/types.ts:14; backend/prisma/schema.prisma:36–57; backend/src/services/peerProvisioning.ts:10–15 | Forced update is enforced only by the current app; numeric version is accepted but not persisted/enforced by peer creation. | Version persistence/enforcement needs an additive migration and an explicit policy for older clients. Do not lock out existing devices without approval. |
 | A31 | High | deployment/install-wireguard-node.sh:133,164; backend/src/types.ts:76–81 | Installer can expose source-restricted agent HTTP on a public network. HMAC authenticates but does not encrypt management data. | Current live SSH channel is encrypted; keep it. Require private/SSH or HTTPS/mTLS for new nodes; configurable TLS/bootstrap automation is a separate deployment change. |
 
+Additional follow-up finding A32 (Low): `admin-panel/src/components/ConsoleUI.tsx:8–20` reinitializes its focus trap whenever busy changes, returning focus to the opener mid-save. Fix: keep the handler stable and read busy through a ref.
+
 ## Working controls and ruled-out hypotheses
 
 - Node lists contain database records with recent successful health checks; no production fake-server fallback was found. Offline catalog fallback is cached real data (`ServerCatalogCache.kt`, `VpnRepository.kt`). Endpoint/config/public-key validation and handshake gating are present (`types.ts`, `TunnelConfigBuilder.kt`, `TunnelNegotiation.kt`). Client keys are generated and encrypted on the device; they are not sent to the backend.

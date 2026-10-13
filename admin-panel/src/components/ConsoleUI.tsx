@@ -4,19 +4,19 @@ export function Pager({page,pages,total,onPage}:{page:number;pages:number;total:
  return <div className="pager"><span>{total} records · Page {page} of {pages}</span><div className="actions"><button disabled={page<=1} onClick={()=>onPage(page-1)}>Previous</button><button disabled={page>=pages} onClick={()=>onPage(page+1)}>Next</button></div></div>;
 }
 export function Dialog({title,onClose,children,busy=false}:{title:string;onClose:()=>void;children:ReactNode;busy?:boolean}) {
- const ref=useRef<HTMLElement>(null);const close=useRef(onClose);close.current=onClose;
+ const ref=useRef<HTMLElement>(null);const close=useRef(onClose);close.current=onClose;const working=useRef(busy);working.current=busy;
  useEffect(()=>{
   const previous=document.activeElement as HTMLElement|null;const panel=ref.current;
   const selector='button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]';
   (panel?.querySelector(selector) as HTMLElement|null)?.focus();
-  const key=(e:KeyboardEvent)=>{if(e.key==='Escape'&&!busy)close.current();if(e.key==='Tab'){
+  const key=(e:KeyboardEvent)=>{if(e.key==='Escape'&&!working.current)close.current();if(e.key==='Tab'){
    const items=Array.from(panel?.querySelectorAll<HTMLElement>(selector)||[]).filter(el=>el.getClientRects().length);
    if(!items.length){e.preventDefault();return;}const first=items[0],last=items[items.length-1];
    if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}
    else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
   }};
   document.addEventListener('keydown',key);return()=>{document.removeEventListener('keydown',key);previous?.focus();};
- },[busy]);
+ },[]);
  return <div className="modal-backdrop"><section ref={ref} className="panel modal" role="dialog" aria-modal="true" aria-label={title}><div className="section-heading"><h2>{title}</h2><button aria-label="Close dialog" disabled={busy} onClick={onClose}>Close</button></div>{children}</section></div>;
 }
 export function ConfirmDialog({title,message,busy,onCancel,onConfirm}:{title:string;message:string;busy:boolean;onCancel:()=>void;onConfirm:()=>void}) {

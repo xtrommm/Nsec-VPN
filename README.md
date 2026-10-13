@@ -194,3 +194,7 @@ Android token renewal, registration and recovery now share a mutex. Parallel una
 
 
 Node create/update responses preserve a successful database write even when the subsequent health probe fails: inspect optional `healthCheckError`, then use Test node. Edited nodes are excluded until a fresh health check validates their configuration. Admin device details and request filters accept the same safe installation-ID format as registration, including legacy non-UUID IDs. CSV exports neutralize control/whitespace-prefixed spreadsheet formulas.
+
+Promo, usage and audit tables recover from an out-of-range page after deletion/filter changes. Modal keyboard focus remains in the dialog during saves and returns to the opener only on close. Regression checklist: delete the last campaign on page 2; change usage search; save with keyboard while the form is busy; verify focus and pagination.
+
+Native ads refill their bounded pool when released and react to load events instead of polling every ten seconds. Video ads use a MediaView template and hide when constrained space cannot safely contain it. Template changes recreate the native view. Validate text/video formats, large fonts, rotation and repeated refreshes with live AdMob test devices before publishing.
