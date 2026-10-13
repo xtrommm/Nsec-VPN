@@ -30,3 +30,48 @@ No live administration/session credentials or database/server execution access a
 ## Ruled out / retained safeguards
 
 Device/admin routes already use auth guards; server/promo/config mutation roles are enforced server-side. Promo redemption has per-device/per-code database advisory locks, unique per-campaign/device redemption and atomic usage/entitlement changes. Recovery is PIN-authenticated, throttled and auth-epoch revoking. Agent requests and responses are authenticated; uncertain reservations are durable. Google reward signatures, ad-unit binding and transaction replay ledger are present. Play notifications query authoritative Google status, and purchase/protected-grant reconciliation preserves unrelated VIP. Request owner/status are server-controlled with an existing transactional cooldown. Paged devices/promos/requests/audit queries and node health overlap guards exist. No claim of universally bug-free behavior is made.
+
+## Final implementation status
+
+The user subsequently authorized a full admin reskin; it is included without Android/VPN logic changes. Every B01–B18 source finding above has an implemented fix and regression coverage. See BACKEND-API-CHANGES.md for per-endpoint mappings and BACKEND-ADMIN-ROLLOUT.md for deployment and operator checks.
+
+Additional findings discovered during implementation:
+
+| ID | Severity | Baseline evidence | Cause and fix | Status / proof |
+|---|---|---|---|---|
+| B19 | Medium | backend/src/routes/admin.ts:384-406 (baseline) | Full configuration editors overwrite concurrent updates; optional expectedUpdatedAt checked under config lock, scoped panel saves | Fixed; node-admin-consistency stale-save test |
+| B20 | Low | backend/src/index.ts:95-100 (baseline) | Parser failures mislabeled internal errors; safe 400/413 codes | Fixed; http-lifecycle |
+| B21 | Medium | backend/src/services/nodeHealth.ts:18,62-68 (baseline) | Unbounded DNS and chunk head-of-line waits; 2s DNS deadline, 8 independent workers, safe partial-failure warning | Fixed; node-health-workers deadline/independent-worker tests; live many-node timing unmeasured |
+| B22 | Medium | backend/src/routes/servers.ts:24-32 (baseline) | Repeated public catalog DB queries; public-only two-second single-flight cache with mutation invalidation | Fixed; server-catalog and cross-tier server-load-response tests |
+| B23 | Low | backend/tsconfig.json:include; backend/package.json:scripts.build (baseline) | Tests compiled into production distribution; separate build config and clean dist before build | Fixed; clean build emits no __tests__/test modules |
+| B24 | Low | admin-panel/src/components/ControlSettings.tsx:reward help text (baseline) | Help claimed unverified client callback grants benefit; accurate server-verification text | Fixed; panel source/build |
+| B25 | Medium | admin-panel/nginx.conf:1-8 (baseline) | No panel CSP; self-only scripts/connect, local QR data images, no framing/object content, nosniff/referrer headers | Fixed in source; operator must verify deployed proxy headers |
+| B26 | Medium | deployment/docker-compose.yml:postgres/backend environment (baseline) | Owner credentials can also be runtime credentials; CRUD-only role SQL + protected switch/rollback instructions supplied | Operator action required: runtime credentials/privileges unavailable here |
+
+### Validation and measurable results
+
+Baseline backend 25 suites/149 tests; final backend test totals are recorded in the delivery PR body. TypeScript checking and production build passed, as did panel checking, tests and Vite build. npm dependency scans returned zero advisories for backend and panel. A targeted current/history secret scan found no current credential literal/private-key pattern in the scanned source. Historical fallback defaults exist in backend/src/index.ts, backend/src/middleware/auth.ts, backend/src/routes/admin.ts and backend/src/routes/auth.ts; paths/blob/line metadata are in BACKEND-SECRET-SCAN.json, values are never disclosed. Confirm rotation of any deployment that used those defaults (JWT and bootstrap admin password). Previous node private-key rotation remains required if not already completed; this update does not print or rotate node keys.
+
+Measured query/operation counts in regression tests: concurrent cold config reads coalesce to one DB query; concurrent catalog reads coalesce to one DB query, cached reads issue zero until the two-second expiry; VIP-only node edit performs zero agent probes. Real endpoint p50/p95 before/after, TLS/proxy/log retention, real DB privileges and visual browser QA were not measurable here. There is no invented latency result or claim of end-to-end security verification. The read-only benchmark and real-PG CI harness are supplied for those checks.
+
+### Privacy and security scope
+
+Stored data remains installation IDs, optional device/app metadata, entitlement/expiry, peer public keys/tunnel leases, encrypted purchase receipts/promo text, server requests, administrator identity and safe action audits. No source-IP, browsing content or DNS query storage was added. Enrollment stores encrypted authenticator seed and last consumed counter; audit actions do not contain the seed/password/code. Request country/city/note can contain user-supplied personal information; deletion remains available and retention is an operator policy. External CloudPanel/Cloudflare/Google/provider logs, backups, secret access permissions and retention must be checked by the owner. Existing HTTPS/CORS/proxy allowlists, Google verification, peer reservations and IDOR guards were retained; this report does not certify external infrastructure.
+
+### Remaining verification, not skipped code fixes
+
+Real PostgreSQL integration tests (promo contention, refresh reuse, TOTP contention) require a test DB; none was available locally. They are wired into the existing CI integration glob. Browser download was unavailable, so responsive/theme/authenticator QR layouts require the supplied manual checks. Provider-positive billing/rewards and live endpoint/network tests require owner credentials and devices. These are concrete access limits, not claimed passing. No guarantees of a bug-free system or future zero errors are made.
+
+### Ranked follow-on hardening
+
+| Improvement | Value | Effort | Risk | Decision |
+|---|---|---|---|---|
+| Generation-safe caches, bounded health jobs and scoped config updates | High | Low | Low | Implemented with regressions |
+| Authenticator enrollment and replay/session protections | High | Medium | Medium | Implemented; migration/key setup required |
+| Read-only timing harness and exact-schema approval | High | Low | Low | Implemented; operator executes |
+| Least-privilege runtime database account | High | Low | Medium | SQL/instructions supplied; operator credential switch required |
+| Shared quota store for multiple backend replicas | High at scale | Medium | Medium | Proposed; current deployment is a single backend with process-local quotas; choose Redis/service before expanding replicas |
+| Live provider callback alerts, safe aggregate metrics and retention policy | High | Medium | Medium | Proposed; requires destination/retention choice; no user data or unsolicited external messages added |
+| Formal backup restoration drills and encrypted secret rotation runbooks | High | Medium | Medium | Proposed; requires planned maintenance and backup retention choice |
+
+The process-local cache invalidates immediately on the writing instance and expires within two seconds on other instances. Existing rate limits are process-local; adding replicas without a shared quota store multiplies quotas. No replica deployment was added. These are scale-dependent design choices, not hidden assertions that the current single-instance protections cover arbitrary horizontal scaling.

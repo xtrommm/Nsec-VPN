@@ -1,0 +1,7 @@
+Deleted promo campaigns retained their unique code hash, preventing reuse, and authenticator login had no enrollment control. This branch archives deleted hashes while preserving redemptions/VIP and adds password-reauthenticated encrypted authenticator setup in a dedicated Account Security tab.
+
+It also fixes refresh replay/access-token revocation, MFA replay/session authorization, pending-peer cleanup on block, config cache/concurrent-save races, fair expired-peer cleanup, billing input/quota/transient errors, UTC stats, bootstrap/shutdown, legal errors, public catalog caching and metadata-only node edits. The admin console uses grouped responsive navigation with separate Nodes, Devices, Promos, Requests, App Controls, Ads & Rewards, Announcements, Account Security and Audit tabs.
+
+Required before backend rollout: additive AdminUser.totpLastStep migration and a stable private ADMIN_TOTP_ENCRYPTION_KEY. See docs/audit/BACKEND-ADMIN-ROLLOUT.md for backup, exact image/schema approval, deployment and rollback caveats after encrypted MFA enrollment. Android and node-agent source are unchanged.
+
+Local validation: backend 31 suites/181 tests, TypeScript lint/build; panel lint, 5 tests and Vite build; 23 deployment tests; npm audits zero advisories. Real-PG integration tests are added for CI; live p50/p95, provider-positive flows and browser visual checks are not verified locally. Full audit/API mappings are in docs/audit/BACKEND-API-AUDIT.md and BACKEND-API-CHANGES.md.
