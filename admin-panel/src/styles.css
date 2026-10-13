@@ -12,3 +12,64 @@
 @media(max-width:1180px){.console-sidebar{width:224px}.console-main{padding-inline:24px}.profile>div{display:none}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.settings-grid,.security-grid{gap:16px}}
 @media(max-width:850px){.console-sidebar{position:fixed;inset:0 auto 0 0;transform:translateX(-100%);width:260px;z-index:100}.console-sidebar.open{transform:translateX(0)}.console .menu-button{display:flex;min-width:40px;padding:8px}.sidebar-overlay{display:block;position:fixed;inset:0;z-index:90;border:0!important;border-radius:0!important;background:#0009!important}.console-main{padding:0 20px 32px}.console-top{height:auto;min-height:78px;margin-bottom:24px;gap:12px;flex-wrap:wrap;padding:12px 0}.page-breadcrumb>span{display:none}.profile{border:0;padding:0}.profile .avatar{display:none}.console-top>.actions{flex-wrap:nowrap;gap:6px}.section-heading{flex-wrap:wrap}.settings-grid,.node-grid,.security-grid{grid-template-columns:1fr}.table-tools{flex-wrap:wrap}.console .table-tools>input{flex-basis:100%}.console .table-tools>select{flex:1;min-width:0}.activity-note{flex-wrap:wrap}.panel{padding:20px}.console .table-scroll{padding:4px 12px 12px}.modal-backdrop{padding:12px}.console .modal{max-height:calc(100svh - 24px)}.modal>.section-heading{top:-20px}.toast-stack{right:16px;bottom:16px}.sidebar-footer{padding-top:12px}}
 @media(max-width:480px){.console-main{padding-inline:14px}.console-top{align-items:center}.page-breadcrumb{gap:5px;font-size:11px;flex:1}.console-top .actions>button{font-size:11px;padding:8px;min-height:38px}.console h2{font-size:21px}.metrics{gap:10px}.metric{padding:17px}.metric strong{font-size:31px}.form-grid{grid-template-columns:1fr}.pager{flex-wrap:wrap}.section-heading>button{width:100%}.login{padding:24px!important}.modal h2{font-size:20px}.console .modal>.section-heading>button{width:auto}.table-scroll{border-radius:12px}}
+
+/* Shared alignment rules: keep content inside cards and controls on one baseline. */
+.console svg { flex-shrink: 0; }
+.console-section > *, .settings-grid > *, .node-grid > *, .form-grid > *, .security-grid > *, .metrics > * { min-width: 0; }
+.console .console-top { display: grid; grid-template-columns: minmax(0,1fr) auto; height: auto; min-height: 82px; padding-block: 14px; }
+.console .page-breadcrumb strong { white-space: normal; overflow-wrap: anywhere; }
+.console .profile > div { min-width: 0; }
+.console .profile strong { white-space: nowrap; }
+.console .section-heading { align-items: center; }
+.console .section-heading > div { min-width: 0; }
+.console .section-heading > button { flex-shrink: 0; }
+.console .table-tools { flex-wrap: wrap; align-items: center; }
+.console .table-tools > input { min-width: 180px; flex: 1 1 240px; }
+.console .table-tools > select { flex: 0 1 auto; max-width: 100%; min-height: 44px; }
+.console .table-tools > label.checkbox { margin: 0; padding: 0; min-height: 44px; white-space: nowrap; flex-shrink: 0; }
+.console .form-grid { gap: 18px; align-items: start; }
+.console .form-grid > label { margin: 0; }
+.console .form-grid input, .console .form-grid select { min-width: 0; }
+.console label.checkbox { line-height: 1.5; }
+.console .checkbox input { flex-shrink: 0; }
+.console .readiness-row > div { min-width: 0; overflow-wrap: anywhere; }
+.console .readiness-row > span { max-width: 48%; text-align: right; overflow-wrap: anywhere; }
+.console .activity-note > div { min-width: 180px; }
+.console .activity-note { flex-wrap: wrap; }
+.console td code { display: block; overflow-wrap: anywhere; max-width: 260px; }
+.console td code + button { margin-top: 8px; }
+.console td .actions { min-width: 180px; align-items: flex-start; gap: 6px; }
+.console td select { margin: 0; min-width: 130px; }
+.console .modal { min-width: 0; scrollbar-gutter: stable; }
+.console .modal > .section-heading { align-items: center; gap: 14px; }
+.console .modal > .section-heading > button { width: auto; }
+.console .modal-table { padding: 0; margin: 20px 0; max-width: 100%; }
+.console .draft-notice { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; }
+.console .draft-notice button { flex-shrink: 0; }
+.console .metric-heading { gap: 12px; min-height: 36px; }
+.console .metric small { line-height: 1.5; }
+.console .security-heading h3 { line-height: 1.4; }
+.console .enrollment img { width: 240px; }
+.console .badge { max-width: 100%; }
+@media (max-width: 1180px) {
+ .console .console-top { gap: 12px; }
+ .console .console-top > .actions { gap: 6px; }
+}
+@media (max-width: 850px) {
+ .console .console-top { min-height: 78px; }
+ .console .table-tools > input { flex-basis: 100%; }
+ .console .table-tools > select { flex: 1 1 130px; min-width: 0; }
+ .console .section-heading { align-items: flex-start; }
+ .console .readiness-row { flex-wrap: wrap; gap: 8px 14px; }
+ .console .readiness-row > span { max-width: 100%; text-align: left; }
+}
+@media (max-width: 480px) {
+ .console .console-top { grid-template-columns: minmax(0,1fr); gap: 10px; }
+ .console .console-top > .actions { flex-wrap: wrap; justify-content: flex-end; }
+ .console .page-breadcrumb { width: 100%; }
+ .console .draft-notice { align-items: flex-start; flex-direction: column; }
+ .console .panel { padding: 16px; }
+ .console .modal > .section-heading { top: -16px; margin-top: -8px; }
+ .console .section-heading > button { width: auto; }
+ .console .table-tools > label.checkbox { width: 100%; }
+}
