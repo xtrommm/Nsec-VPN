@@ -486,6 +486,11 @@ class MainActivity : ComponentActivity() {
                                             supportEmail = remoteConfig.supportEmail,
                                             privacyOptionsRequired = privacyOptionsRequired,
                                             privacyUpdateFailed = consentError != null,
+                                            onRestorePurchases = {
+                                                vpnRepo.refreshVerifiedEntitlement()
+                                                try { playBillingManager.restorePurchases() }
+                                                finally { vpnRepo.refreshVerifiedEntitlement() }
+                                            },
                                             onPrivacyOptions = { serviceLocator.adConsentManager.showPrivacyOptions(this@MainActivity) },
                                             deviceId = installationId,
                                             onRecoveryStatus = { vpnRepo.recoveryConfigured() },

@@ -2,6 +2,8 @@
 
 ## Unreleased — Audit follow-up
 
+- Add an explicit, bounded Restore Google Play Purchases flow without purchase UI or client-only grants; document separate promo/paid coverage selected by the owner.
+
 - Cover consent-aware ad flow and match restored location names without case sensitivity.
 
 - Add encrypted Play receipts, authenticated RTDN and bounded authoritative subscription rechecks; preserve non-purchase VIP and legacy unattributed grants, reject receipt/product reuse and stale responses, expire premium peers when the last grant is revoked, and retain self-reported numeric build metadata.

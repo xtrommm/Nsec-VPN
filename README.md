@@ -234,3 +234,5 @@ The installer now upgrades runtimes older than Node 22, matching CI. Existing No
 When connector writes are unavailable, the downloadable bundle publisher (`scripts/publish-deep-audit.py`, copied beside its package manifest/bundle) imports the reviewed commits into a separate checkout. `--publish` pushes only the repair branch; it opens a draft PR with authenticated GitHub CLI when available, otherwise prints the comparison link. It does not stage local edits, modify main, migrate data or deploy services.
 
 Restoration matches saved location names without case sensitivity; ad-flow tests explicitly authorize consent instead of assuming it.
+
+Settings now offers Restore Google Play Purchases, which only queries owned subscriptions and re-verifies them on the backend; it never opens a purchase flow. After clearing data, recover the original device identity first for already-bound purchases. Promo days extend non-purchase VIP separately from paid coverage, as selected by the owner.

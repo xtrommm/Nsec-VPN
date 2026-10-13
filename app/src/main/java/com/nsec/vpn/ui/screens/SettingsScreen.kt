@@ -32,6 +32,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
+import kotlinx.coroutines.launch
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.ContentCopy
@@ -61,12 +62,15 @@ fun SettingsScreen(
     privacyOptionsRequired: Boolean = false,
     privacyUpdateFailed: Boolean = false,
     onPrivacyOptions: () -> Unit = {},
+    onRestorePurchases: (suspend () -> Unit)? = null,
     onRecoveryStatus: suspend () -> Boolean = { error("Recovery Unavailable") },
     onSetRecoveryPin: suspend (String, String?) -> Unit = { _, _ -> error("Recovery Unavailable") },
     onRecoverDevice: suspend (String, String) -> Unit = { _, _ -> error("Recovery Unavailable") }
 ) {
     val context = LocalContext.current
     var showRecovery by remember { mutableStateOf(false) }
+    var restoringPurchases by remember { mutableStateOf(false) }
+    val settingsScope = rememberCoroutineScope()
     var showRequestDialog by remember { mutableStateOf(false) }
     fun copy(value: String) {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -235,6 +239,23 @@ fun SettingsScreen(
             )
         }
         Spacer(modifier = Modifier.height(24.dp))
+        if (onRestorePurchases != null) SettingsClickableItem(icon = Icons.Default.Restore,
+            title = if (restoringPurchases) "Restoring Purchases…" else "Restore Google Play Purchases",
+            subtitle = "Recheck Existing Subscriptions Without Making A Purchase", onClick = {
+                if (!restoringPurchases) {
+                    restoringPurchases = true
+                    settingsScope.launch {
+                        try {
+                            onRestorePurchases()
+                            Toast.makeText(context, "Purchases Verified And VIP Refreshed.", Toast.LENGTH_LONG).show()
+                        } catch (_: kotlinx.coroutines.TimeoutCancellationException) {
+                            Toast.makeText(context, "Purchase Restore Timed Out. Please Retry.", Toast.LENGTH_LONG).show()
+                        } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+                        catch (error: Exception) { Toast.makeText(context, error.message ?: "Purchase Restore Failed.", Toast.LENGTH_LONG).show() }
+                        finally { restoringPurchases = false }
+                    }
+                }
+            })
         SettingsClickableItem(icon = Icons.Default.Lock, title = "Device VIP Recovery",
             subtitle = "Protect Or Restore VIP With Device ID And A Private PIN", onClick = { showRecovery = true })
         SectionHeader("YOUR DEVICE ID")

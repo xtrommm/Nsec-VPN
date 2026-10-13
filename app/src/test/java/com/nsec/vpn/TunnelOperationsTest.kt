@@ -14,10 +14,8 @@ class TunnelOperationsTest {
         val release = CompletableDeferred<Unit>()
         var removed = false
         val cleanup = RemotePeerCleanup.enqueue(this) { release.await(); removed = true }
-        var disconnected = false
         TunnelShutdown.stop(setDown = {}, isDown = { true })
-        disconnected = true
-        assertTrue(disconnected)
+        assertTrue(cleanup.isActive)
         assertFalse(removed)
         release.complete(Unit)
         cleanup.join()
