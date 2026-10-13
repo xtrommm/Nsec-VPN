@@ -34,9 +34,13 @@ fun DeviceIdCard(deviceId: String, label: String = "Your Device ID",
             TextButton(enabled = deviceId.isNotBlank(), onClick = {
                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
                 if (clipboard != null) {
-                    clipboard.setPrimaryClip(ClipData.newPlainText("Nsec VPN Device ID", deviceId))
-                    copied = true
-                    Toast.makeText(context, "Device ID Copied", Toast.LENGTH_SHORT).show()
+                    try {
+                        clipboard.setPrimaryClip(ClipData.newPlainText("Nsec VPN Device ID", deviceId))
+                        copied = true
+                        Toast.makeText(context, "Device ID Copied", Toast.LENGTH_SHORT).show()
+                    } catch (_: SecurityException) {
+                        Toast.makeText(context, "Clipboard Access Is Blocked On This Device.", Toast.LENGTH_LONG).show()
+                    }
                 } else Toast.makeText(context, "Clipboard Unavailable On This Device.", Toast.LENGTH_LONG).show()
             }, modifier = Modifier.heightIn(min = 48.dp).testTag("${tagPrefix}_copy")) {
                 Icon(Icons.Default.ContentCopy, contentDescription = null)

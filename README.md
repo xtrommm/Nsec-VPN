@@ -309,3 +309,7 @@ The server refresh icon rotates during the actual catalog refresh, disables dupl
 
 ### Alignment and reward regressions
 Tests cover inline server badges, balanced metrics, large fonts, recovery ID clipboard content, Settings ordering, duplicate refresh taps, verified/pending/expired reward responses and the retry-throttle regression. A manifest check keeps in-place theme handling limited to uiMode. Android runtime checks require CI/Android Studio.
+
+
+### Alignment follow-up publication
+See [alignment and VIP follow-up](docs/audit/UI-ALIGNMENT-UPDATE.md) for evidence, scope, AdMob SSV setup and phone checks. The accompanying Git bundle and `scripts/publish-alignment-vip.py` import a reviewed branch into a separate checkout. No backend deployment or migration is performed.
