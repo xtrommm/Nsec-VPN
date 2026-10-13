@@ -45,7 +45,7 @@ import com.nsec.vpn.ui.components.RewardOffer
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
+        val nativeSplash = installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
@@ -59,6 +59,13 @@ class MainActivity : ComponentActivity() {
         val adMobManager = serviceLocator.adMobManager
         val remoteConfigManager = serviceLocator.remoteConfigManager
         val playBillingManager = serviceLocator.playBillingManager
+
+        // Restore only validated disk data before the first Home frame. Never hold splash for HTTP.
+        val cacheDeadline = android.os.SystemClock.elapsedRealtime() + 250L
+        nativeSplash.setKeepOnScreenCondition {
+            !remoteConfigManager.cacheRestored.value && android.os.SystemClock.elapsedRealtime() < cacheDeadline
+        }
+        lifecycleScope.launch { remoteConfigManager.restoreCachedConfig() }
 
         lifecycleScope.launch { vpnRepo.refreshServers() }
 
@@ -99,8 +106,9 @@ class MainActivity : ComponentActivity() {
                 var serverStatusNow by remember { mutableLongStateOf(System.currentTimeMillis()) }
                 val lifecycleOwner = LocalLifecycleOwner.current
                 val displayedServer = ServerStatus.current(servers, connectedNode?.nodeId, tunnelManager.activeServer ?: selectedServer)
-                val rewardOffer = RewardOffer.from(remoteConfigLoaded, adMobConfig.rewardedEnabled,
-                    adMobConfig.rewardedPassMinutes, userTier, adMobConfig.adFreeUntilEpochMillis != null)
+                val rewardOffer = RewardOffer.from(remoteConfigLoaded, remoteConfig.rewardedEnabled,
+                    remoteConfig.rewardedPassMinutes ?: 0, userTier, adMobConfig.adFreeUntilEpochMillis != null,
+                    failed = remoteConfigError != null)
                 var showPromoDialog by remember { mutableStateOf(false) }
                 var promoCodeInput by remember { mutableStateOf("") }
 

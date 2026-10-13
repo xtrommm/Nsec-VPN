@@ -20,4 +20,15 @@ class RewardOfferTest {
         assertFalse(RewardOffer.from(true, true, 45, "VIP", false).available)
         assertFalse(RewardOffer.from(true, true, 45, "FREE", true).available)
     }
+    @Test fun firstInstallIsLoadingWithoutAClaimedDurationAndFailureIsExplicit() {
+        val loading = RewardOffer.from(false, false, 0, "FREE", false)
+        assertTrue(loading.loading)
+        assertNull(loading.minutes)
+        assertEquals("", loading.title)
+        val failed = RewardOffer.from(false, false, 0, "FREE", false, failed = true)
+        assertFalse(failed.loading)
+        assertFalse(failed.available)
+        assertEquals("Reward Offer Unavailable", failed.title)
+    }
+
 }

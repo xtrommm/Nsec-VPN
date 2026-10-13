@@ -257,3 +257,15 @@ update
 - Add SDK initialization idempotence regression coverage.
 
 - Align the EU flag with Made in Europe on the native splash; preserve logo size and theme colours.
+
+### Reward-offer startup
+- Bootstrap validated remote-config cache off Main before Home, capped at 250ms without waiting for the live API.
+- Separate real reward duration/enablement from SDK readiness to prevent the offer changing during initialization.
+- Replace uncached startup marketing/loading text with a compact static skeleton; show a clear failure state.
+- Keep local ad-free reward status visible before SDK initialization; add cache, offer and UI regression coverage.
+- Isolate the Robolectric boot-count fixture for the pre-initialization ad-free reward regression.
+
+### Reward startup delivery
+- Package the startup and splash alignment corrections with an isolated Git publisher, runtime verification limits and a phone checklist.
+
+- Refresh reward-startup transport against merged splash PR #19; use a separate final checkout and v2 updater to avoid stale files.

@@ -5,6 +5,12 @@ import androidx.test.core.app.ApplicationProvider
 import com.nsec.vpn.data.api.*
 import com.nsec.vpn.data.config.RemoteConfigManager
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.test.resetMain
+import com.nsec.vpn.data.monetization.AdMobManager
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -52,4 +58,50 @@ class RemoteConfigRefreshTest {
         assertEquals(2, manager.config.value.latestAppVersionCode)
         assertNotNull(manager.error.value)
     }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test fun restoresRealOfferBeforeLiveFetchAndIndependentlyOfSdkReadiness() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+        try {
+            runBlocking {
+                val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+                context.getSharedPreferences("nsec_real_remote_config", 0).edit(commit = true) { clear() }
+                val payload = settings().copy(ads = settings().ads.copy(
+                    rewardedEnabled = true, enabled = true, rewardedPassMinutes = 45,
+                    rewardedAdUnitId = "ca-app-pub-1234567890123456/1234567890"))
+                val writer = RemoteConfigManager(object : FakeNsecVpnApi() {
+                    override suspend fun getConfig() = Response.success(ConfigResponse(true, payload))
+                }, context = context)
+                writer.fetchRemoteConfig()
+                var calls = 0
+                val ads = AdMobManager(context, initializeSdk = {})
+                val reader = RemoteConfigManager(object : FakeNsecVpnApi() {
+                    override suspend fun getConfig(): Response<ConfigResponse> { calls++; throw java.io.IOException("Fixture offline") }
+                }, ads, context)
+                reader.restoreCachedConfig()
+                assertTrue(reader.cacheRestored.value)
+                assertTrue(reader.loaded.value)
+                assertEquals(0, calls)
+                assertEquals(45, reader.config.value.rewardedPassMinutes)
+                assertTrue(reader.config.value.rewardedEnabled)
+                assertFalse(ads.config.value.rewardedEnabled)
+                reader.fetchRemoteConfig()
+                assertEquals(1, calls)
+                assertEquals(45, reader.config.value.rewardedPassMinutes)
+                assertTrue(reader.config.value.rewardedEnabled)
+            }
+        } finally { Dispatchers.resetMain() }
+    }
+
+    @Test fun corruptCacheCompletesBootstrapWithoutInventingAnOffer() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        context.getSharedPreferences("nsec_real_remote_config", 0).edit(commit = true) {
+            clear(); putInt("validated_response", 123)
+        }
+        val reader = RemoteConfigManager(object : FakeNsecVpnApi() {}, context = context)
+        reader.restoreCachedConfig()
+        assertTrue(reader.cacheRestored.value)
+        assertFalse(reader.loaded.value)
+        assertNull(reader.config.value.rewardedPassMinutes)
+    }
+
 }

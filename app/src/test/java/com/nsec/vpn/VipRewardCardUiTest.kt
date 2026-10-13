@@ -44,4 +44,16 @@ class VipRewardCardUiTest {
         } }
         compose.onNodeWithTag("watch_vip_reward").assertIsNotEnabled()
     }
+    @Test fun uncachedStartupUsesCompactSkeletonWithoutFlashingAnotherOffer() {
+        compose.setContent { NsecVpnTheme {
+            VipRewardCard(RewardOffer.from(false, false, 0, "FREE", false), false, {}, {}, compact = true)
+        } }
+        compose.onNodeWithTag("home_reward_loading").assertExists()
+        compose.onNodeWithText("Your Next VIP Pass").assertDoesNotExist()
+        compose.onNodeWithText("Loading The Current Reward Offer…").assertDoesNotExist()
+        compose.onNodeWithTag("watch_vip_reward").assertDoesNotExist()
+        val height = compose.onNodeWithTag("home_reward_loading").getUnclippedBoundsInRoot().let { it.bottom - it.top }
+        assertEquals(64f, height.value, 0.1f)
+    }
+
 }
