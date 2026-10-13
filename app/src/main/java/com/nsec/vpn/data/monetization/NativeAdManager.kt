@@ -4,7 +4,6 @@ import android.content.Context
 import android.util.Log
 import com.google.android.gms.ads.AdListener
 import com.google.android.gms.ads.AdLoader
-import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.nativead.NativeAd
 import com.google.android.gms.ads.nativead.NativeAdOptions
@@ -89,7 +88,7 @@ class NativeAdManager(private val context: Context) {
                 )
                 .build()
 
-            adLoader.loadAd(AdRequest.Builder().build())
+            adLoader.loadAd(AdRequests.create())
         } catch (e: Throwable) {
             isPreloading.set(false)
             Log.e("NativeAdManager", "Failed to preload native ad")

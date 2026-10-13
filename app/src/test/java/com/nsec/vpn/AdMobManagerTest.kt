@@ -15,18 +15,18 @@ import org.robolectric.annotation.Config
 class AdMobManagerTest {
 
     @Test
-    fun adsStayDisabledUntilConsentAndSdkInitializationAndRevocationClearsThem() {
+    fun adsStayDisabledUntilSdkInitializationAndRemoteKillSwitchClearsThem() {
         var ready: (() -> Unit)? = null
         val manager = AdMobManager(ApplicationProvider.getApplicationContext(), initializeSdk = { ready = it })
         manager.updateConfig(AdMobConfig(nativeEnabled = true, rewardedEnabled = true, interstitialEnabled = true))
         assertFalse(manager.config.value.nativeEnabled)
         assertFalse(manager.config.value.rewardedEnabled)
         assertFalse(manager.canShowInterstitial())
-        manager.applyConsent(true)
+        manager.initialize()
         assertFalse(manager.config.value.nativeEnabled)
         ready!!.invoke()
         assertTrue(manager.config.value.nativeEnabled)
-        manager.applyConsent(false)
+        manager.updateConfig(AdMobConfig(nativeEnabled = false, rewardedEnabled = false, interstitialEnabled = false))
         assertFalse(manager.config.value.nativeEnabled)
         assertFalse(manager.config.value.rewardedEnabled)
         assertFalse(manager.canShowInterstitial())
@@ -35,7 +35,7 @@ class AdMobManagerTest {
     @Test
     fun canShowInterstitial_respectsFrequencyCapping() {
         val manager = AdMobManager(ApplicationProvider.getApplicationContext(), initializeSdk = { it() })
-        manager.applyConsent(true)
+        manager.initialize()
         manager.updateConfig(
             AdMobConfig(
                 interstitialEnabled = true,

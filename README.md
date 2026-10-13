@@ -240,3 +240,6 @@ Settings now offers Restore Google Play Purchases, which only queries owned subs
 Audit follow-up: see [the rollout and test guide](docs/audit/AUDIT-FOLLOWUP.md) for disconnect latency, consent, restoration, billing reconciliation, retention and the additive migration. `scripts/publish-audit-followup.py` imports the reviewed transport bundle into a separate Git checkout without changing existing Android Studio edits.
 
 PR #17: billing setup indentation corrected; behaviour unchanged.
+
+### Advertising UI update
+The owner-requested UMP consent form and ad privacy settings rows are removed. Ads wait for asynchronous SDK readiness and request non-personalized ads (`npa=1`); existing IDs, reward verification and admin toggles remain unchanged. This removal does not establish consent or satisfy every regional/provider privacy requirement: review AdMob publication requirements before release.

@@ -241,3 +241,7 @@ update
 - Add an isolated Git publisher and complete Android Studio transport package for the audit follow-up branch.
 
 - Fix Android billing setup indentation reported by PR #17 lint.
+
+### Remove owner-requested AdMob consent UI
+- Remove UMP forms, settings callbacks and direct UMP dependency without changing ad unit IDs.
+- Initialize the SDK off the UI thread, preserve readiness gating and use non-personalized ad requests; retain backend-verified rewards and remote ad controls.
