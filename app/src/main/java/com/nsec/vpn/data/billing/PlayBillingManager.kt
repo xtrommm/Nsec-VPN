@@ -69,11 +69,11 @@ class PlayBillingManager(private val context: Context, private val api: NsecVpnA
         val purchaseResult = CompletableDeferred<List<Purchase>>()
         var closingClient: BillingClient? = null
         try {
-        val client = BillingClient.newBuilder(context).setListener { result, purchases ->
-            if (result.responseCode == BillingClient.BillingResponseCode.OK && purchases != null) purchaseResult.complete(purchases)
-            else purchaseResult.completeExceptionally(IllegalStateException("Purchase was cancelled or could not be completed"))
-        }.enablePendingPurchases(PendingPurchasesParams.newBuilder().enableOneTimeProducts().build()).build()
-        closingClient = client
+            val client = BillingClient.newBuilder(context).setListener { result, purchases ->
+                if (result.responseCode == BillingClient.BillingResponseCode.OK && purchases != null) purchaseResult.complete(purchases)
+                else purchaseResult.completeExceptionally(IllegalStateException("Purchase was cancelled or could not be completed"))
+            }.enablePendingPurchases(PendingPurchasesParams.newBuilder().enableOneTimeProducts().build()).build()
+            closingClient = client
             withTimeout(15000) {
                 suspendCancellableCoroutine<Unit> { continuation ->
                     client.startConnection(object : BillingClientStateListener {

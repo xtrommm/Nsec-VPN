@@ -239,3 +239,5 @@ update
 ### Audit follow-up delivery
 - Document exact migration/image approval, provider configuration, compatibility and runtime verification limits.
 - Add an isolated Git publisher and complete Android Studio transport package for the audit follow-up branch.
+
+- Fix Android billing setup indentation reported by PR #17 lint.
