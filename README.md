@@ -313,3 +313,7 @@ Tests cover inline server badges, balanced metrics, large fonts, recovery ID cli
 
 ### Alignment follow-up publication
 See [alignment and VIP follow-up](docs/audit/UI-ALIGNMENT-UPDATE.md) for evidence, scope, AdMob SSV setup and phone checks. The accompanying Git bundle and `scripts/publish-alignment-vip.py` import a reviewed branch into a separate checkout. No backend deployment or migration is performed.
+
+## VIP Access And Home Banner Update
+
+VIP-only server selection and connection now offer Purchase VIP Plan / Watch An Ad before creating a tunnel. Settings keeps Device ID last. Server filters occupy equal widths, and speed-test Ping, Jitter and measured Peak occupy a single row. Home announcements appear as centered dismissible banners, preserve dismissal for unchanged content and refresh every five seconds while Home is visible. See [the rollout notes](docs/audit/VIP-HOME-UPDATE.md). No backend API, schema or migration changes.

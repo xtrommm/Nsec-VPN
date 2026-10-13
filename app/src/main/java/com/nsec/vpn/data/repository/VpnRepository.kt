@@ -500,18 +500,23 @@ class VpnRepository(
     private val rewardClaimMutex = Mutex()
     private val _rewardPending = MutableStateFlow(keyStoreManager.getPendingRewardTicket() != null)
     val rewardPending: StateFlow<Boolean> = _rewardPending.asStateFlow()
+    private val _rewardVerificationMessage = MutableStateFlow<String?>(null)
+    val rewardVerificationMessage: StateFlow<String?> = _rewardVerificationMessage.asStateFlow()
 
     private fun savePendingReward(ticketId: String?) {
         keyStoreManager.savePendingRewardTicket(ticketId)
         _rewardPending.value = ticketId != null
+        if (ticketId == null) _rewardVerificationMessage.value = null
     }
 
-    suspend fun claimReward(ticketId: String) = withContext(Dispatchers.IO) {
+    suspend fun claimReward(ticketId: String) = claimRewardWithPolls(ticketId, 3)
+
+    private suspend fun claimRewardWithPolls(ticketId: String, polls: Int) = withContext(Dispatchers.IO) {
         rewardClaimMutex.withLock {
             savePendingReward(ticketId)
             try {
-            kotlinx.coroutines.withTimeout(35_000) {
-                repeat(21) { attempt ->
+            kotlinx.coroutines.withTimeout(5_000) {
+                repeat(polls) { attempt ->
                     var token = keyStoreManager.getAccessToken() ?: authenticateDevice()
                     var response = api.claimReward("Bearer $token", com.nsec.vpn.data.api.ClaimRewardRequest(ticketId))
                     if (response.code() == 401) {
@@ -520,13 +525,15 @@ class VpnRepository(
                     }
                     val result = response.body()
                     if (response.code() == 202) {
-                        if (attempt < 20) {
-                            kotlinx.coroutines.delay(if (attempt < 10) 1_000 else 2_000)
+                        if (attempt < polls - 1) {
+                            kotlinx.coroutines.delay(500)
                             return@repeat
                         }
-                        throw IllegalStateException(if (BuildConfig.DEBUG)
-                            "Test Ad Completed. Live AdMob Verification Is Required For VIP Servers."
-                            else "Reward Confirmation Is Taking Longer. We’ll Retry Automatically.")
+                        val message = if (BuildConfig.DEBUG)
+                            "Test Ads Cannot Unlock Live VIP. Install The Release Build And Configure AdMob Verification."
+                            else "Waiting For AdMob’s Signed Confirmation. Your Pass Activates Automatically When It Arrives."
+                        _rewardVerificationMessage.value = message
+                        throw IllegalStateException(message)
                     }
                     if (!response.isSuccessful || result?.success != true || result.data == null) {
                         if (response.code() in listOf(400, 403, 404, 410)) savePendingReward(null)
@@ -544,7 +551,9 @@ class VpnRepository(
                 }
             }
             } catch (_: kotlinx.coroutines.TimeoutCancellationException) {
-                throw IllegalStateException("Reward Confirmation Timed Out. We’ll Retry Automatically.")
+                val message = "Reward Verification Could Not Be Reached. We’ll Retry Automatically."
+                _rewardVerificationMessage.value = message
+                throw IllegalStateException(message)
             }
         }
     }
@@ -555,8 +564,8 @@ class VpnRepository(
         if (rewardClaimMutex.isLocked) return
         val now = android.os.SystemClock.elapsedRealtime()
         if (now < nextRewardRetryElapsedMs) return
-        nextRewardRetryElapsedMs = now + 15_000L
-        try { claimReward(ticket) } catch (e: CancellationException) { throw e } catch (_: Exception) { /* Persist until verified or terminal rejection. */ }
+        nextRewardRetryElapsedMs = now + 2_000L
+        try { claimRewardWithPolls(ticket, 1) } catch (e: CancellationException) { throw e } catch (_: Exception) { /* Persist until verified or terminal rejection. */ }
     }
 
     suspend fun redeemPromo(code: String) = withContext(Dispatchers.IO) {

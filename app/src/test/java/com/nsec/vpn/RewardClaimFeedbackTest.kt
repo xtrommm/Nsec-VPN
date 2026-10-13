@@ -70,4 +70,24 @@ class RewardClaimFeedbackTest {
         assertEquals(1, calls)
         assertEquals("VIP", repo.userTier.value)
     }
+    @Test fun missingSignedConfirmationKeepsAccessLockedWithSpecificFeedback() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val vault = TestVault.create(context)
+        var calls = 0
+        val api = object : FakeNsecVpnApi() {
+            override suspend fun claimReward(token: String, request: ClaimRewardRequest): Response<RedeemPromoResponse> {
+                calls++
+                return Response.success(202, RedeemPromoResponse(false, null))
+            }
+        }
+        val repo = VpnRepository(context, api, vault)
+        try { repo.claimReward("fixture-pending"); fail("No signed grant exists") }
+        catch (_: IllegalStateException) { }
+        assertEquals(3, calls)
+        assertEquals("FREE", repo.userTier.value)
+        assertTrue(repo.rewardPending.value)
+        assertTrue(repo.rewardVerificationMessage.value.orEmpty().contains("Test Ads"))
+        assertEquals("fixture-pending", vault.getPendingRewardTicket())
+    }
+
 }
