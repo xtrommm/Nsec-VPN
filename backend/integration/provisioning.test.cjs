@@ -7,7 +7,7 @@ if (!/(test|_ci)/.test(database)) throw new Error('Use a dedicated test database
 const {prisma} = require('../dist/db');
 const {AgentClient} = require('../dist/services/agentClient');
 const health = require('../dist/services/nodeHealth');
-const {provisionPeer} = require('../dist/services/peerProvisioning');
+const {provisionPeer, disconnectPeer} = require('../dist/services/peerProvisioning');
 const tag = crypto.randomUUID();
 let node, devices;
 const key = byte => Buffer.alloc(32,byte).toString('base64');
@@ -22,13 +22,23 @@ test('concurrent transactions allocate unique addresses and repeated device conn
   const results = await Promise.all(devices.slice(0,2).map((d,i)=>provisionPeer(d.id,node.id,key(i+10),'FREE')));
   assert.notEqual(results[0].tunnelConfig.clientAddress,results[1].tunnelConfig.clientAddress);
   const again = await provisionPeer(devices[0].id,node.id,key(10),'FREE');
-  assert.equal(again.peerId,results[0].peerId);
+  assert.notEqual(again.peerId,results[0].peerId);
   assert.equal(await prisma.peerSession.count({where:{serverId:node.id,deviceId:devices[0].id,active:true}}),1);
 });
-test('agent failure rolls back PostgreSQL session creation', async () => {
+test('confirmed compensation releases a failed PostgreSQL reservation', async () => {
   AgentClient.addPeer = async () => {throw new Error('integration failure');};
   await assert.rejects(provisionPeer(devices[2].id,node.id,key(12),'FREE'),/AGENT_UNREACHABLE/);
   assert.equal(await prisma.peerSession.count({where:{serverId:node.id,deviceId:devices[2].id}}),0);
+});
+test('an ambiguous timeout keeps its IP reserved until confirmed reconciliation', async () => {
+  AgentClient.addPeer = async () => {throw new Error('ambiguous timeout');};
+  AgentClient.removePeer = async () => {throw new Error('unreachable');};
+  await assert.rejects(provisionPeer(devices[2].id,node.id,key(12),'FREE'),/AGENT_UNREACHABLE/);
+  const pending = await prisma.peerSession.findFirst({where:{serverId:node.id,deviceId:devices[2].id,active:true}});
+  assert.equal(pending.pendingPublicKey,key(12));
+  AgentClient.removePeer = async () => {};
+  await disconnectPeer(devices[2].id,pending.peerId);
+  assert.equal(await prisma.peerSession.count({where:{id:pending.id}}),0);
 });
 after(async () => {
   if(node) await prisma.serverNode.delete({where:{id:node.id}});

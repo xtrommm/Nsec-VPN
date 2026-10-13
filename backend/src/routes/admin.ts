@@ -1,3 +1,4 @@
+import { removeTrackedPeerKeys } from '../services/peerProvisioning';
 import { JWT_SECRET } from "../secrets";
 import { Router, Response } from 'express';
 import { Prisma } from '@prisma/client';
@@ -205,7 +206,7 @@ router.delete(
         await tx.auditLog.create({ data: { adminId: req.admin!.adminId, action: 'DISABLE_SERVER_FOR_DELETION', targetResource: 'SERVER', targetId: id } });
         return result;
       });
-      try { for (const peer of node.peerSessions) if (peer.active) await AgentClient.removePeer(node.agentUrl, node.agentSecretHash, { publicKey: peer.clientPublicKey }); }
+      try { for (const peer of node.peerSessions) if (peer.active) await removeTrackedPeerKeys(node, peer); }
       catch { return res.status(502).json({ success: false, error: 'NODE_PEER_REMOVAL_PENDING', message: 'Node disabled. Recover its agent and retry deletion to revoke its peers.' }); }
       await prisma.$transaction(async tx => {
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'server-order'}))`;
