@@ -203,24 +203,8 @@ fun SettingsScreen(
             onClick = onOpenPrivacyPolicy
         )
 
-        SettingsClickableItem(
-            icon = Icons.Default.Info,
-            title = "App Version",
-            subtitle = "Nsec VPN V${com.nsec.vpn.BuildConfig.VERSION_NAME}",
-            onClick = { Toast.makeText(context, "Version ${com.nsec.vpn.BuildConfig.VERSION_NAME} (${com.nsec.vpn.BuildConfig.VERSION_CODE})", Toast.LENGTH_SHORT).show() }
-        )
-
-        if (com.nsec.vpn.BuildConfig.DEBUG) {
-            Spacer(modifier = Modifier.height(20.dp))
-            SectionHeader("DEVELOPER / DEBUG")
-            SettingsClickableItem(
-                icon = Icons.Default.BugReport,
-                title = "WireGuard & Peer Diagnostics",
-                subtitle = "View Live Handshake, Peer API Status, And Endpoint",
-                onClick = onOpenDebugDiagnostics
-            )
-        }
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(20.dp))
+        SectionHeader("ACCOUNT & RECOVERY")
         if (onRestorePurchases != null) SettingsClickableItem(icon = Icons.Default.Restore,
             title = if (restoringPurchases) "Restoring Purchases…" else "Restore Google Play Purchases",
             subtitle = "Recheck Existing Subscriptions Without Making A Purchase", onClick = {
@@ -240,11 +224,24 @@ fun SettingsScreen(
             })
         SettingsClickableItem(icon = Icons.Default.Lock, title = "Device VIP Recovery",
             subtitle = "Protect Or Restore VIP With Device ID And A Private PIN", onClick = { showRecovery = true })
-        SectionHeader("YOUR DEVICE ID")
-        Text(deviceId, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        TextButton(enabled = deviceId.isNotBlank(), onClick = { copy(deviceId) }) {
-            Icon(Icons.Default.ContentCopy, contentDescription = null)
-            Spacer(Modifier.width(6.dp)); Text("Copy Device ID")
+        Spacer(Modifier.height(12.dp))
+        com.nsec.vpn.ui.components.DeviceIdCard(deviceId, tagPrefix = "settings_device")
+        Spacer(Modifier.height(20.dp))
+        SectionHeader("DEVELOPER / DEBUG")
+        SettingsClickableItem(
+            icon = Icons.Default.Info,
+            title = "App Version",
+            subtitle = "Nsec VPN V${com.nsec.vpn.BuildConfig.VERSION_NAME}",
+            onClick = { Toast.makeText(context, "Version ${com.nsec.vpn.BuildConfig.VERSION_NAME} (${com.nsec.vpn.BuildConfig.VERSION_CODE})", Toast.LENGTH_SHORT).show() }
+        )
+
+        if (com.nsec.vpn.BuildConfig.DEBUG) {
+            SettingsClickableItem(
+                icon = Icons.Default.BugReport,
+                title = "WireGuard & Peer Diagnostics",
+                subtitle = "View Live Handshake, Peer API Status, And Endpoint",
+                onClick = onOpenDebugDiagnostics
+            )
         }
 
     }

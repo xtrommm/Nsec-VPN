@@ -45,6 +45,7 @@ fun DeviceRecoverySheet(deviceId: String, onDismiss: () -> Unit,
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Device VIP Recovery", style = MaterialTheme.typography.headlineSmall)
             Text("Save Your Device ID And A Private PIN Before Clearing App Data. Recovery Restores Existing VIP And Its Original Expiry.")
+            DeviceIdCard(deviceId, label = "Current Device ID", tagPrefix = "recovery_device")
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(selected = !restore, enabled = !busy, onClick = { restore = false; pin = ""; confirm = ""; oldPin = ""; message = null }, label = { Text("Protect VIP") })
                 FilterChip(selected = restore, enabled = !busy, onClick = { restore = true; pin = ""; confirm = ""; oldPin = ""; message = null }, label = { Text("Restore VIP") })
@@ -52,7 +53,6 @@ fun DeviceRecoverySheet(deviceId: String, onDismiss: () -> Unit,
             if (restore) OutlinedTextField(value = recoveryId, onValueChange = { recoveryId = it.take(128) },
                 label = { Text("Original Device ID") }, enabled = !busy, singleLine = true, modifier = Modifier.fillMaxWidth())
             else {
-                Text(deviceId)
                 Text(if (configured == true) "Recovery PIN Is Set" else if (loading) "Checking Recovery Settings…" else "Set A Recovery PIN Before Clearing Data")
                 if (configured == true) OutlinedTextField(value = oldPin, onValueChange = { oldPin = it.filter(Char::isDigit).take(12) },
                     label = { Text("Current Recovery PIN") }, visualTransformation = PasswordVisualTransformation(),

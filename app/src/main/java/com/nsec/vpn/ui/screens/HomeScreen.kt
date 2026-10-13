@@ -97,13 +97,10 @@ fun HomeScreen(
                         )
                     }
                 }
-                Text(
-                    text = "DISMISS",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.heightIn(min = 48.dp).clickable { announcementDismissed = true }.padding(8.dp)
-                )
+                TextButton(onClick = { announcementDismissed = true }, contentPadding = PaddingValues(8.dp)) {
+                    Text("DISMISS", fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
 
@@ -237,16 +234,10 @@ fun HomeScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     letterSpacing = 1.sp
                 )
-                Text(
-                    text = "CHANGE",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .heightIn(min = 48.dp)
-                        .clickable { onNavigateToServers() }
-                        .padding(8.dp)
-                )
+                TextButton(onClick = onNavigateToServers, contentPadding = PaddingValues(8.dp)) {
+                    Text("CHANGE", fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary)
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))

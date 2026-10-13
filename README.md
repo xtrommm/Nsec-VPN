@@ -289,3 +289,7 @@ The UI-only repair can be imported with `scripts/publish-ui-audit.py` and its ac
 
 ### Server and speed-test alignment
 Server names and badges share a baseline and wrap without leading spacer items. Speed metrics use balanced two-by-two phone rows, four columns on wide screens, and one column for large text. The speed-test subtitle is centered when it wraps. No VPN or measurement logic changed.
+
+
+### Settings and recovery alignment
+App Version is inside Developer / Debug and remains visible in release; debug diagnostics remain gated. Account recovery has its own section. Settings and the Device VIP Recovery sheet share a wrapping Device ID card with Copy/Copied feedback. Only the installation ID is copied. Home text actions are vertically centered in their touch targets.
