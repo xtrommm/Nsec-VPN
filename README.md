@@ -1,14 +1,16 @@
 > Repair candidate: see [E2E repair report](docs/E2E-REPAIR-REPORT.md). Production readiness and real-device verification remain pending.
 
+The v2 deep-audit package preserves main's build-directory ignore update. Its publisher creates an isolated repair checkout; use the printed comparison link to create the pull request when GitHub CLI is unavailable. See [the repair checkpoint](docs/audit/REPAIR-CHECKPOINT.md) before merging or deploying.
+
 # 🛡️ Nsec VPN — High-Speed WireGuard® Android Client & Management Suite
 
-[![Platform](https://img.shields.io/badge/Platform-Android_14--16_%28API_24--36%29-blue.svg)](https://developer.android.com)
+[![Platform](https://img.shields.io/badge/Platform-Android_API_24%2B-blue.svg)](https://developer.android.com)
 [![Protocol](https://img.shields.io/badge/VPN_Engine-WireGuard®_Core-emerald.svg)](https://www.wireguard.com)
 [![Architecture](https://img.shields.io/badge/UI-Jetpack_Compose_Material_3-blue.svg)](https://developer.android.com/jetpack/compose)
 [![Backend](https://img.shields.io/badge/Server-Node.js_•_Docker_•_PostgreSQL-indigo.svg)](https://docker.com)
-[![Zero-Logs](https://img.shields.io/badge/Security-Zero--Logs_Verified-success.svg)](https://nsecvpn.com/privacy)
+[![Zero-Logs](https://img.shields.io/badge/Privacy-No_Traffic_Logs-blue.svg)](https://nsecvpn.com/privacy)
 
-**Nsec VPN** (`com.nsec.vpn`) is a modern, production-grade, zero-logs WireGuard® VPN application designed for Android devices, paired with a web management portal and scalable gateway orchestration backend.
+**Nsec VPN** (`com.nsec.vpn`) is a WireGuard® VPN application designed for Android devices, paired with a web management portal and scalable gateway orchestration backend.
 
 Official Website: **[nsecvpn.com](https://nsecvpn.com)**
 
@@ -29,10 +31,10 @@ Official Website: **[nsecvpn.com](https://nsecvpn.com)**
 ### 📱 Android Client (`/app`)
 - **Modern Pro UI**: High-contrast Material 3 Light/Dark theme with responsive cards, micro-animations, and live stats.
 - **WireGuard® Protocol Engine**: Userspace Go backend (`wireguard-android`) using ChaCha20-Poly1305 encryption and Curve25519 key exchanges.
-- **Android 14-16 & 16 KB Page Size Compliant**: Fully compliant with Android 14, 15, and 16 (`systemExempted` foreground service type) and 16 KB memory page size alignment for JNI binaries (`useLegacyPackaging = true`).
+- **Android compatibility**: Release validation must cover supported Android versions, foreground-service restrictions and actual native-library page alignment. Build flags alone do not establish compliance.
 - **Smart Native Ads Monetization**: Google Native Ads integration (`SmartNativeAd`) with compact, medium, and large layouts, shimmer states, lifecycle caching, and robust null-safety across Home, Server List, and Speed Test screens.
-- **AdMob Traffic Split Tunneling Bypass**: Automatic package and domain exclusion rules in `WireGuardTunnelManager` and `NsecVpnService` routing Google Mobile Ads SDK calls outside the VPN tunnel to prevent ad request timeouts or policy flags.
-- **Smart Connect**: Automatically checks global node latencies via UDP socket handshakes and connects to the optimal gateway.
+- **AdMob Traffic Split Tunneling Bypass**: Automatic package exclusion in `WireGuardTunnelManager` and `NsecVpnService` routing Google Mobile Ads SDK calls outside the VPN tunnel to prevent ad request timeouts or policy flags.
+- **Smart Connect**: Ranks eligible nodes by capacity and measured endpoint latency; successful connection requires a real WireGuard handshake. Latency checks are ICMP measurements and can be unavailable when a provider blocks probes.
 - **Custom Encrypted DNS**: One-tap selection between Cloudflare (`1.1.1.1`), Google (`8.8.8.8`), AdGuard (`94.140.14.14`), and Quad9 (`9.9.9.9`).
 - **App Split Tunneling**: Exclude banking, local entertainment, or ad SDK apps from the VPN tunnel.
 - **Kill Switch Deep-Link**: Native deep-linking into Android system *Always-On VPN* settings.
@@ -135,7 +137,7 @@ Open the project in Android Studio, sync Gradle, and run `:app` on your Android 
 
 ## 🔒 License & Privacy Guarantee
 
-Nsec VPN is built with strict zero-logs guarantees. WireGuard® is a registered trademark of Jason A. Donenfeld.
+The code avoids traffic, browsing and DNS-query persistence. Operational device/authentication/entitlement/peer records are retained; hosting and third-party logging settings require operator verification. WireGuard® is a registered trademark of Jason A. Donenfeld.
 Distributed under the Apache 2.0 License.
 update
 
@@ -173,4 +175,44 @@ The Android catalog displays one country/city location backed by individual node
 
 ### VIP recovery after clearing storage
 
-Use Settings → Device VIP Recovery to configure a private PIN before clearing app data. Save the original Device ID and PIN; restore with both to recover the same backend VIP record and expiry. Device ID alone cannot authorize recovery. The required additive SQL migration and reviewed-schema deployment steps are in [DEVICE-VIP-RECOVERY-NATIVE-SPLASH.md](docs/DEVICE-VIP-RECOVERY-NATIVE-SPLASH.md). Europe branding now appears on the original native launch window; the extra splash page is removed. The disclosure action reads Continue while consent and Android VPN permission remain.
+Use Settings → Device VIP Recovery to configure a private PIN before clearing app data. Save the original Device ID and PIN; restore with both to recover the same backend VIP record and expiry. Device ID alone cannot authorize recovery. The required additive SQL migration and reviewed-schema deployment steps are in [DEVICE-VIP-RECOVERY-NATIVE-SPLASH.md](docs/DEVICE-VIP-RECOVERY-NATIVE-SPLASH.md). Europe branding now appears on the original native launch window; the extra splash page is removed. The extra in-app disclosure was removed in a later update; Android VPN permission remains. Review current Play VPN and advertising disclosure requirements before publishing.
+
+## Deep audit and repair
+
+The read-only baseline review, severity-ranked findings and verification limits are in [Deep audit](docs/audit/DEEP-AUDIT-2026-10-13.md). Findings are not a guarantee of production readiness.
+
+Rewarded VIP is granted only by AdMob's signed server-side callback. Configure every live rewarded unit's SSV URL to `https://api.nsecvpn.com/api/v1/billing/rewarded/ssv`. The app passes its installation ID and one-use ticket through SSV options. Local ad-free time starts after the SDK reward callback; VIP servers unlock after verification, with bounded in-app polling and a persisted retry. A pending claim returns HTTP 202 (`REWARD_VERIFICATION_PENDING`), never a new entitlement. Existing clients retain their pending ticket but need the updated APK for prompt polling.
+
+The peer-reservation repair needs the additive `scripts/migrate-peer-reservations.sql` migration before deploying its backend image. A lease renewal keeps one device/node record and its assigned IP, and issues a fresh `peerId` so stale disconnects cannot revoke the replacement. Failed registrations return no configuration; reservations are released after acknowledged cleanup, otherwise retained with both tracked keys and reconciled after two minutes. New errors are `PEER_CLEANUP_PENDING` (503) and `PEER_RESERVATION_CHANGED` (409). Run the dedicated schema approval helper only for an exact, CI-passing release after the migration; deployment remains separate.
+
+Expired entitlement updates compare the observed tier, expiry and authentication epoch; concurrent promo, reward, recovery and purchase grants are preserved. Verified purchases retain the longest current grant. Profile database failures return `PROFILE_UNAVAILABLE` (503); missing devices return 404 instead of a successful null profile.
+
+
+Android token renewal, registration and recovery now share a mutex. Parallel unauthorized requests reuse the newly issued access token instead of rotating the same refresh token twice. Cancellation and transient authentication failures no longer silently trigger registration.
+
+For reverse-proxy deployments set `TRUSTED_PROXY_CIDRS` to the actual trusted proxy IP ranges (comma-separated explicit CIDRs). Direct deployments leave it empty. Never trust all addresses or use a fixed hop count. Verify CloudPanel/Cloudflare's forwarding configuration before choosing ranges; the backend's Docker bridge gateway alone may not represent the full proxy chain. User rate-limit identifiers remain salted HMACs in memory; no IP access logs are added. Health/readiness probes use a separate route from the user quota. Malformed agent bodies now fail with HTTP 400 before any command executes.
+
+Android token renewal, registration and recovery now share a mutex. Parallel unauthorized requests reuse the newly issued access token instead of rotating the same refresh token twice. Cancellation and transient authentication failures no longer silently trigger registration.
+
+
+Node create/update responses preserve a successful database write even when the subsequent health probe fails: inspect optional `healthCheckError`, then use Test node. Edited nodes are excluded until a fresh health check validates their configuration. Admin device details and request filters accept the same safe installation-ID format as registration, including legacy non-UUID IDs. CSV exports neutralize control/whitespace-prefixed spreadsheet formulas.
+
+Promo, usage and audit tables recover from an out-of-range page after deletion/filter changes. Modal keyboard focus remains in the dialog during saves and returns to the opener only on close. Regression checklist: delete the last campaign on page 2; change usage search; save with keyboard while the form is busy; verify focus and pagination.
+
+Native ads refill their bounded pool when released and react to load events instead of polling every ten seconds. Video ads use a MediaView template and hide when constrained space cannot safely contain it. Template changes recreate the native view. Validate text/video formats, large fonts, rotation and repeated refreshes with live AdMob test devices before publishing.
+
+Ad refresh timing uses a monotonic clock. Local reward expiry checks wake at most once a minute while still scheduling the exact remaining expiry, reducing idle wakeups without changing grant duration.
+
+Catalog refreshes coalesce for five seconds and manual refresh bypasses that window. Latency checks stay asynchronous and refresh at most once a minute. Catalog mapping now indexes previous nodes once (linear work rather than repeated list searches); config/reward polling runs only while the activity is STARTED. Cache-first display remains unchanged. Phone startup/perceived-load and battery measurements still require device profiling.
+
+A delayed profile response cannot overwrite a newer promo/reward response in the app. The backend remains the authority for actual premium access.
+
+The client accepts dual-stack hostnames only through their verified public IPv4, baselines throughput counters before displaying rates, and rechecks connection eligibility after Android permission returns. Split-exclusion edits explicitly require reconnect; automatic live reconfiguration is deferred to device-tested lifecycle work. Error tiles reopen the app, tile scopes are cancelled on destruction, and the unused boot permission is removed.
+
+Tunnel activation, DNS reconnect and teardown now run exclusively, with cancellation joined before the next operation. Peer/notification state is cleared only after the backend confirms DOWN; shutdown failures remain visible and retain the tracked tunnel. This improves lifecycle consistency but is not an OS kill switch or process-death restoration. Speed helper sessions disconnect at their deadline and ignore late network-loss callbacks; verify blocked upload/network switching on a phone.
+
+The current [repair checkpoint](docs/audit/REPAIR-CHECKPOINT.md) records exact checks, migration commands, API compatibility, outstanding security decisions and the publishing no-go. Read it before merging or updating containers.
+
+The installer now upgrades runtimes older than Node 22, matching CI. Existing Node 20 agents need a maintenance upgrade; the script is not run automatically by this repair. See the checkpoint for the exact node commands.
+
+When connector writes are unavailable, the downloadable bundle publisher (`scripts/publish-deep-audit.py`, copied beside its package manifest/bundle) imports the reviewed commits into a separate checkout. `--publish` pushes only the repair branch; it opens a draft PR with authenticated GitHub CLI when available, otherwise prints the comparison link. It does not stage local edits, modify main, migrate data or deploy services.

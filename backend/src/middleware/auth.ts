@@ -3,6 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { JwtDevicePayload, JwtAdminPayload } from '../types';
 import { prisma } from '../db';
+import { expireEntitlement } from '../services/entitlements';
 import { currentAuthEpoch } from '../services/deviceRecovery';
 
 
@@ -63,33 +64,22 @@ export const authenticateDevice = async (
       });
     }
 
-    // Auto-downgrade expired rewarded pass
-    let currentTier = device.tier;
-    if ((device.tier === 'REWARDED_PASS' || device.tier === 'VIP') && device.passExpiresAt && device.passExpiresAt < new Date()) {
-      currentTier = 'FREE';
-      const downgraded = await prisma.device.updateMany({
-        where: { id: device.id, tier: device.tier, passExpiresAt: device.passExpiresAt },
-        data: { tier: 'FREE', passExpiresAt: null }
-      });
-      if (!downgraded.count) {
-        const fresh = await prisma.device.findUnique({ where: { id: device.id } });
-        if (!fresh || fresh.isBlocked) return res.status(403).json({ success: false, error: 'DEVICE_BLOCKED' });
-        currentTier = fresh.tier;
-      }
-    }
+    const entitled = await expireEntitlement(device);
+    if (entitled.isBlocked) return res.status(403).json({ success: false, error: 'DEVICE_BLOCKED' });
 
     req.device = {
       id: device.id,
       deviceId: device.deviceId,
-      tier: currentTier
+      tier: entitled.tier
     };
 
     next();
   } catch (err: any) {
-    return res.status(401).json({
+    const rejected = ['TokenExpiredError', 'JsonWebTokenError', 'NotBeforeError'].includes(err?.name) || ['TOKEN_REVOKED', 'DEVICE_NOT_FOUND'].includes(err?.message);
+    return res.status(rejected ? 401 : 503).json({
       success: false,
-      error: 'TOKEN_INVALID',
-      message: err.name === 'TokenExpiredError' ? 'Access token expired' : 'Invalid authorization token'
+      error: rejected ? (err?.message === 'TOKEN_REVOKED' ? 'TOKEN_REVOKED' : 'TOKEN_INVALID') : 'AUTH_UNAVAILABLE',
+      message: rejected ? 'Invalid or expired authorization token' : 'Authentication is temporarily unavailable'
     });
   }
 };
@@ -125,11 +115,12 @@ export const authenticateAdmin = (requiredRole?: 'SUPER_ADMIN') => {
 
       req.admin = decoded;
       next();
-    } catch (_err) {
-      return res.status(401).json({
+    } catch (error) {
+      const rejected = error instanceof Error && ['TokenExpiredError', 'JsonWebTokenError', 'NotBeforeError'].includes(error.name);
+      return res.status(rejected ? 401 : 503).json({
         success: false,
-        error: 'TOKEN_INVALID',
-        message: 'Invalid or expired admin token'
+        error: rejected ? 'TOKEN_INVALID' : 'ADMIN_AUTH_UNAVAILABLE',
+        message: rejected ? 'Invalid or expired admin token' : 'Administrator authentication is temporarily unavailable'
       });
     }
   };

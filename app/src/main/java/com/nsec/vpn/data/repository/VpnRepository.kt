@@ -11,6 +11,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import com.nsec.vpn.data.api.NsecVpnApi
 import com.nsec.vpn.data.api.RegisterDeviceRequest
 import com.nsec.vpn.data.local.KeyStoreManager
@@ -39,8 +40,11 @@ class VpnRepository(
 ) {
     private val repositoryScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val refreshMutex = Mutex()
+    private val authMutex = Mutex()
     private val catalogCache = ServerCatalogCache(context)
     private var latencyJob: Job? = null
+    private var lastSuccessfulRefreshMs: Long? = null
+    private var lastLatencyRefreshMs: Long? = null
     private val _deviceIdentity = MutableStateFlow(keyStoreManager.getOrCreateDeviceId())
     val deviceIdentity: StateFlow<String> = _deviceIdentity.asStateFlow()
     private val _serversLoading = MutableStateFlow(false)
@@ -71,6 +75,7 @@ class VpnRepository(
     val autoConnectEnabled: StateFlow<Boolean> = _autoConnectEnabled.asStateFlow()
 
     private var verifiedEntitlementExpiresAtMs: Long? = null
+    private val entitlementGeneration = java.util.concurrent.atomic.AtomicLong(0)
     private val _userTier = MutableStateFlow("FREE")
     val userTier: StateFlow<String> = _userTier.asStateFlow()
 
@@ -114,9 +119,15 @@ class VpnRepository(
         }
     }
 
-    suspend fun refreshServers(refreshLatency: Boolean = true) = withContext(Dispatchers.IO) {
+    suspend fun refreshServers(refreshLatency: Boolean = true, force: Boolean = false) = withContext(Dispatchers.IO) {
         cacheRestoreJob?.join()
         if (!refreshMutex.tryLock()) return@withContext
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (!force && lastSuccessfulRefreshMs?.let { now - it in 0 until 5_000 } == true) {
+            refreshMutex.unlock()
+            if (refreshLatency) refreshLatencyIfDue()
+            return@withContext
+        }
         _serversLoading.value = true
         checkRewardedPassExpiry()
         try {
@@ -125,7 +136,7 @@ class VpnRepository(
 
             // Handle 401 Unauthorized by attempting token refresh
             if (response.code() == 401) {
-                val newToken = tryRefreshToken()
+                val newToken = tryRefreshToken(token)
                 if (newToken != null) {
                     token = newToken
                     response = api.getServers("Bearer $token", grouped = false)
@@ -141,6 +152,7 @@ class VpnRepository(
                 _usingCachedServers.value = false
                 _serverListError.value = null
                 _servers.value = mapped
+                lastSuccessfulRefreshMs = android.os.SystemClock.elapsedRealtime()
                 repositoryScope.launch { try { refreshVerifiedEntitlement() } catch (e: CancellationException) { throw e } catch (_: Exception) { /* Retain verified state. */ } }
 
                 val currentSelected = _selectedServer.value
@@ -155,18 +167,27 @@ class VpnRepository(
             _serversLoading.value = false
             refreshMutex.unlock()
         }
-        if (refreshLatency) {
-            latencyJob?.cancel()
-            latencyJob = repositoryScope.launch { measurePings() }
-        }
+        if (refreshLatency) refreshLatencyIfDue()
     }
 
-    private fun mapServers(dtos: List<ServerItemDto>): List<Server> = dtos.map { dto ->
-        Server(dto.id, dto.name, dto.countryCode, dto.countryName, dto.city, dto.flagEmoji,
-            dto.currentLoad, dto.isPremiumOnly, dto.isRecommended,
-            isFavorite = _favoriteServerIds.value.contains(dto.id), totalNodes = dto.totalNodes,
-            publicIpv4 = dto.publicIpv4, loadUpdatedAt = dto.loadUpdatedAt,
-            pingMs = _servers.value.firstOrNull { it.id == dto.id && it.publicIpv4 == dto.publicIpv4 }?.pingMs)
+    @Synchronized
+    private fun refreshLatencyIfDue() {
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (latencyJob?.isActive == true || lastLatencyRefreshMs?.let { now - it in 0 until 60_000 } == true) return
+        lastLatencyRefreshMs = now
+        latencyJob = repositoryScope.launch { measurePings() }
+    }
+
+    private fun mapServers(dtos: List<ServerItemDto>): List<Server> {
+        val previous = _servers.value.associateBy { it.id }
+        val favorites = _favoriteServerIds.value
+        return dtos.map { dto ->
+            Server(dto.id, dto.name, dto.countryCode, dto.countryName, dto.city, dto.flagEmoji,
+                dto.currentLoad, dto.isPremiumOnly, dto.isRecommended,
+                isFavorite = dto.id in favorites, totalNodes = dto.totalNodes,
+                publicIpv4 = dto.publicIpv4, loadUpdatedAt = dto.loadUpdatedAt,
+                pingMs = previous[dto.id]?.takeIf { it.publicIpv4 == dto.publicIpv4 }?.pingMs)
+        }
     }
 
     suspend fun fetchTunnelConfig(
@@ -182,7 +203,7 @@ class VpnRepository(
         var response = api.connect("Bearer $token", request)
 
         if (response.code() == 401) {
-            val newToken = tryRefreshToken()
+            val newToken = tryRefreshToken(token)
             if (newToken != null) {
                 token = newToken
                 response = api.connect("Bearer $token", request)
@@ -222,29 +243,32 @@ class VpnRepository(
             var token = keyStoreManager.getAccessToken() ?: return@withContext
             val response = api.disconnect("Bearer $token", com.nsec.vpn.data.api.DisconnectVpnRequest(peerId, clientPublicKey))
             if (response.code() == 401) {
-                val newToken = tryRefreshToken()
+                val newToken = tryRefreshToken(token)
                 if (newToken != null) {
                     token = newToken
                     api.disconnect("Bearer $token", com.nsec.vpn.data.api.DisconnectVpnRequest(peerId, clientPublicKey))
                 }
             }
-        } catch (_: Exception) {}
+        } catch (e: CancellationException) { throw e } catch (_: Exception) { /* Lease cleanup retries on the backend. */ }
     }
 
-    private suspend fun tryRefreshToken(): String? = withContext(Dispatchers.IO) {
-        val refreshToken = keyStoreManager.getRefreshToken() ?: return@withContext null
-        try {
+    private suspend fun tryRefreshToken(rejectedToken: String): String? = withContext(Dispatchers.IO) {
+        authMutex.withLock {
+            val current = keyStoreManager.getAccessToken()
+            if (current != null && current != rejectedToken) return@withLock current
+            val refreshToken = keyStoreManager.getRefreshToken()
+            if (refreshToken == null) return@withLock registerDeviceLocked()
             val response = api.refreshToken(com.nsec.vpn.data.api.RefreshTokenRequest(refreshToken))
             val body = response.body()
-            if (response.isSuccessful && body?.data != null) {
+            if (response.isSuccessful && body?.success == true && body.data != null) {
                 keyStoreManager.saveTokens(body.data.accessToken, body.data.refreshToken)
-                return@withContext body.data.accessToken
+                return@withLock body.data.accessToken
             }
-        } catch (_: Exception) {}
-        authenticateDevice()
+            if (response.code() == 403) throw IllegalStateException("This Device Is Blocked. Contact Support.")
+            if (response.code() != 401) throw IllegalStateException("Authentication Is Unavailable. Please Retry Shortly.")
+            registerDeviceLocked()
+        }
     }
-
-
 
     suspend fun measurePings() = withContext(Dispatchers.IO) {
         val limit = Semaphore(4)
@@ -271,7 +295,7 @@ class VpnRepository(
         if (response.code() == 401) {
             val code = try { org.json.JSONObject(response.errorBody()?.source()?.peek()?.readUtf8().orEmpty()).optString("error") } catch (_: Exception) { "" }
             if (code in setOf("TOKEN_INVALID", "TOKEN_REVOKED", "UNAUTHORIZED")) {
-                val renewed = tryRefreshToken()
+                val renewed = tryRefreshToken(token)
                 if (renewed != null) return call("Bearer $renewed")
             }
         }
@@ -304,6 +328,7 @@ class VpnRepository(
     }
 
     suspend fun recoverDevice(deviceId: String, pin: String) = withContext(Dispatchers.IO) {
+        authMutex.withLock {
         val bytes = ByteArray(32).also { java.security.SecureRandom().nextBytes(it) }
         val secret = bytes.joinToString("") { (it.toInt() and 255).toString(16).padStart(2, '0') }
         val response = com.nsec.vpn.core.network.NetworkModule.recoveryApi.recover(
@@ -314,10 +339,15 @@ class VpnRepository(
         keyStoreManager.restoreDeviceSession(deviceId, secret, data.accessToken, data.refreshToken)
         _deviceIdentity.value = deviceId
         applyVerifiedEntitlement(data.device.tier, data.device.passExpiresAt)
-        refreshServers(refreshLatency = false)
+        }
+        refreshServers(refreshLatency = false, force = true)
     }
 
     suspend fun authenticateDevice(): String = withContext(Dispatchers.IO) {
+        authMutex.withLock { keyStoreManager.getAccessToken() ?: registerDeviceLocked() }
+    }
+
+    private suspend fun registerDeviceLocked(): String {
         val deviceId = keyStoreManager.getOrCreateDeviceId()
         val res = api.registerDevice(
             RegisterDeviceRequest(
@@ -335,7 +365,7 @@ class VpnRepository(
             val data = body.data
             keyStoreManager.saveTokens(data.accessToken, data.refreshToken)
             applyVerifiedEntitlement(data.device.tier, data.device.passExpiresAt)
-            return@withContext data.accessToken
+            return data.accessToken
         }
         throw IllegalStateException("Device Registration Failed")
     }
@@ -418,11 +448,11 @@ class VpnRepository(
     }
 
     suspend fun refreshVerifiedEntitlement(): Boolean = withContext(Dispatchers.IO) {
-        val token = keyStoreManager.getAccessToken() ?: return@withContext false
-        val response = api.getDeviceProfile("Bearer $token")
+        val generation = entitlementGeneration.get()
+        val response = recoveryAuthenticated { token -> api.getDeviceProfile(token) }
         val profile = response.body()
         if (!response.isSuccessful || profile?.success != true || profile.data == null) return@withContext false
-        applyVerifiedEntitlement(profile.data.tier, profile.data.passExpiresAt)
+        applyProfileEntitlement(generation, profile.data.tier, profile.data.passExpiresAt)
         _userTier.value != "FREE"
     }
 
@@ -437,7 +467,7 @@ class VpnRepository(
         var token = keyStoreManager.getAccessToken() ?: authenticateDevice()
         var response = api.submitServerRequest("Bearer $token", request)
         if (response.code() == 401) {
-            token = tryRefreshToken() ?: throw IllegalStateException("Please Reopen The App To Sign In Again.")
+            token = tryRefreshToken(token) ?: throw IllegalStateException("Please Reopen The App To Sign In Again.")
             response = api.submitServerRequest("Bearer $token", request)
         }
         val body = response.body()
@@ -457,7 +487,7 @@ class VpnRepository(
         var token = keyStoreManager.getAccessToken() ?: authenticateDevice()
         var response = api.prepareReward("Bearer $token")
         if (response.code() == 401) {
-            token = tryRefreshToken() ?: throw IllegalStateException("Please Sign In Again")
+            token = tryRefreshToken(token) ?: throw IllegalStateException("Please Sign In Again")
             response = api.prepareReward("Bearer $token")
         }
         val result = response.body()
@@ -468,19 +498,29 @@ class VpnRepository(
 
     suspend fun claimReward(ticketId: String) = withContext(Dispatchers.IO) {
         keyStoreManager.savePendingRewardTicket(ticketId)
-        var token = keyStoreManager.getAccessToken() ?: authenticateDevice()
-        var response = api.claimReward("Bearer $token", com.nsec.vpn.data.api.ClaimRewardRequest(ticketId))
-        if (response.code() == 401) {
-            token = tryRefreshToken() ?: throw IllegalStateException("Please Sign In Again")
-            response = api.claimReward("Bearer $token", com.nsec.vpn.data.api.ClaimRewardRequest(ticketId))
+        repeat(11) { attempt ->
+            var token = keyStoreManager.getAccessToken() ?: authenticateDevice()
+            var response = api.claimReward("Bearer $token", com.nsec.vpn.data.api.ClaimRewardRequest(ticketId))
+            if (response.code() == 401) {
+                token = tryRefreshToken(token) ?: throw IllegalStateException("Please Sign In Again")
+                response = api.claimReward("Bearer $token", com.nsec.vpn.data.api.ClaimRewardRequest(ticketId))
+            }
+            val result = response.body()
+            if (response.code() == 202) {
+                if (attempt < 10) {
+                    kotlinx.coroutines.delay(3_000)
+                    return@repeat
+                }
+                throw IllegalStateException("Ad-Free Is Active; VIP Is Waiting For Server Verification. It Will Retry Automatically.")
+            }
+            if (!response.isSuccessful || result?.success != true || result.data == null) {
+                if (response.code() in listOf(400, 403, 404, 410)) keyStoreManager.savePendingRewardTicket(null)
+                throw IllegalStateException("VIP Grant Unavailable. A Completed Reward Will Retry When The Service Returns")
+            }
+            applyVerifiedEntitlement(result.data.tier, result.data.passExpiresAt)
+            keyStoreManager.savePendingRewardTicket(null)
+            return@withContext
         }
-        val result = response.body()
-        if (!response.isSuccessful || result?.success != true || result.data == null) {
-            if (response.code() in listOf(400, 403, 404, 410, 429)) keyStoreManager.savePendingRewardTicket(null)
-            throw IllegalStateException("VIP Grant Unavailable. A Completed Reward Will Retry When The Service Returns")
-        }
-        applyVerifiedEntitlement(result.data.tier, result.data.passExpiresAt)
-        keyStoreManager.savePendingRewardTicket(null)
     }
 
     private var nextRewardRetryElapsedMs = 0L
@@ -489,14 +529,14 @@ class VpnRepository(
         if (now < nextRewardRetryElapsedMs) return
         nextRewardRetryElapsedMs = now + 300_000L
         val ticket = keyStoreManager.getPendingRewardTicket() ?: return
-        try { claimReward(ticket) } catch (_: Exception) { /* Retained until retry or terminal rejection. */ }
+        try { claimReward(ticket) } catch (e: CancellationException) { throw e } catch (_: Exception) { /* Retained until retry or terminal rejection. */ }
     }
 
     suspend fun redeemPromo(code: String) = withContext(Dispatchers.IO) {
         val token = keyStoreManager.getAccessToken() ?: authenticateDevice()
         var response = api.redeemPromo("Bearer $token", com.nsec.vpn.data.api.RedeemPromoRequest(code.trim()))
         if (response.code() == 401) {
-            val refreshed = tryRefreshToken() ?: throw IllegalStateException("Please Sign In Again")
+            val refreshed = tryRefreshToken(token) ?: throw IllegalStateException("Please Sign In Again")
             response = api.redeemPromo("Bearer $refreshed", com.nsec.vpn.data.api.RedeemPromoRequest(code.trim()))
         }
         val result = response.body()
@@ -516,13 +556,21 @@ class VpnRepository(
         applyVerifiedEntitlement(result.data.tier, result.data.passExpiresAt)
     }
 
+    @Synchronized
     private fun applyVerifiedEntitlement(tier: String, expiresAt: String?) {
+        entitlementGeneration.incrementAndGet()
         require(tier in setOf("FREE", "VIP", "REWARDED_PASS")) { "Invalid Entitlement Response" }
         verifiedEntitlementExpiresAtMs = expiresAt?.let { java.time.Instant.parse(it).toEpochMilli() }
         _userTier.value = tier
         checkRewardedPassExpiry()
     }
 
+    @Synchronized
+    private fun applyProfileEntitlement(generation: Long, tier: String, expiresAt: String?) {
+        if (generation == entitlementGeneration.get()) applyVerifiedEntitlement(tier, expiresAt)
+    }
+
+    @Synchronized
     fun checkRewardedPassExpiry() {
         if (verifiedEntitlementExpiresAtMs?.let { it <= System.currentTimeMillis() } == true) _userTier.value = "FREE"
     }

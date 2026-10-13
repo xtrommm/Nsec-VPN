@@ -35,7 +35,9 @@ class NsecVpnService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_DISCONNECT) {
             WireGuardTunnelManager.getInstance(this).disconnect()
-            stopForeground(STOP_FOREGROUND_REMOVE); stopSelf()
+            if (WireGuardTunnelManager.getInstance(this).vpnState.value is VpnState.Disconnected) {
+                stopForeground(STOP_FOREGROUND_REMOVE); stopSelf()
+            }
         } else {
             serverName = intent?.getStringExtra(EXTRA_SERVER_NAME).orEmpty()
             notifyState(WireGuardTunnelManager.getInstance(this).vpnState.value is VpnState.Connected)

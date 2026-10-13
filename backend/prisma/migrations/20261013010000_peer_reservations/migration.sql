@@ -1,0 +1,3 @@
+BEGIN;
+ALTER TABLE "PeerSession" ADD COLUMN IF NOT EXISTS "pendingPublicKey" TEXT;
+COMMIT;

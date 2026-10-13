@@ -16,6 +16,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.platform.LocalDensity
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -41,6 +43,18 @@ val MEDIUM_MAX_WIDTH = 550.dp
 val MIN_VISIBLE_WIDTH = 220.dp
 val MIN_VISIBLE_HEIGHT = 70.dp
 
+object NativeAdLayoutPolicy {
+    fun select(width: Float, height: Float, video: Boolean = false, fontScale: Float = 1f): NativeAdTemplate = when {
+        width < MIN_VISIBLE_WIDTH.value || height < MIN_VISIBLE_HEIGHT.value -> NativeAdTemplate.HIDDEN
+        // Video assets require a MediaView; compact XML has none. Allow room for media and text.
+        video && height < 260f * fontScale.coerceAtLeast(1f) -> NativeAdTemplate.HIDDEN
+        video -> if (width <= MEDIUM_MAX_WIDTH.value) NativeAdTemplate.MEDIUM else NativeAdTemplate.LARGE
+        height <= COMPACT_MAX_HEIGHT.value || width <= COMPACT_MAX_WIDTH.value -> NativeAdTemplate.COMPACT
+        height <= MEDIUM_MAX_HEIGHT.value || width <= MEDIUM_MAX_WIDTH.value -> NativeAdTemplate.MEDIUM
+        else -> NativeAdTemplate.LARGE
+    }
+}
+
 @Composable
 fun SmartNativeAd(
     nativeAdManager: NativeAdManager,
@@ -52,20 +66,16 @@ fun SmartNativeAd(
     val isFreeUser = userTier == "FREE"
     val isAdAllowed = isFreeUser && adMobConfig.nativeEnabled && vpnState !is VpnState.Connecting
 
+    val adLoadedEvent by nativeAdManager.adLoadedEvent.collectAsStateWithLifecycle()
     var currentAd by remember { mutableStateOf<NativeAd?>(null) }
-    var lastRefreshTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var lastRefreshTime by remember { mutableLongStateOf(android.os.SystemClock.elapsedRealtime()) }
 
     LaunchedEffect(isAdAllowed, adMobConfig.nativeAdUnitId) {
         currentAd?.let { nativeAdManager.releaseAd(it) }
         currentAd = null
         if (isAdAllowed) {
             nativeAdManager.preloadNativeAds(adMobConfig.nativeAdUnitId, adMobConfig.nativeEnabled)
-            while (true) {
-                if (currentAd == null) {
-                    currentAd = nativeAdManager.acquireAd()
-                }
-                delay(10.seconds)
-            }
+            currentAd = nativeAdManager.acquireAd()
         } else {
             currentAd?.let {
                 nativeAdManager.releaseAd(it)
@@ -74,11 +84,15 @@ fun SmartNativeAd(
         }
     }
 
+    LaunchedEffect(adLoadedEvent, isAdAllowed) {
+        if (isAdAllowed && currentAd == null) currentAd = nativeAdManager.acquireAd()
+    }
+
     LaunchedEffect(currentAd, isAdAllowed) {
         if (currentAd != null && isAdAllowed) {
             while (true) {
                 delay(60.seconds)
-                val now = System.currentTimeMillis()
+                val now = android.os.SystemClock.elapsedRealtime()
                 if (now - lastRefreshTime >= 60000L) {
                     lastRefreshTime = now
                     currentAd?.let { nativeAdManager.releaseAd(it) }
@@ -109,14 +123,9 @@ fun SmartNativeAd(
         val widthDp = maxWidth
         val heightDp = maxHeight
 
-        val template = remember(widthDp, heightDp) {
-            when {
-                widthDp < MIN_VISIBLE_WIDTH || heightDp < MIN_VISIBLE_HEIGHT -> NativeAdTemplate.HIDDEN
-                heightDp <= COMPACT_MAX_HEIGHT || widthDp <= COMPACT_MAX_WIDTH -> NativeAdTemplate.COMPACT
-                heightDp <= MEDIUM_MAX_HEIGHT || widthDp <= MEDIUM_MAX_WIDTH -> NativeAdTemplate.MEDIUM
-                else -> NativeAdTemplate.LARGE
-            }
-        }
+        val video = currentAd?.mediaContent?.hasVideoContent() == true
+        val fontScale = LocalDensity.current.fontScale
+        val template = NativeAdLayoutPolicy.select(widthDp.value, heightDp.value, video, fontScale)
 
         if (template == NativeAdTemplate.HIDDEN) {
             return@BoxWithConstraints
@@ -141,6 +150,7 @@ fun SmartNativeAd(
             }
         }
 
+        key(template, currentAd) {
         AndroidView(
             modifier = Modifier.fillMaxWidth(),
             factory = { ctx ->
@@ -158,6 +168,7 @@ fun SmartNativeAd(
                 currentAd?.let { populateNativeAdView(it, adView) }
             }
         )
+        }
     }
 }
 
@@ -215,5 +226,5 @@ fun populateNativeAdView(nativeAd: NativeAd, adView: NativeAdView) {
         }
 
         adView.setNativeAd(nativeAd)
-    } catch (_: Throwable) {}
+    } catch (_: Exception) { adView.visibility = android.view.View.GONE }
 }

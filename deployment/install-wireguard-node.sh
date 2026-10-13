@@ -23,7 +23,7 @@ MAIN_IFACE=$(ip -4 route get 1.1.1.1 | awk '{for(i=1;i<=NF;i++) if($i=="dev") {p
 [[ $MAIN_IFACE =~ ^[a-zA-Z0-9_.:-]{1,15}$ ]] || { echo 'Cannot determine uplink interface'; exit 1; }
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y wireguard iptables curl ca-certificates openssl python3 qrencode dnsutils
-if ! command -v node >/dev/null || [[ $(node -p 'Number(process.versions.node.split(".")[0])') -lt 20 ]]; then
+if ! command -v node >/dev/null || [[ $(node -p 'Number(process.versions.node.split(".")[0])') -lt 22 ]]; then
   curl -fsSL https://deb.nodesource.com/setup_22.x -o /tmp/nsec-nodesource-setup.sh
   bash /tmp/nsec-nodesource-setup.sh
   apt-get install -y nodejs

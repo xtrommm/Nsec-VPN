@@ -30,6 +30,7 @@ import javax.net.ssl.HttpsURLConnection;
 public final class SpeedTestService extends Service {
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private Session active;
+    private final Handler deadlines = new Handler(Looper.getMainLooper());
     private final Messenger endpoint = new Messenger(new Handler(Looper.getMainLooper(), message -> {
         handleRequest(message); return true;
     }));
@@ -63,8 +64,11 @@ public final class SpeedTestService extends Service {
         private Network vpn;
         private long deadline;
         private double ping, jitter, download, upload;
+        private final Runnable expired = () -> {
+            if (!cancelled) { emit("error", 0, "Speed Test Timed Out."); cancel(); }
+        };
         Session(Messenger reply, String expectedIp) { this.reply = reply; this.expectedIp = expectedIp; }
-        void cancel() { cancelled = true; HttpsURLConnection c = connection; if (c != null) c.disconnect(); }
+        void cancel() { cancelled = true; deadlines.removeCallbacks(expired); HttpsURLConnection c = connection; if (c != null) c.disconnect(); }
         void check() {
             if (cancelled) throw new IllegalStateException("Test Cancelled Or VPN Network Changed.");
             if (SystemClock.elapsedRealtime() >= deadline) throw new IllegalStateException("Speed Test Timed Out.");
@@ -110,10 +114,11 @@ public final class SpeedTestService extends Service {
         @Override public void run() {
             ConnectivityManager cm = getSystemService(ConnectivityManager.class);
             ConnectivityManager.NetworkCallback callback = new ConnectivityManager.NetworkCallback() {
-                @Override public void onLost(Network network) { if (network.equals(vpn)) { emit("error", 0, "VPN Network Lost. Reconnect And Retry."); cancel(); } }
+                @Override public void onLost(Network network) { if (!cancelled && network.equals(vpn)) { emit("error", 0, "VPN Network Lost. Reconnect And Retry."); cancel(); } }
             };
             boolean registered = false;
             deadline = SystemClock.elapsedRealtime() + 60000;
+            deadlines.postDelayed(expired, 60000);
             try {
                 vpn = cm.getActiveNetwork();
                 if (vpn == null) throw new IllegalStateException("The Helper Is Not Included In The VPN. Update Split Tunneling And Reconnect.");

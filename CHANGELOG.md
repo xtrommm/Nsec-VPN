@@ -1,12 +1,54 @@
 # Changelog
 
+## Unreleased — Deep audit
+
+- Preserve main's recursive build-directory ignore update in the v2 repair package and document branch publication versus pull-request creation.
+
+- Add an isolated Git-bundle publisher for connector write failures; preserve original local edits and provide draft-PR creation without main updates or deployment.
+
+- Require Node 22 rather than retaining the EOL Node 20 runtime during node installation; add the runtime decision regression and existing-node maintenance instructions.
+
+- Add a tested-checkpoint report with API compatibility, migration/schema approval commands, ranked proposals and remaining publishing blockers.
+
+- Correct unsupported privacy/compliance/latency/disclosure documentation claims; distinguish operational records from traffic logs and list publishing verification gaps.
+
+- Serialize tunnel activation/cleanup, retain notification/peer state on failed shutdown, expose operation errors, and add cancellation/shutdown regressions. Add a speed-helper deadline watchdog and suppress stale loss callbacks.
+
+- Fix dual-stack endpoint validation and first-sample throughput, share permission-return eligibility checks, synchronize displayed grants, clarify split-exclusion reconnect requirements, recover error tile actions and remove the unused boot permission.
+
+- Ignore older profile results after a newer grant is applied; add a delayed-profile/promo regression.
+
+- Coalesce duplicate catalog refreshes, preserve explicit refresh, index old node metadata once and scope configuration polling to the foreground; retain exact reward expiry scheduling.
+
+- Use monotonic native-ad refresh timing and reduce ad-free expiry polling wakeups.
+
+- Refill released native ads, replace loading polls with state events, use media layouts for video, recreate changed templates and test the actual layout policy instead of a duplicated test implementation.
+
+- Clamp promo/usage/audit pages after results shrink and preserve modal keyboard focus while operations are busy.
+
+- Guard health results against stale credentials/capacity/DNS, return committed node writes with explicit health errors, support legacy safe device IDs in admin lookup, and neutralize spreadsheet formula injection.
+
+- Serialize Android authentication/recovery and reuse concurrent renewal results; propagate cancellation and retain pending rewards during transient rate limits. Add concurrent-refresh and cancelled-refresh regressions.
+
+- Add opt-in CIDR-based proxy trust, separate readiness from user API quotas, and reject malformed agent request bodies with safe errors.
+
+
+
+- Protect entitlement expiry against concurrent grants/recovery, preserve longer VIP on purchase verification, and handle profile database failures without unhandled async rejections.
+
+- Commit durable peer reservations before agent mutation; track uncertain keys, compensate only under locks, reconcile abandoned reservations, and rotate disconnect handles on renewal. Add the nullable pending-public-key migration and regression/integration tests.
+
+- Require signed AdMob verification before rewarded VIP; make claims read-only, guard ticket ownership/event time, prevent replay/expiry extension, and poll pending verification without delaying local ad-free time.
+
+- Record the current main commit, security/core/admin/performance findings, dependency/history scan scope, and device/operator verification limits before source fixes.
+
 ## Unreleased — Device VIP recovery and native splash
 
 - Add authenticated recovery-PIN setup and Device ID + PIN restoration of existing VIP/promo ownership without extending expiry.
 - Add persistent failed-proof locks, credential rotation, auth-epoch enforcement for access/refresh tokens, and safe old-peer lease cleanup.
 - Add a Settings recovery sheet and update the displayed identity after recovery.
 - Move Europe/EU branding onto the original native day/night launch window and remove the extra Compose splash and delay.
-- Rename Accept & Continue to Continue, retaining disclosure and Android VPN permission.
+- Initially renamed Accept & Continue to Continue; a later update removed the extra in-app disclosure. Android VPN permission remains.
 - Add an additive recovery migration, exact schema-approval helper, privacy disclosures, regression tests and rollout guide.
 
 ## Unreleased — App polish and location pools

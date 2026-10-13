@@ -113,6 +113,7 @@ model PeerSession {
   server          ServerNode  @relation(fields: [serverId], references: [id], onDelete: Cascade)
   allocatedIp     String      // e.g. "10.8.0.42/32"
   clientPublicKey String
+  pendingPublicKey String? // Durable reservation for an uncertain agent registration
   active          Boolean     @default(true)
   expiresAt       DateTime
   createdAt       DateTime    @default(now())

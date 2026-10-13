@@ -7,12 +7,16 @@ import { validateBody } from '../middleware/validate';
 import { RegisterDeviceSchema, RefreshTokenSchema, JwtDevicePayload } from '../types';
 import { authenticateDevice, AuthenticatedDeviceRequest } from '../middleware/auth';
 import { authLimiter } from '../middleware/rateLimit';
+import { expireEntitlement } from '../services/entitlements';
 import { currentAuthEpoch } from '../services/deviceRecovery';
 
 const router = Router();
 router.get('/me', authenticateDevice, async (req: AuthenticatedDeviceRequest, res) => {
-  const device = await prisma.device.findUnique({ where: { id: req.device!.id }, select: { id: true, tier: true, passExpiresAt: true } });
-  return res.json({ success: true, data: device });
+  try {
+    const device = await prisma.device.findUnique({ where: { id: req.device!.id }, select: { id: true, tier: true, passExpiresAt: true } });
+    if (!device) return res.status(404).json({ success: false, error: 'DEVICE_NOT_FOUND' });
+    return res.json({ success: true, data: device });
+  } catch { return res.status(503).json({ success: false, error: 'PROFILE_UNAVAILABLE' }); }
 });
 const ACCESS_TOKEN_TTL = '7d';
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -68,15 +72,9 @@ router.post(
         });
       }
 
-      // Automatically downgrade expired rewarded pass if present
-      let currentTier = device.tier;
-      if ((device.tier === 'REWARDED_PASS' || device.tier === 'VIP') && device.passExpiresAt && device.passExpiresAt < new Date()) {
-        currentTier = 'FREE';
-        await prisma.device.update({
-          where: { id: device.id },
-          data: { tier: 'FREE', passExpiresAt: null }
-        });
-      }
+      const entitled = await expireEntitlement(device);
+      if (entitled.isBlocked) return res.status(403).json({ success: false, error: 'DEVICE_BLOCKED' });
+      const currentTier = entitled.tier;
 
       const payload: JwtDevicePayload = {
         deviceId: device.deviceId,
@@ -106,11 +104,12 @@ router.post(
           device: {
             id: device.id,
             tier: currentTier,
-            passExpiresAt: device.passExpiresAt?.toISOString() || null
+            passExpiresAt: entitled.passExpiresAt?.toISOString() || null
           }
         }
       });
     } catch (_err) {
+      if (_err instanceof Error && _err.message === 'TOKEN_REVOKED') return res.status(401).json({ success: false, error: 'TOKEN_REVOKED' });
       if (_err instanceof Error && _err.message === 'DEVICE_PROOF_REQUIRED') return res.status(409).json({ success: false, error: 'DEVICE_PROOF_REQUIRED', message: 'Existing identity requires the device credential or a valid legacy access token' });
       return res.status(500).json({
         success: false,
@@ -195,19 +194,9 @@ router.post(
         })
       ]);
 
-      // Downgrade expired rewarded pass if needed
-      let currentTier = storedToken.device.tier;
-      if (
-        (storedToken.device.tier === 'REWARDED_PASS' || storedToken.device.tier === 'VIP') &&
-        storedToken.device.passExpiresAt &&
-        storedToken.device.passExpiresAt < new Date()
-      ) {
-        currentTier = 'FREE';
-        await prisma.device.update({
-          where: { id: storedToken.device.id },
-          data: { tier: 'FREE', passExpiresAt: null }
-        });
-      }
+      const entitled = await expireEntitlement(storedToken.device);
+      if (entitled.isBlocked) return res.status(403).json({ success: false, error: 'DEVICE_BLOCKED' });
+      const currentTier = entitled.tier;
 
       const payload: JwtDevicePayload = {
         deviceId: storedToken.device.deviceId,
@@ -224,6 +213,7 @@ router.post(
         }
       });
     } catch (_err) {
+      if (_err instanceof Error && _err.message === 'TOKEN_REVOKED') return res.status(401).json({ success: false, error: 'TOKEN_REVOKED' });
       return res.status(500).json({
         success: false,
         error: 'INTERNAL_ERROR',

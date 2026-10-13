@@ -13,9 +13,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 
 class VpnTileService : TileService() {
-    private val scope = CoroutineScope(Dispatchers.Main)
+    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var listenJob: Job? = null
 
     override fun onStartListening() {
@@ -34,6 +36,11 @@ class VpnTileService : TileService() {
         listenJob = null
     }
 
+    override fun onDestroy() {
+        scope.cancel()
+        super.onDestroy()
+    }
+
     @SuppressLint("StartActivityAndCollapseDeprecated")
     override fun onClick() {
         super.onClick()
@@ -42,7 +49,7 @@ class VpnTileService : TileService() {
             is VpnState.Connected -> {
                 tunnelManager.disconnect()
             }
-            is VpnState.Disconnected -> {
+            is VpnState.Disconnected, is VpnState.Error -> {
                 val intent = Intent(this, MainActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 }

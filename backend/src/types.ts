@@ -4,8 +4,9 @@ import { z } from 'zod';
 // 1. Zod Input Validation Schemas
 // ==========================================
 
+export const DeviceIdSchema = z.string().min(8).max(128).regex(/^[a-zA-Z0-9_-]+$/, 'Invalid deviceId characters');
 export const RegisterDeviceSchema = z.object({
-  deviceId: z.string().min(8).max(128).regex(/^[a-zA-Z0-9_-]+$/, 'Invalid deviceId characters'),
+  deviceId: DeviceIdSchema,
   registrationSecret: z.string().regex(/^[a-f0-9]{64}$/).optional(),
   registrationProof: z.string().max(2048).optional(),
   deviceModel: z.string().max(64).optional(),

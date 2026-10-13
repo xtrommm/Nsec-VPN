@@ -73,6 +73,7 @@ class MainActivity : ComponentActivity() {
                 val coroutineScope = rememberCoroutineScope()
 
                 val vpnState by tunnelManager.vpnState.collectAsStateWithLifecycle()
+                val operationError by tunnelManager.operationError.collectAsStateWithLifecycle()
                 val vpnStats by tunnelManager.vpnStats.collectAsStateWithLifecycle()
                 val connectedNode by tunnelManager.connectedNode.collectAsStateWithLifecycle()
                 val serversLoading by vpnRepo.serversLoading.collectAsStateWithLifecycle()
@@ -107,10 +108,18 @@ class MainActivity : ComponentActivity() {
                     contract = ActivityResultContracts.RequestPermission()
                 ) { _ -> }
 
+                fun connectionBlockReason() = com.nsec.vpn.vpn.ConnectionEligibility.blockedReason(
+                    remoteConfigLoaded, remoteConfig.maintenanceMode, remoteConfig.forceUpdate,
+                    remoteConfig.minAppVersionCode, BuildConfig.VERSION_CODE)
+
                 val vpnPermissionLauncher = rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.StartActivityForResult()
                 ) { result ->
                     if (result.resultCode == Activity.RESULT_OK) {
+                        connectionBlockReason()?.let { message ->
+                            Toast.makeText(this@MainActivity, message, Toast.LENGTH_LONG).show()
+                            return@rememberLauncherForActivityResult
+                        }
                         val server = selectedServer ?: servers.firstOrNull()
                         if (server != null) {
                             val dns = try { vpnRepo.dnsServersForConnection() } catch (error: IllegalArgumentException) {
@@ -130,16 +139,8 @@ class MainActivity : ComponentActivity() {
                 }
 
                 fun startConnectInternal(isUserInitiated: Boolean) {
-                    if (!remoteConfigLoaded) {
-                        Toast.makeText(this@MainActivity, "App Settings Are Still Loading. Please Retry Shortly.", Toast.LENGTH_SHORT).show()
-                        return
-                    }
-                    if (remoteConfig.maintenanceMode) {
-                        Toast.makeText(this@MainActivity, "VPN Maintenance Is In Progress. Please Try Again Later.", Toast.LENGTH_LONG).show()
-                        return
-                    }
-                    if (remoteConfig.forceUpdate && BuildConfig.VERSION_CODE < remoteConfig.minAppVersionCode) {
-                        Toast.makeText(this@MainActivity, "Update Nsec VPN Before Connecting.", Toast.LENGTH_LONG).show()
+                    connectionBlockReason()?.let { message ->
+                        Toast.makeText(this@MainActivity, message, Toast.LENGTH_LONG).show()
                         return
                     }
                     isUserInitiatedConnect = isUserInitiated
@@ -233,12 +234,14 @@ class MainActivity : ComponentActivity() {
 
                 }
 
-                LaunchedEffect(Unit) {
-                    while (true) {
-                        kotlinx.coroutines.delay(30_000)
-                        remoteConfigManager.fetchRemoteConfig()
-                        vpnRepo.checkRewardedPassExpiry()
-                        vpnRepo.retryPendingReward()
+                LaunchedEffect(lifecycleOwner) {
+                    lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                        while (true) {
+                            kotlinx.coroutines.delay(30_000)
+                            remoteConfigManager.fetchRemoteConfig()
+                            vpnRepo.checkRewardedPassExpiry()
+                            vpnRepo.retryPendingReward()
+                        }
                     }
                 }
 
@@ -264,6 +267,10 @@ class MainActivity : ComponentActivity() {
                     if (currentTab == Screen.Servers) {
                         vpnRepo.refreshServers()
                     }
+                }
+
+                LaunchedEffect(operationError) {
+                    operationError?.let { Toast.makeText(this@MainActivity, it, Toast.LENGTH_LONG).show() }
                 }
 
                 LaunchedEffect(remoteConfigError) {
@@ -369,7 +376,11 @@ class MainActivity : ComponentActivity() {
                             "split_tunnel" -> {
                                 SplitTunnelScreen(
                                     excludedPackages = excludedPackages,
-                                    onTogglePackage = { vpnRepo.togglePackageExclusion(it) },
+                                    onTogglePackage = {
+                                        vpnRepo.togglePackageExclusion(it)
+                                        if (vpnState is VpnState.Connected || vpnState is VpnState.Connecting)
+                                            Toast.makeText(this@MainActivity, "Exclusion Saved. Reconnect To Apply It.", Toast.LENGTH_SHORT).show()
+                                    },
                                     onBack = { activeSubScreen = null }
                                 )
                             }
@@ -430,7 +441,7 @@ class MainActivity : ComponentActivity() {
                                             },
                                             onToggleFavorite = { vpnRepo.toggleFavorite(it) },
                                             onRefreshPings = {
-                                                coroutineScope.launch { vpnRepo.refreshServers() }
+                                                coroutineScope.launch { vpnRepo.refreshServers(force = true) }
                                             },
                                             onUpgradeRequired = { showVipModal = true }
                                         )
@@ -456,7 +467,11 @@ class MainActivity : ComponentActivity() {
                                             activeDns = activeDns,
                                             onCustomDns = { raw -> vpnRepo.setCustomDns(raw); tunnelManager.updateDns(vpnRepo.dnsServersForConnection()) },
                                             splitTunnelingEnabled = splitTunnelingEnabled,
-                                            onToggleSplitTunneling = { vpnRepo.setSplitTunneling(it) },
+                                            onToggleSplitTunneling = {
+                                                vpnRepo.setSplitTunneling(it)
+                                                if (vpnState is VpnState.Connected || vpnState is VpnState.Connecting)
+                                                    Toast.makeText(this@MainActivity, "Split Tunneling Saved. Reconnect To Apply It.", Toast.LENGTH_SHORT).show()
+                                            },
                                             autoConnectEnabled = autoConnectEnabled,
                                             onToggleAutoConnect = { vpnRepo.setAutoConnect(it) },
                                             onOpenSplitTunnelApps = { activeSubScreen = "split_tunnel" },

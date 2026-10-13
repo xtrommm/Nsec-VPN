@@ -22,7 +22,6 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import java.net.Inet4Address
 import java.net.InetAddress
 
 class WireGuardTunnelManager private constructor(private val context: android.app.Application) {
@@ -49,6 +48,9 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
     var lastError: String? = null; private set
     var latestHandshakeAgeSeconds = 0L; private set
     var activeTunnelConfig: TunnelConfig? = null; private set
+    private val operations = TunnelOperations()
+    private val _operationError = MutableStateFlow<String?>(null)
+    val operationError: StateFlow<String?> = _operationError.asStateFlow()
     private var connectJob: Job? = null
     private var statsJob: Job? = null
     private var connectionStartTime = 0L
@@ -74,8 +76,27 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
         lastExcludedApps = excludedApps; lastDns = dnsServers
         reconnectCount = 0
         _vpnState.value = VpnState.Connecting
-        connectJob = scope.launch { connectWithFailover(server, dnsServers, excludedApps) }
+        connectJob = launchOperation { connectWithFailover(server, dnsServers, excludedApps) }
     }
+    private fun launchOperation(previous: Job? = null, work: suspend () -> Unit): Job = scope.launch {
+        previous?.cancelAndJoin()
+        operations.exclusive {
+            _operationError.value = null
+            try { work() }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) {
+                lastError = "VPN Operation Failed. The Tunnel May Still Be Active; Retry Disconnecting."
+                _operationError.value = lastError
+                val verified = _connectedNode.value
+                val stillUp = runCatching { backend.getState(tunnel) == Tunnel.State.UP }.getOrDefault(false)
+                if (stillUp && verified != null) {
+                    _vpnState.value = VpnState.Connected
+                    startStatsMonitoring(verified.serverPublicKey)
+                } else _vpnState.value = VpnState.Error(lastError.orEmpty())
+            }
+        }
+    }
+
     private suspend fun connectWithFailover(initial: Server, dns: List<String>, excludedApps: Set<String>) {
         val visited = mutableSetOf<String>()
         var candidate: Server? = com.nsec.vpn.data.model.LocationSelection.ranked(
@@ -99,8 +120,7 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
                 val result = validateTunnelConfig(tc)
                 require(result.isValid) { result.errorMessage ?: "Invalid Server Data" }
                 val addresses = InetAddress.getAllByName(tc.serverEndpoint.substringBeforeLast(':'))
-                require(addresses.isNotEmpty() && addresses.all { it is Inet4Address && !isPrivateOrDocumentationIp(it.hostAddress.orEmpty()) }) { "Server Endpoint Must Resolve To Public IPv4" }
-                require(addresses.any { it.hostAddress == tc.publicIpv4 }) { "Node Public IP Does Not Match Endpoint" }
+                EndpointPolicy.validate(addresses.toList(), tc.publicIpv4.orEmpty())
                 activeTunnelConfig = tc
                 tc
                 }, activate = { tc ->
@@ -163,8 +183,7 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
     private fun startStatsMonitoring(publicKey: String) {
         statsJob?.cancel()
         statsJob = scope.launch {
-            var previousRx = 0L; var previousTx = 0L
-            var previousTime = SystemClock.elapsedRealtime()
+            val sampler = TrafficCounterSampler()
             while (isActive && _vpnState.value is VpnState.Connected) {
                 delay(1000)
                 try {
@@ -174,12 +193,10 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
                     latestHandshakeAgeSeconds = if (handshake > 0) (System.currentTimeMillis() - handshake).coerceAtLeast(0) / 1000 else Long.MAX_VALUE
                     if (backend.getState(tunnel) != Tunnel.State.UP || latestHandshakeAgeSeconds > STALE_HANDSHAKE_SECONDS) { recoverStaleTunnel(); return@launch }
                     val now = SystemClock.elapsedRealtime()
-                    val seconds = (now - previousTime).coerceAtLeast(1) / 1000f
                     val rx = stats.totalRx(); val tx = stats.totalTx()
+                    val rate = sampler.sample(now, rx, tx)
                     val duration = (now - connectionStartTime) / 1000
-                    _vpnStats.value = VpnStats(duration, (rx - previousRx).coerceAtLeast(0) * 8 / seconds / 1_000_000f,
-                        (tx - previousTx).coerceAtLeast(0) * 8 / seconds / 1_000_000f, rx, tx)
-                    previousRx = rx; previousTx = tx; previousTime = now
+                    _vpnStats.value = VpnStats(duration, rate.downloadMbps, rate.uploadMbps, rx, tx)
                     if (duration >= 300) reconnectCount = 0
                 } catch (cancelled: CancellationException) { throw cancelled }
                 catch (_: Exception) { recoverStaleTunnel(); return@launch }
@@ -190,12 +207,11 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
     private fun recoverStaleTunnel() {
         if (_vpnState.value !is VpnState.Connected) return
         val server = activeServer ?: return
-        _connectedNode.value = null
         _vpnState.value = VpnState.Connecting
         statsJob?.cancel()
-        connectJob = scope.launch {
+        connectJob = launchOperation {
             teardown()
-            if (reconnectCount >= MAX_RECONNECTS) { _vpnState.value = VpnState.Error("Couldn't Reach The Server"); return@launch }
+            if (reconnectCount >= MAX_RECONNECTS) { _vpnState.value = VpnState.Error("Couldn't Reach The Server"); return@launchOperation }
             delay(1000L shl reconnectCount++)
             connectWithFailover(server, lastDns, lastExcludedApps)
         }
@@ -208,8 +224,12 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
     }
     private suspend fun teardown() {
         stopping = true
-        try { backend.setState(tunnel, Tunnel.State.DOWN, null) } catch (_: Exception) { /* Already down. */ }
-        stopping = false
+        try {
+            TunnelShutdown.stop(
+                setDown = { backend.setState(tunnel, Tunnel.State.DOWN, null) },
+                isDown = { backend.getState(tunnel) == Tunnel.State.DOWN }
+            )
+        } finally { stopping = false }
         val id = activePeerId; val key = activeClientPublicKey
         if (id != null && key != null) vpnRepository.notifyDisconnect(id, key)
         activePeerId = null; activeTunnelConfig = null; _connectedNode.value = null; _activeDns.value = emptyList()
@@ -221,8 +241,8 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
         _vpnState.value = VpnState.Disconnecting
         statsJob?.cancel()
         val job = connectJob; connectJob = null
-        scope.launch {
-            job?.cancelAndJoin(); teardown()
+        launchOperation(previous = job) {
+            teardown()
             activeClientPublicKey = null; activeServer = null
             _vpnStats.value = VpnStats(); _vpnState.value = VpnState.Disconnected
         }
@@ -237,14 +257,10 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
         val previous = connectJob
         statsJob?.cancel()
         _vpnState.value = VpnState.Connecting
-        _connectedNode.value = null
-        connectJob = scope.launch {
-            try {
-                previous?.cancelAndJoin()
-                teardown()
-                currentCoroutineContext().ensureActive()
-                connectWithFailover(server, dns, lastExcludedApps)
-            } catch (e: CancellationException) { withContext(NonCancellable) { teardown() }; throw e }
+        connectJob = launchOperation(previous = previous) {
+            teardown()
+            currentCoroutineContext().ensureActive()
+            connectWithFailover(server, dns, lastExcludedApps)
         }
     }
 

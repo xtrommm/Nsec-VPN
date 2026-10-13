@@ -95,7 +95,7 @@ class VpnRepositoryTest {
                     java.time.Instant.now().plusSeconds(if (expired) -60 else 3600).toString())))
         }
         val repository = VpnRepository(context, api, TestVault.create(context))
-        repository.refreshServers()
+        repository.refreshServers(force = true)
         repository.refreshVerifiedEntitlement()
         assertEquals("VIP", repository.userTier.value)
         expired = true
@@ -114,14 +114,14 @@ class VpnRepositoryTest {
             }
         }
         val repository = VpnRepository(context, api, TestVault.create(context))
-        repository.refreshServers()
+        repository.refreshServers(force = true)
         assertTrue(repository.servers.value.isEmpty())
         assertNotNull(repository.serverListError.value)
         unavailable = false
-        repository.refreshServers()
+        repository.refreshServers(force = true)
         val prior = repository.servers.value
         unavailable = true
-        repository.refreshServers()
+        repository.refreshServers(force = true)
         assertEquals(prior, repository.servers.value)
     }
 
@@ -137,10 +137,10 @@ class VpnRepositoryTest {
                 ))))
         }
         val repository = VpnRepository(context, api, TestVault.create(context))
-        repository.refreshServers(refreshLatency = false)
+        repository.refreshServers(refreshLatency = false, force = true)
         assertEquals(10, repository.selectedServer.value?.currentLoad)
         load = 75
-        repository.refreshServers(refreshLatency = false)
+        repository.refreshServers(refreshLatency = false, force = true)
         assertEquals("test-live-node", repository.selectedServer.value?.id)
         assertEquals(75, repository.selectedServer.value?.currentLoad)
         assertNotNull(repository.selectedServer.value?.loadUpdatedAt)
@@ -151,7 +151,7 @@ class VpnRepositoryTest {
         val fakeApi = FakeNsecVpnApi()
         val keyStoreManager = TestVault.create(ApplicationProvider.getApplicationContext())
         val repository = VpnRepository(ApplicationProvider.getApplicationContext(), fakeApi, keyStoreManager)
-        repository.refreshServers()
+        repository.refreshServers(force = true)
 
         val servers = repository.servers.value
         assertNotNull(servers)
@@ -167,7 +167,7 @@ class VpnRepositoryTest {
         val fakeApi = FakeNsecVpnApi()
         val keyStoreManager = TestVault.create(ApplicationProvider.getApplicationContext())
         val repository = VpnRepository(ApplicationProvider.getApplicationContext(), fakeApi, keyStoreManager)
-        repository.refreshServers()
+        repository.refreshServers(force = true)
 
         repository.selectBestServer()
         assertNotNull(repository.selectedServer.value)
