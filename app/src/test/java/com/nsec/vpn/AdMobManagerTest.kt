@@ -3,6 +3,7 @@ package com.nsec.vpn
 import androidx.test.core.app.ApplicationProvider
 import com.nsec.vpn.data.monetization.AdMobConfig
 import com.nsec.vpn.data.monetization.AdMobManager
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -17,12 +18,15 @@ class AdMobManagerTest {
     @Test
     fun adsStayDisabledUntilSdkInitializationAndRemoteKillSwitchClearsThem() {
         var ready: (() -> Unit)? = null
-        val manager = AdMobManager(ApplicationProvider.getApplicationContext(), initializeSdk = { ready = it })
+        var initializationCount = 0
+        val manager = AdMobManager(ApplicationProvider.getApplicationContext(), initializeSdk = { initializationCount++; ready = it })
         manager.updateConfig(AdMobConfig(nativeEnabled = true, rewardedEnabled = true, interstitialEnabled = true))
         assertFalse(manager.config.value.nativeEnabled)
         assertFalse(manager.config.value.rewardedEnabled)
         assertFalse(manager.canShowInterstitial())
         manager.initialize()
+        manager.initialize()
+        assertEquals(1, initializationCount)
         assertFalse(manager.config.value.nativeEnabled)
         ready!!.invoke()
         assertTrue(manager.config.value.nativeEnabled)

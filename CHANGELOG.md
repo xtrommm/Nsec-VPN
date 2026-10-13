@@ -251,3 +251,7 @@ update
 - Show Disconnecting accurately, disable reconnect until DOWN and remove delayed connect-control colour feedback.
 - Reject stale interstitial navigation after disconnect and defer native load work past the first rendered frame.
 - Add Compose retention/disabled-control and connection-state presentation regression tests.
+
+### Disconnect update delivery
+- Add a guarded separate-checkout publisher and document video evidence, SDK/privacy trade-offs, runtime limits and phone test steps.
+- Add SDK initialization idempotence regression coverage.

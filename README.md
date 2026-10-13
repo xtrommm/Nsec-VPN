@@ -246,3 +246,5 @@ The owner-requested UMP consent form and ad privacy settings rows are removed. A
 
 ### Disconnect screen transition
 Home remains composed and measured while connection details are open, but is not placed/drawn and its ad slot and pulse are disabled while hidden. Disconnect returns to that retained Home immediately with an honest Disconnecting state; reconnect stays disabled until confirmed local DOWN. State colours no longer animate over 500ms. Native SDK load work starts after the first navigation frame. No tunnel, API or schema changes are required.
+
+See [Disconnect UI update](docs/audit/DISCONNECT-UI-FIX.md) for video findings, consent removal, regression tests and installation. `scripts/publish-disconnect-ui.py` imports its reviewed bundle into a separate checkout and opens or links a PR; no migration is required.
