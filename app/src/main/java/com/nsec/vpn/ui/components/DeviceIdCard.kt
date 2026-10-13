@@ -20,8 +20,8 @@ import kotlinx.coroutines.delay
 
 /** Copy only the public installation identifier; recovery PINs never enter this component. */
 @Composable
-fun DeviceIdCard(deviceId: String, label: String = "Your Device ID",
-                 tagPrefix: String = "device", modifier: Modifier = Modifier) {
+fun DeviceIdCard(deviceId: String, modifier: Modifier = Modifier,
+                 label: String = "Your Device ID", tagPrefix: String = "device") {
     val context = LocalContext.current
     var copied by remember(deviceId) { mutableStateOf(false) }
     LaunchedEffect(copied) { if (copied) { delay(1_800); copied = false } }
