@@ -141,7 +141,7 @@ fun ConnectedScreen(
                         text = if (userTier == "FREE") "FREE" else "VIP",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (userTier == "FREE") MaterialTheme.colorScheme.onSurfaceVariant else AmberWarning
+                        color = if (userTier == "FREE") MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.statusWarning
                     )
                 }
             }

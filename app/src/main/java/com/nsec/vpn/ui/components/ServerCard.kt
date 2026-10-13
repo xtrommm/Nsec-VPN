@@ -80,7 +80,7 @@ fun ServerCard(
                         text = "FASTEST",
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
-                        color = EmeraldGreen,
+                        color = MaterialTheme.colorScheme.statusSuccess,
                         modifier = Modifier
                             .background(MaterialTheme.colorScheme.emeraldBadgeContainer, RoundedCornerShape(4.dp))
                             .padding(horizontal = 5.dp, vertical = 2.dp)
@@ -117,8 +117,8 @@ fun ServerCard(
             val ping = server.pingMs
             val pingColor = when {
                 ping == null -> MaterialTheme.colorScheme.onSurfaceVariant
-                ping < 50 -> EmeraldGreen
-                ping < 90 -> AmberWarning
+                ping < 50 -> MaterialTheme.colorScheme.statusSuccess
+                ping < 90 -> MaterialTheme.colorScheme.statusWarning
                 else -> CrimsonError
             }
 

@@ -150,7 +150,7 @@ fun HomeScreen(
                         text = if (userTier == "FREE") "FREE TIER" else "VIP ACTIVE",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (userTier == "FREE") MaterialTheme.colorScheme.onSurfaceVariant else AmberWarning
+                        color = if (userTier == "FREE") MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.statusWarning
                     )
                 }
             }
@@ -182,7 +182,7 @@ fun HomeScreen(
                     text = com.nsec.vpn.ui.components.ConnectionPresentation.homeTitle(vpnState),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (isConnected) EmeraldGreen else CrimsonError,
+                    color = if (isConnected) MaterialTheme.colorScheme.statusSuccess else MaterialTheme.colorScheme.error,
                     letterSpacing = 0.8.sp
                 )
                 Text(

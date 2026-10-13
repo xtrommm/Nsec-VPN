@@ -68,6 +68,12 @@ fun ConnectButton(
         is VpnState.Disconnected -> "TAP TO CONNECT"
     }
 
+    val labelColor = when (vpnState) {
+        is VpnState.Connected -> MaterialTheme.colorScheme.statusSuccess
+        is VpnState.Connecting -> MaterialTheme.colorScheme.statusWarning
+        is VpnState.Disconnecting, is VpnState.Error -> MaterialTheme.colorScheme.error
+        else -> MaterialTheme.colorScheme.primary
+    }
     val surfaceColor = MaterialTheme.colorScheme.surface
 
     Column(
@@ -156,7 +162,7 @@ fun ConnectButton(
 
         Text(
             text = labelText,
-            color = buttonColor,
+            color = labelColor,
             fontWeight = FontWeight.Bold,
             fontSize = 15.sp,
             letterSpacing = 1.5.sp

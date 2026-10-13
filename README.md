@@ -273,3 +273,7 @@ Server controls and skeletons now share one lazy list with saved search/filter s
 
 ### DNS presentation and splash branding
 The DNS picker uses selectable provider cards, active resolver status and inline custom validation. Saves report automatic application without a manual reconnect instruction. Existing tunnel rebuilding is unchanged. The EU flag follows the splash text at the same size and baseline. No new dependencies, environment variables or migrations.
+
+
+### Status accessibility
+Small success/warning labels use theme-aware foreground colors while preserving brand fills. Device visual checks at large font sizes remain required.

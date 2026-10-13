@@ -9,6 +9,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import com.nsec.vpn.data.model.ThemeMode
@@ -77,6 +78,12 @@ val ColorScheme.cardBorderHighlight: Color @Composable get() = outlineVariant
 val ColorScheme.primaryBlueContainer: Color @Composable get() = primaryContainer
 val ColorScheme.emeraldBadgeContainer: Color @Composable get() = if (outline == DarkCardBorder) EmeraldContainerDark else EmeraldContainer
 val ColorScheme.amberBadgeContainer: Color @Composable get() = if (outline == DarkCardBorder) AmberContainerDark else AmberContainer
+
+// Keep brand fills while giving small status text sufficient contrast on each surface.
+val ColorScheme.statusSuccess: Color
+    get() = if (surface.luminance() < 0.5f) Color(0xFF8CE4C4) else Color(0xFF047857)
+val ColorScheme.statusWarning: Color
+    get() = if (surface.luminance() < 0.5f) Color(0xFFFCD34D) else Color(0xFF92400E)
 
 @Composable
 fun NsecVpnTheme(
