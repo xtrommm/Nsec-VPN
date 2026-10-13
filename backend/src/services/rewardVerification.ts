@@ -19,7 +19,8 @@ export function verifyRewardQuery(query: string, key: crypto.KeyObject): URLSear
   for (const [name] of params) { if (names.has(name)) throw new Error('SSV_DUPLICATE_PARAMETER'); names.add(name); }
   return params;
 }
-export async function verifyReward(query: string) {
+export type VerifiedReward = { deviceId: string; transactionId: string; timestamp: number; ticketId: string | null };
+export async function verifyReward(query: string): Promise<VerifiedReward> {
   const keyId = /&key_id=(\d+)$/.exec(query)?.[1];
   let key = (await publicKeys()).get(keyId || '');
   if (!key) { cachedAt = 0; key = (await publicKeys()).get(keyId || ''); }

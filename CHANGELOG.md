@@ -2,6 +2,8 @@
 
 ## Unreleased — Deep audit
 
+- Require signed AdMob verification before rewarded VIP; make claims read-only, guard ticket ownership/event time, prevent replay/expiry extension, and poll pending verification without delaying local ad-free time.
+
 - Record the current main commit, security/core/admin/performance findings, dependency/history scan scope, and device/operator verification limits before source fixes.
 
 ## Unreleased — Device VIP recovery and native splash

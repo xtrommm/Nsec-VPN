@@ -468,19 +468,29 @@ class VpnRepository(
 
     suspend fun claimReward(ticketId: String) = withContext(Dispatchers.IO) {
         keyStoreManager.savePendingRewardTicket(ticketId)
-        var token = keyStoreManager.getAccessToken() ?: authenticateDevice()
-        var response = api.claimReward("Bearer $token", com.nsec.vpn.data.api.ClaimRewardRequest(ticketId))
-        if (response.code() == 401) {
-            token = tryRefreshToken() ?: throw IllegalStateException("Please Sign In Again")
-            response = api.claimReward("Bearer $token", com.nsec.vpn.data.api.ClaimRewardRequest(ticketId))
+        repeat(11) { attempt ->
+            var token = keyStoreManager.getAccessToken() ?: authenticateDevice()
+            var response = api.claimReward("Bearer $token", com.nsec.vpn.data.api.ClaimRewardRequest(ticketId))
+            if (response.code() == 401) {
+                token = tryRefreshToken() ?: throw IllegalStateException("Please Sign In Again")
+                response = api.claimReward("Bearer $token", com.nsec.vpn.data.api.ClaimRewardRequest(ticketId))
+            }
+            val result = response.body()
+            if (response.code() == 202) {
+                if (attempt < 10) {
+                    kotlinx.coroutines.delay(3_000)
+                    return@repeat
+                }
+                throw IllegalStateException("Ad-Free Is Active; VIP Is Waiting For Server Verification. It Will Retry Automatically.")
+            }
+            if (!response.isSuccessful || result?.success != true || result.data == null) {
+                if (response.code() in listOf(400, 403, 404, 410)) keyStoreManager.savePendingRewardTicket(null)
+                throw IllegalStateException("VIP Grant Unavailable. A Completed Reward Will Retry When The Service Returns")
+            }
+            applyVerifiedEntitlement(result.data.tier, result.data.passExpiresAt)
+            keyStoreManager.savePendingRewardTicket(null)
+            return@withContext
         }
-        val result = response.body()
-        if (!response.isSuccessful || result?.success != true || result.data == null) {
-            if (response.code() in listOf(400, 403, 404, 410, 429)) keyStoreManager.savePendingRewardTicket(null)
-            throw IllegalStateException("VIP Grant Unavailable. A Completed Reward Will Retry When The Service Returns")
-        }
-        applyVerifiedEntitlement(result.data.tier, result.data.passExpiresAt)
-        keyStoreManager.savePendingRewardTicket(null)
     }
 
     private var nextRewardRetryElapsedMs = 0L

@@ -6,7 +6,7 @@ import { validateBody } from '../middleware/validate';
 import { VerifySubscriptionSchema } from '../types';
 import { verifyReward } from '../services/rewardVerification';
 import { PlayBillingService } from '../services/billing';
-import { prepareReward, claimReward } from '../services/rewardClaims';
+import { prepareReward, claimReward, grantVerifiedReward } from '../services/rewardClaims';
 import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
 
@@ -16,37 +16,25 @@ const rewardLimiter = rateLimit({ windowMs: 3600000, max: 20, standardHeaders: t
   message: { success: false, error: 'REWARD_RATE_LIMIT' } });
 router.post('/rewarded/prepare', authenticateDevice, rewardLimiter, async (req: AuthenticatedDeviceRequest, res) => {
   try { return res.json({ success: true, data: await prepareReward(req.device!.id) }); }
-  catch (e) { const disabled = e instanceof Error && e.message === 'REWARDED_ADS_DISABLED'; return res.status(disabled ? 409 : 503).json({ success: false, error: disabled ? 'REWARDED_ADS_DISABLED' : 'REWARD_PREPARATION_UNAVAILABLE' }); }
+  catch (e) { const code = e instanceof Error ? e.message : ''; const status = code === 'REWARDED_ADS_DISABLED' ? 409 : code === 'REWARD_COOLDOWN' ? 429 : 503; return res.status(status).json({ success: false, error: status === 503 ? 'REWARD_PREPARATION_UNAVAILABLE' : code }); }
 });
-router.post('/rewarded/claim', authenticateDevice, rewardLimiter,
+const rewardClaimLimiter = rateLimit({ windowMs: 60000, max: 60, standardHeaders: true, legacyHeaders: false,
+  keyGenerator: req => (req as AuthenticatedDeviceRequest).device!.id,
+  message: { success: false, error: 'REWARD_RATE_LIMIT' } });
+router.post('/rewarded/claim', authenticateDevice, rewardClaimLimiter,
   validateBody(z.object({ ticketId: z.string().uuid() }).strict()), async (req: AuthenticatedDeviceRequest, res) => {
   try { return res.json({ success: true, data: await claimReward(req.device!.id, req.body.ticketId) }); }
   catch (error) {
     const code = error instanceof Error ? error.message : '';
     const errors: Record<string, number> = { DEVICE_BLOCKED: 403, REWARD_TICKET_INVALID: 404, REWARD_TICKET_EXPIRED: 410,
-      REWARD_COOLDOWN: 429, REWARDED_ADS_DISABLED: 409 };
+      REWARD_COOLDOWN: 429, REWARDED_ADS_DISABLED: 409, REWARD_VERIFICATION_PENDING: 202 };
     return res.status(errors[code] || 503).json({ success: false, error: errors[code] ? code : 'REWARD_CLAIM_UNAVAILABLE' });
   }
 });
 router.get('/rewarded/ssv', async (req, res) => {
   try {
     const reward = await verifyReward(req.originalUrl.split('?')[1] || '');
-    await prisma.$transaction(async tx => {
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`reward:${reward.deviceId}`}))`;
-      const device = await tx.device.findUniqueOrThrow({ where: { deviceId: reward.deviceId } });
-      if (device.isBlocked) throw new Error('DEVICE_BLOCKED');
-      if (reward.ticketId) {
-        const ticket = await tx.rewardTicket.findUnique({ where: { id: reward.ticketId } });
-        if (!ticket || ticket.deviceId !== device.id) throw new Error('SSV_TICKET_INVALID');
-      }
-      await tx.rewardGrant.create({ data: { transactionId: reward.transactionId } });
-      if (device.tier !== 'VIP' || (device.passExpiresAt && device.passExpiresAt < new Date())) {
-        const config = await tx.appConfig.findUnique({ where: { id: 'global_config' } });
-        const minutes = config?.rewardedPassMinutes ?? Number(process.env.REWARDED_PASS_MINUTES || '30');
-        if (!Number.isInteger(minutes) || minutes < 1 || minutes > 1440) throw new Error('REWARD_DURATION_INVALID');
-        await tx.device.update({ where: { id: device.id }, data: { tier: 'VIP', passExpiresAt: new Date(Math.max(reward.timestamp + minutes * 60000, device.passExpiresAt?.getTime() || 0)) } });
-      }
-    });
+    await grantVerifiedReward(reward);
     return res.json({ success: true });
   } catch (error) {
     if ((error as { code?: string }).code === 'P2002') return res.json({ success: true });
