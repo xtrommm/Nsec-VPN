@@ -235,3 +235,7 @@ All notable changes to the Nsec VPN project are documented in this file followin
 - **Peer Persistence**: Configured `SaveConfig = true` and `wg-quick save` to preserve dynamic peers across server reboots.
 - **Server Load Calculation**: Implemented dynamic load percentage updates on peer connections and disconnections.
 update
+
+### Audit follow-up delivery
+- Document exact migration/image approval, provider configuration, compatibility and runtime verification limits.
+- Add an isolated Git publisher and complete Android Studio transport package for the audit follow-up branch.

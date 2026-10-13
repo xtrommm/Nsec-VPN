@@ -236,3 +236,5 @@ When connector writes are unavailable, the downloadable bundle publisher (`scrip
 Restoration matches saved location names without case sensitivity; ad-flow tests explicitly authorize consent instead of assuming it.
 
 Settings now offers Restore Google Play Purchases, which only queries owned subscriptions and re-verifies them on the backend; it never opens a purchase flow. After clearing data, recover the original device identity first for already-bound purchases. Promo days extend non-purchase VIP separately from paid coverage, as selected by the owner.
+
+Audit follow-up: see [the rollout and test guide](docs/audit/AUDIT-FOLLOWUP.md) for disconnect latency, consent, restoration, billing reconciliation, retention and the additive migration. `scripts/publish-audit-followup.py` imports the reviewed transport bundle into a separate Git checkout without changing existing Android Studio edits.
