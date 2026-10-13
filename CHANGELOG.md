@@ -255,3 +255,5 @@ update
 ### Disconnect update delivery
 - Add a guarded separate-checkout publisher and document video evidence, SDK/privacy trade-offs, runtime limits and phone test steps.
 - Add SDK initialization idempotence regression coverage.
+
+- Align the EU flag with Made in Europe on the native splash; preserve logo size and theme colours.
