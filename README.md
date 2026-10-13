@@ -257,3 +257,7 @@ The startup regression uses an isolated test boot count to exercise the real mon
 See [Reward startup fix](docs/audit/REWARD-STARTUP-FIX.md) for screenshot findings, validated cache bootstrap, SDK-independent offer text, preserved splash alignment and installation. `scripts/publish-reward-startup.py` prepares an isolated checkout; no migration is required.
 
 - Refresh reward-startup transport against merged splash PR #19; use a separate final checkout and v2 updater to avoid stale files.
+
+
+## UI audit baseline
+See [UI audit](docs/audit/UI-AUDIT.md) for the source-only findings and explicit device measurement limits. UI-only repair work uses `fix/ui-smoothness-audit`; no database or VPN changes are planned.

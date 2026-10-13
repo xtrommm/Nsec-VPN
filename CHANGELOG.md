@@ -269,3 +269,7 @@ update
 - Package the startup and splash alignment corrections with an isolated Git publisher, runtime verification limits and a phone checklist.
 
 - Refresh reward-startup transport against merged splash PR #19; use a separate final checkout and v2 updater to avoid stale files.
+
+
+## UI audit baseline
+See [UI audit](docs/audit/UI-AUDIT.md) for the source-only findings and explicit device measurement limits. UI-only repair work uses `fix/ui-smoothness-audit`; no database or VPN changes are planned.
