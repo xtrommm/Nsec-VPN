@@ -343,3 +343,11 @@ Reskinned the admin workspace with responsive grouped navigation and separate Ad
 Audit delivery: 31 backend suites/181 unit tests, 5 panel tests and 23 deployment tests passed locally; backend/panel type checks and builds passed. Dependency audits report zero advisories. Current targeted secret scan found zero matches, with eight historical default-credential matches retained as metadata for rotation review. Added read-only latency benchmark, optional runtime-role SQL, endpoint mapping, rollout/rollback guide and explicit real-DB/browser/provider verification limits.
 
 CI fixture correction: generated audit promo codes respect the existing 32-character limit and validate before database setup. Production validation unchanged.
+
+## Admin layout follow-up
+
+Aligned toolbars, responsive headers, cards, forms, identifiers and modal tables; added dialog focus/body-scroll handling and dirty-draft preservation with scoped validation. Superseded searches are cancelled and first loads skip the typing debounce. See docs/audit/ADMIN-LAYOUT-API-PERFORMANCE.md.
+
+Admin/API performance: server results render independently of statistics; hidden/off-screen dashboard polling stops, node-only polling skips stats, aggregate reads use a two-second single-flight snapshot, and management queries omit agent credentials. Ten concurrent dashboard calls require five DB queries instead of fifty. Live p50/p95 remains unmeasured. No schema/API-field change or migration.
+
+Added development-only Playwright and CI browser coverage for ten admin tabs, four widths and both themes, plus modal/draft/polling flows. Local backend 186 tests, panel 6 tests, deployment 23 tests and builds/type checks pass. Browser checks await CI; current runtime download was blocked. Added isolated-checkout publisher and rollout guide; no environment or schema preparation required.

@@ -13,3 +13,12 @@ test('normalizes blank unit IDs and validates duration, versions and announcemen
  assert.deepEqual(validateConfig(valid),[]);assert.equal(configPayload({...valid,bannerAdUnitId:'   '}).bannerAdUnitId,null);
  for(const change of [{minAppVersionCode:3},{rewardedPassMinutes:0},{interstitialIntervalSeconds:1},{announcementActive:true},{rewardedAdUnitId:'invalid'},{supportEmail:'invalid'}])assert.ok(validateConfig({...valid,...change}).length);
 });
+test('each tab validates and sends its own fields only',()=>{
+ const brokenAds={...valid,rewardedPassMinutes:0,rewardedAdUnitId:'invalid'};
+ assert.deepEqual(validateConfig(brokenAds,'app'),[]);
+ assert.ok(validateConfig(brokenAds,'ads').length);
+ const app=configPayload(valid,'app');assert.equal('rewardedPassMinutes' in app,false);assert.equal('supportEmail' in app,true);
+ const ads=configPayload(valid,'ads');assert.equal('maintenanceMode' in ads,false);assert.equal('adsEnabled' in ads,true);
+ const announcement=configPayload(valid,'announcements');assert.deepEqual(Object.keys(announcement).sort(),['announcementActive','announcementBody','announcementTitle']);
+ assert.ok(validateConfig({...valid,announcementActive:true},'announcements').length);
+});

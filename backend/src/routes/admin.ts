@@ -137,9 +137,10 @@ router.get('/stats', authenticateAdmin(), async (_req, res: Response) => {
 router.get('/servers', authenticateAdmin(), async (_req, res: Response) => {
   try {
     const servers = await prisma.serverNode.findMany({
+      select: { id: true, name: true, countryCode: true, countryName: true, city: true, flagEmoji: true, endpoint: true, publicKey: true, subnetIpv4: true, agentUrl: true, publicIpv4: true, dnsServers: true, mtu: true, maxPeers: true, healthy: true, healthCheckedAt: true, currentLoad: true, isPremiumOnly: true, isRecommended: true, active: true, sortOrder: true, createdAt: true, updatedAt: true },
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }]
     });
-    return res.json({ success: true, servers: servers.map(({ agentSecretHash, ...node }) => node) });
+    return res.json({ success: true, servers });
   } catch (_err) {
     return res.status(500).json({
       success: false,
