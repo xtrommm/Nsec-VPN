@@ -212,3 +212,5 @@ Tunnel activation, DNS reconnect and teardown now run exclusively, with cancella
 The current [repair checkpoint](docs/audit/REPAIR-CHECKPOINT.md) records exact checks, migration commands, API compatibility, outstanding security decisions and the publishing no-go. Read it before merging or updating containers.
 
 The installer now upgrades runtimes older than Node 22, matching CI. Existing Node 20 agents need a maintenance upgrade; the script is not run automatically by this repair. See the checkpoint for the exact node commands.
+
+When connector writes are unavailable, the downloadable bundle publisher (`scripts/publish-deep-audit.py`, copied beside its package manifest/bundle) imports the reviewed commits into a separate checkout. `--publish` pushes only the repair branch; it opens a draft PR with authenticated GitHub CLI when available, otherwise prints the comparison link. It does not stage local edits, modify main, migrate data or deploy services.

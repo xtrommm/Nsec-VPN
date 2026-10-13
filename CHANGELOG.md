@@ -2,6 +2,8 @@
 
 ## Unreleased — Deep audit
 
+- Add an isolated Git-bundle publisher for connector write failures; preserve original local edits and provide draft-PR creation without main updates or deployment.
+
 - Require Node 22 rather than retaining the EOL Node 20 runtime during node installation; add the runtime decision regression and existing-node maintenance instructions.
 
 - Add a tested-checkpoint report with API compatibility, migration/schema approval commands, ranked proposals and remaining publishing blockers.

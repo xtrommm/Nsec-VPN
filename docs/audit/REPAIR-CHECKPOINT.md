@@ -30,7 +30,7 @@ The full audit is [DEEP-AUDIT-2026-10-13.md](DEEP-AUDIT-2026-10-13.md). This che
 | Backend | 106 tests passed | 130 tests in 20 suites passed, including `--detectOpenHandles`; TypeScript lint and production build passed |
 | Agent | 8 tests passed | 9 tests passed; TypeScript lint/build passed |
 | Admin | 4 tests; lint/build passed | 4 tests; lint/build passed. Browser smoke tests were not run: Chromium executable is unavailable. |
-| Deployment | — | 16 unit tests and one firewall test passed; shell syntax checks passed |
+| Deployment | — | 17 unit tests and one firewall test passed; shell syntax checks passed |
 | Android config | — | 10 config tests and both backup-policy checks passed |
 | Android/helper build + Kotlin/Robolectric tests | Not run here | Blocked: Gradle 9.8.1 download reports network unreachable; only JDK 17 is present, while CI uses JDK 21. Newly added Android tests are unverified here. |
 | PostgreSQL migration/concurrency | Not run here | No PostgreSQL/Docker service is available locally. Extended real-DB integration tests are required in CI. |
