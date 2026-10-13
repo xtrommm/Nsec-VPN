@@ -22,7 +22,6 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import java.net.Inet4Address
 import java.net.InetAddress
 
 class WireGuardTunnelManager private constructor(private val context: android.app.Application) {
@@ -99,8 +98,7 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
                 val result = validateTunnelConfig(tc)
                 require(result.isValid) { result.errorMessage ?: "Invalid Server Data" }
                 val addresses = InetAddress.getAllByName(tc.serverEndpoint.substringBeforeLast(':'))
-                require(addresses.isNotEmpty() && addresses.all { it is Inet4Address && !isPrivateOrDocumentationIp(it.hostAddress.orEmpty()) }) { "Server Endpoint Must Resolve To Public IPv4" }
-                require(addresses.any { it.hostAddress == tc.publicIpv4 }) { "Node Public IP Does Not Match Endpoint" }
+                EndpointPolicy.validate(addresses.toList(), tc.publicIpv4.orEmpty())
                 activeTunnelConfig = tc
                 tc
                 }, activate = { tc ->
@@ -163,8 +161,7 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
     private fun startStatsMonitoring(publicKey: String) {
         statsJob?.cancel()
         statsJob = scope.launch {
-            var previousRx = 0L; var previousTx = 0L
-            var previousTime = SystemClock.elapsedRealtime()
+            val sampler = TrafficCounterSampler()
             while (isActive && _vpnState.value is VpnState.Connected) {
                 delay(1000)
                 try {
@@ -174,12 +171,10 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
                     latestHandshakeAgeSeconds = if (handshake > 0) (System.currentTimeMillis() - handshake).coerceAtLeast(0) / 1000 else Long.MAX_VALUE
                     if (backend.getState(tunnel) != Tunnel.State.UP || latestHandshakeAgeSeconds > STALE_HANDSHAKE_SECONDS) { recoverStaleTunnel(); return@launch }
                     val now = SystemClock.elapsedRealtime()
-                    val seconds = (now - previousTime).coerceAtLeast(1) / 1000f
                     val rx = stats.totalRx(); val tx = stats.totalTx()
+                    val rate = sampler.sample(now, rx, tx)
                     val duration = (now - connectionStartTime) / 1000
-                    _vpnStats.value = VpnStats(duration, (rx - previousRx).coerceAtLeast(0) * 8 / seconds / 1_000_000f,
-                        (tx - previousTx).coerceAtLeast(0) * 8 / seconds / 1_000_000f, rx, tx)
-                    previousRx = rx; previousTx = tx; previousTime = now
+                    _vpnStats.value = VpnStats(duration, rate.downloadMbps, rate.uploadMbps, rx, tx)
                     if (duration >= 300) reconnectCount = 0
                 } catch (cancelled: CancellationException) { throw cancelled }
                 catch (_: Exception) { recoverStaleTunnel(); return@launch }

@@ -2,6 +2,8 @@
 
 ## Unreleased — Deep audit
 
+- Fix dual-stack endpoint validation and first-sample throughput, share permission-return eligibility checks, synchronize displayed grants, clarify split-exclusion reconnect requirements, recover error tile actions and remove the unused boot permission.
+
 - Ignore older profile results after a newer grant is applied; add a delayed-profile/promo regression.
 
 - Coalesce duplicate catalog refreshes, preserve explicit refresh, index old node metadata once and scope configuration polling to the foreground; retain exact reward expiry scheduling.

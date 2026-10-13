@@ -204,3 +204,5 @@ Ad refresh timing uses a monotonic clock. Local reward expiry checks wake at mos
 Catalog refreshes coalesce for five seconds and manual refresh bypasses that window. Latency checks stay asynchronous and refresh at most once a minute. Catalog mapping now indexes previous nodes once (linear work rather than repeated list searches); config/reward polling runs only while the activity is STARTED. Cache-first display remains unchanged. Phone startup/perceived-load and battery measurements still require device profiling.
 
 A delayed profile response cannot overwrite a newer promo/reward response in the app. The backend remains the authority for actual premium access.
+
+The client accepts dual-stack hostnames only through their verified public IPv4, baselines throughput counters before displaying rates, and rechecks connection eligibility after Android permission returns. Split-exclusion edits explicitly require reconnect; automatic live reconfiguration is deferred to device-tested lifecycle work. Error tiles reopen the app, tile scopes are cancelled on destruction, and the unused boot permission is removed.

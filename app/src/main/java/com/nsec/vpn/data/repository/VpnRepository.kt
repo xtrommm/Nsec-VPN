@@ -452,7 +452,7 @@ class VpnRepository(
         val response = recoveryAuthenticated { token -> api.getDeviceProfile(token) }
         val profile = response.body()
         if (!response.isSuccessful || profile?.success != true || profile.data == null) return@withContext false
-        if (generation == entitlementGeneration.get()) applyVerifiedEntitlement(profile.data.tier, profile.data.passExpiresAt)
+        applyProfileEntitlement(generation, profile.data.tier, profile.data.passExpiresAt)
         _userTier.value != "FREE"
     }
 
@@ -556,6 +556,7 @@ class VpnRepository(
         applyVerifiedEntitlement(result.data.tier, result.data.passExpiresAt)
     }
 
+    @Synchronized
     private fun applyVerifiedEntitlement(tier: String, expiresAt: String?) {
         entitlementGeneration.incrementAndGet()
         require(tier in setOf("FREE", "VIP", "REWARDED_PASS")) { "Invalid Entitlement Response" }
@@ -564,6 +565,12 @@ class VpnRepository(
         checkRewardedPassExpiry()
     }
 
+    @Synchronized
+    private fun applyProfileEntitlement(generation: Long, tier: String, expiresAt: String?) {
+        if (generation == entitlementGeneration.get()) applyVerifiedEntitlement(tier, expiresAt)
+    }
+
+    @Synchronized
     fun checkRewardedPassExpiry() {
         if (verifiedEntitlementExpiresAtMs?.let { it <= System.currentTimeMillis() } == true) _userTier.value = "FREE"
     }
