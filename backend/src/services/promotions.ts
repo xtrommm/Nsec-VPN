@@ -83,3 +83,6 @@ export async function redeemPromotion(deviceId: string, rawCode: string) {
     return { tier: updated.tier, passExpiresAt: updated.passExpiresAt };
   }, { timeout: 10000 });
 }
+
+/** Tombstones keep their campaign and redemptions, while freeing the public code for a new campaign. */
+export const archivedPromoHash = (id: string) => crypto.createHash('sha256').update(`nsec:deleted-promo:${id}`).digest('hex');

@@ -345,3 +345,5 @@ Publication: `scripts/publish-popups-live.py` imports this review into an isolat
 ## Backend security and administration audit (2026-10-14)
 
 Added password-reauthenticated, encrypted authenticator enrollment and one-use TOTP counters; MFA session version checks, serialized refresh rotation/replay epoch revocation, fail-closed bootstrap, bounded graceful shutdown, safe JSON/body errors and guarded concurrent config editing. Blocked devices now use tracked current/pending-key cleanup. One nullable AdminUser.totpLastStep migration and stable ADMIN_TOTP_ENCRYPTION_KEY are required before rollout. See docs/audit/BACKEND-ADMIN-ROLLOUT.md and BACKEND-API-CHANGES.md, including MFA rollback limitations. Android/agent source is unchanged.
+
+Promo deletion now frees the code for a new campaign while preserving historical redemptions and existing grants. Billing inputs/quota are bounded and temporary SSV provider/storage failures return retryable 503. Added route regressions and isolated PostgreSQL contention/replay tests for CI.

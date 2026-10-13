@@ -39,7 +39,10 @@ router.get('/rewarded/ssv', async (req, res) => {
     return res.json({ success: true });
   } catch (error) {
     if ((error as { code?: string }).code === 'P2002') return res.json({ success: true });
-    return res.status(400).json({ success: false, error: 'REWARD_VERIFICATION_FAILED' });
+    const invalid = error instanceof z.ZodError || (error instanceof Error &&
+      /^SSV_(SIGNATURE_INVALID|KEY_UNKNOWN|DUPLICATE_PARAMETER|AD_UNIT_INVALID|EXPIRED|TICKET_INVALID)$/.test(error.message));
+    return res.status(invalid ? 400 : 503).json({ success: false,
+      error: invalid ? 'REWARD_VERIFICATION_FAILED' : 'REWARD_VERIFICATION_UNAVAILABLE' });
   }
 });
 
@@ -56,7 +59,10 @@ router.post('/rtdn', async (req, res) => {
   }
 });
 
-router.post('/verify', authenticateDevice, validateBody(VerifySubscriptionSchema),
+const purchaseLimiter = rateLimit({ windowMs: 60000, max: 10, standardHeaders: true, legacyHeaders: false,
+  keyGenerator: req => (req as AuthenticatedDeviceRequest).device!.id,
+  message: { success: false, error: 'BILLING_RATE_LIMIT' } });
+router.post('/verify', authenticateDevice, purchaseLimiter, validateBody(VerifySubscriptionSchema),
   async (req: AuthenticatedDeviceRequest, res: Response) => {
     const {packageName,productId,purchaseToken}=req.body;
     const device=req.device!;
