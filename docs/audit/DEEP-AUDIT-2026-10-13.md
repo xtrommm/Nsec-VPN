@@ -42,6 +42,8 @@ Additional follow-up finding A32 (Low): `admin-panel/src/components/ConsoleUI.ts
 
 Additional follow-up finding A33 (Medium): `VpnRepository.kt:420–426,519–523` applies an older profile response after a completed promo/reward response, briefly reverting UI entitlement. Fix: invalidate stale profile responses when a newer grant has been applied; add a delayed-response regression.
 
+Additional follow-up finding A34 (High): `deployment/install-wireguard-node.sh:26` leaves Node 20 installed even though the official release schedule marks it EOL on 2026-04-30. The supplied real-node output is v20.20.2. Fix: require at least Node 22 for node installation; existing-node runtime upgrade is a manual maintenance operation. Source: https://github.com/nodejs/Release.
+
 ## Working controls and ruled-out hypotheses
 
 - Node lists contain database records with recent successful health checks; no production fake-server fallback was found. Offline catalog fallback is cached real data (`ServerCatalogCache.kt`, `VpnRepository.kt`). Endpoint/config/public-key validation and handshake gating are present (`types.ts`, `TunnelConfigBuilder.kt`, `TunnelNegotiation.kt`). Client keys are generated and encrypted on the device; they are not sent to the backend.

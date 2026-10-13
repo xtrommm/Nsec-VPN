@@ -2,13 +2,13 @@
 
 # 🛡️ Nsec VPN — High-Speed WireGuard® Android Client & Management Suite
 
-[![Platform](https://img.shields.io/badge/Platform-Android_14--16_%28API_24--36%29-blue.svg)](https://developer.android.com)
+[![Platform](https://img.shields.io/badge/Platform-Android_API_24%2B-blue.svg)](https://developer.android.com)
 [![Protocol](https://img.shields.io/badge/VPN_Engine-WireGuard®_Core-emerald.svg)](https://www.wireguard.com)
 [![Architecture](https://img.shields.io/badge/UI-Jetpack_Compose_Material_3-blue.svg)](https://developer.android.com/jetpack/compose)
 [![Backend](https://img.shields.io/badge/Server-Node.js_•_Docker_•_PostgreSQL-indigo.svg)](https://docker.com)
 [![Zero-Logs](https://img.shields.io/badge/Privacy-No_Traffic_Logs-blue.svg)](https://nsecvpn.com/privacy)
 
-**Nsec VPN** (`com.nsec.vpn`) is a WireGuard-based WireGuard® VPN application designed for Android devices, paired with a web management portal and scalable gateway orchestration backend.
+**Nsec VPN** (`com.nsec.vpn`) is a WireGuard® VPN application designed for Android devices, paired with a web management portal and scalable gateway orchestration backend.
 
 Official Website: **[nsecvpn.com](https://nsecvpn.com)**
 
@@ -208,3 +208,7 @@ A delayed profile response cannot overwrite a newer promo/reward response in the
 The client accepts dual-stack hostnames only through their verified public IPv4, baselines throughput counters before displaying rates, and rechecks connection eligibility after Android permission returns. Split-exclusion edits explicitly require reconnect; automatic live reconfiguration is deferred to device-tested lifecycle work. Error tiles reopen the app, tile scopes are cancelled on destruction, and the unused boot permission is removed.
 
 Tunnel activation, DNS reconnect and teardown now run exclusively, with cancellation joined before the next operation. Peer/notification state is cleared only after the backend confirms DOWN; shutdown failures remain visible and retain the tracked tunnel. This improves lifecycle consistency but is not an OS kill switch or process-death restoration. Speed helper sessions disconnect at their deadline and ignore late network-loss callbacks; verify blocked upload/network switching on a phone.
+
+The current [repair checkpoint](docs/audit/REPAIR-CHECKPOINT.md) records exact checks, migration commands, API compatibility, outstanding security decisions and the publishing no-go. Read it before merging or updating containers.
+
+The installer now upgrades runtimes older than Node 22, matching CI. Existing Node 20 agents need a maintenance upgrade; the script is not run automatically by this repair. See the checkpoint for the exact node commands.

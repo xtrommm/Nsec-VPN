@@ -2,6 +2,10 @@
 
 ## Unreleased — Deep audit
 
+- Require Node 22 rather than retaining the EOL Node 20 runtime during node installation; add the runtime decision regression and existing-node maintenance instructions.
+
+- Add a tested-checkpoint report with API compatibility, migration/schema approval commands, ranked proposals and remaining publishing blockers.
+
 - Correct unsupported privacy/compliance/latency/disclosure documentation claims; distinguish operational records from traffic logs and list publishing verification gaps.
 
 - Serialize tunnel activation/cleanup, retain notification/peer state on failed shutdown, expose operation errors, and add cancellation/shutdown regressions. Add a speed-helper deadline watchdog and suppress stale loss callbacks.

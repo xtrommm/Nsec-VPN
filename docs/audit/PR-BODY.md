@@ -1,0 +1,7 @@
+This repair closes authenticated rewarded-VIP forgery, ambiguous peer-registration IP reuse, stale-disconnect races and concurrent entitlement downgrades. It also repairs client token renewal, node health/write consistency, pagination/focus, native-ad refresh/media handling, catalog refresh work and tunnel-operation ordering.
+
+The nullable `PeerSession.pendingPublicKey` migration must run before the updated backend. VIP now requires signed AdMob SSV; the app grants local ad-free time after the SDK reward and polls for server verification. Lease renewals keep the address but rotate their disconnect handle. Configure actual trusted proxy CIDRs; the existing encrypted SSH agent channel is retained.
+
+Validation: 130 backend tests plus type check/build; 9 agent tests plus type check/build; admin type check, 4 tests and production build; 16 deployment unit tests, firewall and 10 Android config tests pass. Android build/Robolectric/lint and real-PostgreSQL integration are not run here because the Gradle download is blocked and no local DB/Docker is available. Required CI and device checks remain before merge.
+
+See docs/audit/DEEP-AUDIT-2026-10-13.md and REPAIR-CHECKPOINT.md for baseline evidence, API changes, exact migration/approval steps, remaining consent/kill-switch/refund/retention decisions and testing checklist. This is a security/core checkpoint, not a bug-free or production-readiness guarantee. No live service was changed.
