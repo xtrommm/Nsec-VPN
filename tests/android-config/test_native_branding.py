@@ -1,4 +1,5 @@
 import unittest
+import re
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
@@ -17,6 +18,18 @@ class NativeBrandingTest(unittest.TestCase):
         self.assertEqual('200dp', vector.attrib[ANDROID + 'width'])
         self.assertEqual('80dp', vector.attrib[ANDROID + 'height'])
         self.assertIn('@color/splash_branding_text', [p.attrib[ANDROID + 'fillColor'] for p in vector])
+
+    def test_flag_follows_text_without_changing_baseline_or_footprint(self):
+        vector = ET.parse(ROOT / 'app/src/main/res/drawable/splash_europe_branding.xml').getroot()
+        flag = next(p for p in vector if p.attrib[ANDROID + 'fillColor'] == '#003399')
+        flag_path = flag.attrib[ANDROID + 'pathData']
+        flag_left = float(re.search(r'M\s*([0-9.]+)', flag_path)[1])
+        text_paths = [p.attrib[ANDROID + 'pathData'] for p in vector if p.attrib[ANDROID + 'fillColor'].startswith('@')]
+        text_x = [float(m[1]) for path in text_paths for m in re.finditer(r'[MLH]\s*([0-9.]+)', path)]
+        self.assertGreater(flag_left, max(text_x))
+        self.assertAlmostEqual(22.0, min(text_x), places=2)
+        self.assertIn('34.586', flag_path)
+        self.assertIn('50.586', flag_path)
 
     def test_extra_page_and_its_delay_are_removed(self):
         self.assertFalse((ROOT / 'app/src/main/java/com/nsec/vpn/ui/components/StartupScreen.kt').exists())

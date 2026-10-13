@@ -1,6 +1,6 @@
 # UI audit: baseline c5bd3497b0f6427a587b40f8fd1ce8ff757bc7f2
 
-Phase 1 recorded before UI source changes. This is a static audit, not evidence of a measured 60/120 fps result. No Android SDK, adb, emulator, Perfetto, or connected device is available in this environment. Gradle requires JDK 21 and a distribution unavailable to this runner. Runtime timings, recomposition counts, memory, startup, APK size and low-end light/dark testing remain unmeasured; no numbers are invented.
+Phase 1 recorded before UI source changes. This is a static audit, not evidence of a measured 60/120 fps result. No Android SDK, adb, emulator, Perfetto, or connected device is available in this environment. Gradle requires JDK 21 and a distribution unavailable to this runner. An actual compile attempt failed before compilation with Network is unreachable while downloading Gradle 9.8.1. Runtime timings, recomposition counts, memory, startup, APK size and low-end light/dark testing remain unmeasured; no numbers are invented.
 
 Paths below are relative to app/src/main/java/com/nsec/vpn unless otherwise stated. Line references identify the baseline, before edits.
 
@@ -25,8 +25,24 @@ Paths below are relative to app/src/main/java/com/nsec/vpn unless otherwise stat
 
 Reviewed screens: Home, Connected, Servers, Settings, Speed Test, Split Tunnel, Server Request, Legal, Troubleshooting and debug diagnostics; shared connection host, buttons, cards, VIP offer/sheet, recovery sheet, native ads, navigation, typography, themes and native splash assets. The speed helper has no screen; its traffic logic is out of scope. Troubleshooting already uses IO and bounded API checks and honestly distinguishes observations from proof. Server cards already use LazyColumn keys. Settings/legal/connected are finite scrollable screens. Speed-test jobs are canceled on disposal/disconnect. Native ad leases are released on disposal. Debug diagnostics are release-stripped. No confirmed UI-only critical issue or new navigation crash was found; this does not prove no runtime bugs.
 
-Remaining measurement candidates: main-thread startup vault access at MainActivity.kt:57–61; grouping/sorting at ServerListScreen.kt:60–81; bitmap decoding and shader cost; hidden-home measure cost in HomeConnectionHost.kt:29–30; real ad asset layout jumps; rotation of in-flight reward/promo/purchase flows. These need a profile before broad refactors. Backend, VPN lifecycle, security, signing, ad unit IDs, data models and speed-helper traffic must remain unchanged.
+Remaining measurement candidates: main-thread startup vault access at MainActivity.kt:57–61; grouping/sorting at ServerListScreen.kt:60–81; bitmap decoding and shader cost; hidden-home measure cost in HomeConnectionHost.kt:29–30; real ad asset layout jumps; rotation of in-flight reward/promo/purchase flows. These need a profile before broad refactors. Speed-test cancellation on tab departure is intentional; the running test does not continue invisibly. Backend, VPN lifecycle, security, signing, ad unit IDs, data models and speed-helper traffic must remain unchanged.
 
 Suggestions ranked: (1) scoped state reads and saved tab position: low effort/high value, implemented; (2) accessible DNS and filter selection: low effort/high value, implemented; (3) device frame capture: low effort/high diagnostic value, implemented; (4) full Macrobenchmark module and baseline profile: medium effort/high value, proposed pending runnable SDK and representative device; (5) a new connection animation/design: medium effort, owner approval required. No speculative FPS or startup target is claimed.
 
 Additional static contrast finding U17 (Medium): ui/theme/Color.kt:29–33 and ui/components/ConnectButton.kt:174, ui/components/ServerCard.kt:79,118 use brand green/amber as small text on light surfaces. Brand fills remain; semantic status text now uses darker green/amber in light mode and lighter counterparts in dark mode. This is a computed palette check, not a screenshot/physical-device check.
+
+## Outcome and verification status
+
+U01–U17 have scoped source fixes on this branch. No backend, agent, tunnel manager, routing, consent, API, persisted data model, signing or ad unit ID changed. DNS changes still perform the existing automatic tunnel rebuild; no UI text promises a seamless socket-preserving DNS swap.
+
+| Measure | Before | After | Evidence |
+|---|---|---|---|
+| Root live-stat subscriptions | 1 | 0 | MainActivity source; collection now inside LiveTunnelStats only while connection details are composed |
+| Production invented launcher entries | 4 | 0 | SplitTunnelScreen source |
+| Server list filter target minimum | content + 16dp padding | 48dp | Modifier constraints, not a device measurement |
+| FPS / frame percentiles / recompositions | Unmeasured | Unmeasured | Phone/emulator capture required |
+| Cold start / memory / APK size | Unmeasured | Unmeasured | Phone/build capture required |
+
+Native vector rendered and visually inspected in both palettes: flag now follows the text and keeps the prior baseline/footprint. Python backup/native-branding and measurement-parser tests run locally. New Compose regressions and Android device presentation test are added but NOT executed here; complete Gradle compilation, lint, unit tests and device tests must run on CI/Android Studio before merging. Existing HomeConnectionHostTest and ConnectedScreenUiTest cover retained Home, immediate Disconnecting feedback, timer and disconnect action. New tests cover stat scope isolation, background/resume gating, DNS status/provider/validation, saved server search and absence of invented launcher choices. Device test exercises actual ConnectButton/ConnectedScreen components, not a real WireGuard handshake.
+
+No measured speedup, low-end pass, physical-device accessibility pass, zero-warning build or bug-free claim is made. See UI-VERIFY.md for reproducible checks and residual profile candidates. No migration or new env variable is required.

@@ -289,3 +289,7 @@ The DNS picker uses selectable provider cards, active resolver status and inline
 
 ### Status accessibility
 Small success/warning labels use theme-aware foreground colors while preserving brand fills. Device visual checks at large font sizes remain required.
+
+
+### UI regression and profiling checks
+New Compose regressions cover scoped live stats, saved server search, DNS selection/error/status and honest app choices. A device test covers connect/disconnect presentation. The privacy-limited `scripts/profile-ui.py` records actual frame deadlines/startup/memory; parser tests run in CI. See [UI verification](docs/audit/UI-VERIFY.md) for low-end, large-font and day/night checks. Android checks remain pending where no SDK/device is available.

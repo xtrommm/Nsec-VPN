@@ -21,6 +21,7 @@ jobs:
         run: |
           python3 -m py_compile deployment/deploy-website.py deployment/website-deploy-entry.py deployment/install-website-deployer.py
           python3 -m unittest discover -s tests/deployment -p 'test_*.py'
+          python3 -m unittest discover -s tests/ui -p 'test_*.py'
       - name: Verify idempotent firewall setup and teardown
         run: python3 tests/deployment/firewall_test.py
 

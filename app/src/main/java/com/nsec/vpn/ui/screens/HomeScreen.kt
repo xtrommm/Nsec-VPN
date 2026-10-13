@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,7 +59,7 @@ fun HomeScreen(
     val isConnected = vpnState is VpnState.Connected
     val connectedNode by tunnelManager.connectedNode.collectAsState()
     val serverListError by com.nsec.vpn.core.network.ServiceLocator.getInstance(androidx.compose.ui.platform.LocalContext.current).vpnRepository.serverListError.collectAsState()
-    var announcementDismissed by remember { mutableStateOf(false) }
+    var announcementDismissed by rememberSaveable(announcementTitle, announcementBody) { mutableStateOf(false) }
 
     Column(
         modifier = modifier
