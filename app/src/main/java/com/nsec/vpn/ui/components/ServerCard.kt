@@ -52,13 +52,16 @@ fun ServerCard(
         )
 
         Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Column {
                 Text(
                     text = server.city,
+                    maxLines = 2,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (server.totalNodes > 1) {
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
@@ -95,6 +98,7 @@ fun ServerCard(
                             .padding(horizontal = 5.dp, vertical = 2.dp)
                     )
                 }
+                }
             }
 
             Spacer(modifier = Modifier.height(2.dp))
@@ -112,8 +116,9 @@ fun ServerCard(
         ) {
             val ping = server.pingMs
             val pingColor = when {
-                ping != null && ping < 50 -> EmeraldGreen
-                ping != null && ping < 90 -> AmberWarning
+                ping == null -> MaterialTheme.colorScheme.onSurfaceVariant
+                ping < 50 -> EmeraldGreen
+                ping < 90 -> AmberWarning
                 else -> CrimsonError
             }
 
@@ -127,7 +132,7 @@ fun ServerCard(
             Spacer(modifier = Modifier.height(2.dp))
 
             Text(
-                text = "${server.currentLoad}% load",
+                text = "${server.currentLoad}% Load",
                 fontSize = 11.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -136,11 +141,11 @@ fun ServerCard(
         if (onToggleFavorite != null) {
             IconButton(
                 onClick = onToggleFavorite,
-                modifier = Modifier.size(32.dp)
+                modifier = Modifier.size(48.dp)
             ) {
                 Icon(
                     imageVector = if (server.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                    contentDescription = "Favorite",
+                    contentDescription = if (server.isFavorite) "Remove ${server.city} From Favorites" else "Add ${server.city} To Favorites",
                     tint = if (server.isFavorite) AmberWarning else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp)
                 )

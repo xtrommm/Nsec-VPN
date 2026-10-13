@@ -265,3 +265,7 @@ See [UI audit](docs/audit/UI-AUDIT.md) for the source-only findings and explicit
 
 ### UI state and rendering
 Live tunnel statistics are isolated to connection details; tab state is saved, safe insets are consumed once, background animations/native-ad refreshes stop, and connect taps have visible feedback. VPN operations and ad IDs are unchanged.
+
+
+### Responsive UI and honest app lists
+Server controls and skeletons now share one lazy list with saved search/filter state, empty results and 48dp filters. Location badges and speed metrics wrap; recovery forms accommodate the keyboard. Split tunneling displays only real installed apps, with loading/retry/empty states. Server requests have bounded UI waiting.
