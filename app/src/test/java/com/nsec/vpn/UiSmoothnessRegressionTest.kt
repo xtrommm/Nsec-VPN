@@ -118,7 +118,9 @@ class UiSmoothnessRegressionTest {
 
     @Test fun missingLauncherAppsNeverProduceInventedChoices() {
         compose.setContent { NsecVpnTheme { SplitTunnelScreen(emptySet(), {}, {}) } }
-        compose.waitForIdle()
+        compose.waitUntil(5_000) {
+            compose.onAllNodesWithText("No Other Launchable Apps Found.").fetchSemanticsNodes().isNotEmpty()
+        }
         compose.onNodeWithText("Netflix").assertDoesNotExist()
         compose.onNodeWithText("Banking App").assertDoesNotExist()
     }

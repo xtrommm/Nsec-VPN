@@ -322,7 +322,7 @@ fun SettingsScreen(
                         showKillSwitchDialog = false
                         try {
                             context.startActivity(Intent(Settings.ACTION_VPN_SETTINGS))
-                        } catch (_: android.content.ActivityNotFoundException) {
+                        } catch (_: Exception) {
                             Toast.makeText(context, "Android VPN Settings Are Unavailable On This Device.", Toast.LENGTH_LONG).show()
                         }
                     },
