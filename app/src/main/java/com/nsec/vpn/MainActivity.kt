@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -81,7 +82,6 @@ class MainActivity : ComponentActivity() {
 
                 val vpnState by tunnelManager.vpnState.collectAsStateWithLifecycle()
                 val operationError by tunnelManager.operationError.collectAsStateWithLifecycle()
-                val vpnStats by tunnelManager.vpnStats.collectAsStateWithLifecycle()
                 val connectedNode by tunnelManager.connectedNode.collectAsStateWithLifecycle()
                 val serversLoading by vpnRepo.serversLoading.collectAsStateWithLifecycle()
                 val usingCachedServers by vpnRepo.usingCachedServers.collectAsStateWithLifecycle()
@@ -98,7 +98,7 @@ class MainActivity : ComponentActivity() {
 
                 var currentTab by rememberSaveable(stateSaver = Saver<Screen, String>(save = { it.route }, restore = { route -> listOf(Screen.Home, Screen.Servers, Screen.SpeedTest, Screen.Settings).firstOrNull { it.route == route } ?: Screen.Home })) { mutableStateOf<Screen>(Screen.Home) }
                 var activeSubScreen by rememberSaveable { mutableStateOf<String?>(null) }
-                var isUserInitiatedConnect by remember { mutableStateOf(false) }
+                var isUserInitiatedConnect by rememberSaveable { mutableStateOf(false) }
 
 
                 var showVipModal by remember { mutableStateOf(false) }
@@ -110,7 +110,7 @@ class MainActivity : ComponentActivity() {
                     remoteConfig.rewardedPassMinutes ?: 0, userTier, adMobConfig.adFreeUntilEpochMillis != null,
                     failed = remoteConfigError != null)
                 var showPromoDialog by remember { mutableStateOf(false) }
-                var promoCodeInput by remember { mutableStateOf("") }
+                var promoCodeInput by rememberSaveable { mutableStateOf("") }
 
                 val notificationPermissionLauncher = rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.RequestPermission()
@@ -322,6 +322,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                val tabStateHolder = rememberSaveableStateHolder()
                 Scaffold(
                     bottomBar = {
                         if (activeSubScreen == null || activeSubScreen == "connected") {
@@ -363,7 +364,9 @@ class MainActivity : ComponentActivity() {
                     contentWindowInsets = WindowInsets.safeDrawing,
                     containerColor = MaterialTheme.colorScheme.background
                 ) { innerPadding ->
-                    Box(modifier = Modifier.padding(innerPadding)) {
+                    Box(modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding)) {
+                        val stateKey = if (activeSubScreen == "connected") Screen.Home.route else activeSubScreen ?: currentTab.route
+                        tabStateHolder.SaveableStateProvider(stateKey) {
                         val showHome = activeSubScreen == "connected" || (activeSubScreen == null && currentTab == Screen.Home)
                         if (showHome) {
                             com.nsec.vpn.ui.components.HomeConnectionHost(
@@ -390,9 +393,10 @@ class MainActivity : ComponentActivity() {
                                     )
                                 },
                                 connection = {
+                                    com.nsec.vpn.ui.components.LiveTunnelStats(tunnelManager.vpnStats) { connectionStats ->
                                     ConnectedScreen(
                                         vpnState = vpnState,
-                                        vpnStats = vpnStats,
+                                        vpnStats = connectionStats,
                                         connectedNode = connectedNode,
                                         selectedServer = displayedServer,
                                         userTier = userTier,
@@ -413,6 +417,7 @@ class MainActivity : ComponentActivity() {
                                             )
                                         }
                                     )
+                                    }
                                 }
                             )
                         } else when (activeSubScreen) {
@@ -447,6 +452,7 @@ class MainActivity : ComponentActivity() {
                                     Screen.Servers -> {
                                         ServerListScreen(
                                             servers = servers,
+                                            vpnState = vpnState,
                                             isLoading = serversLoading,
                                             usingCache = usingCachedServers,
                                             errorMessage = serverListError,
@@ -519,6 +525,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             }
+                        }
                         }
                     }
                 }

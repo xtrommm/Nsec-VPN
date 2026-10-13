@@ -18,10 +18,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -40,16 +41,16 @@ fun ConnectButton(
     compact: Boolean = false,
     animationsEnabled: Boolean = true
 ) {
-    val pulseScale = if (animationsEnabled && (vpnState is VpnState.Connected || vpnState is VpnState.Connecting)) {
+    val resumed = isUiResumed()
+    val pulseScale = if (animationsEnabled && resumed && (vpnState is VpnState.Connected || vpnState is VpnState.Connecting)) {
         val transition = rememberInfiniteTransition(label = "pulseTransition")
-        val scale by transition.animateFloat(
+        transition.animateFloat(
             initialValue = 1f,
             targetValue = 1.15f,
             animationSpec = infiniteRepeatable(tween(1400, easing = FastOutSlowInEasing), RepeatMode.Reverse),
             label = "pulseScale"
         )
-        scale
-    } else 1f
+    } else remember { mutableFloatStateOf(1f) }
 
     // State feedback is immediate; a 500ms colour tween looked like delayed input.
     val buttonColor = when (vpnState) {
@@ -81,7 +82,7 @@ fun ConnectButton(
                 Box(
                     modifier = Modifier
                         .size(if (compact) 148.dp else 200.dp)
-                        .scale(pulseScale)
+                        .graphicsLayer { scaleX = pulseScale.value; scaleY = pulseScale.value }
                         .clip(CircleShape)
                         .background(buttonColor.copy(alpha = 0.15f))
                 )
@@ -123,7 +124,8 @@ fun ConnectButton(
                     .border(2.dp, buttonColor.copy(alpha = 0.35f), CircleShape)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
+                        indication = androidx.compose.material3.ripple(),
+                        role = androidx.compose.ui.semantics.Role.Button,
                         enabled = ConnectionPresentation.canToggle(vpnState),
                         onClick = onToggle
                     )

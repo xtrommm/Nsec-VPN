@@ -273,3 +273,7 @@ update
 
 ## UI audit baseline
 See [UI audit](docs/audit/UI-AUDIT.md) for the source-only findings and explicit device measurement limits. UI-only repair work uses `fix/ui-smoothness-audit`; no database or VPN changes are planned.
+
+
+### UI state and rendering
+Live tunnel statistics are isolated to connection details; tab state is saved, safe insets are consumed once, background animations/native-ad refreshes stop, and connect taps have visible feedback. VPN operations and ad IDs are unchanged.

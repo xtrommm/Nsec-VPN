@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,10 +53,11 @@ fun ServerListScreen(
     adMobConfig: AdMobConfig = AdMobConfig(),
     isLoading: Boolean = false,
     usingCache: Boolean = false,
-    errorMessage: String? = null
+    errorMessage: String? = null,
+    vpnState: VpnState = VpnState.Disconnected
 ) {
-    var searchQuery by remember { mutableStateOf("") }
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
 
     val locations = remember(servers, userTier) { LocationSelection.group(servers, userTier) }
     val favCount = remember(locations) { locations.count { it.isFavorite } }
@@ -312,7 +314,7 @@ fun ServerListScreen(
                                 nativeAdManager = nativeAdManager,
                                 adMobConfig = adMobConfig,
                                 userTier = userTier,
-                                vpnState = VpnState.Disconnected,
+                                vpnState = vpnState,
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }

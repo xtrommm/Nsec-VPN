@@ -101,7 +101,7 @@ fun HomeScreen(
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.clickable { announcementDismissed = true }.padding(4.dp)
+                    modifier = Modifier.heightIn(min = 48.dp).clickable { announcementDismissed = true }.padding(8.dp)
                 )
             }
         }
@@ -242,8 +242,9 @@ fun HomeScreen(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
+                        .heightIn(min = 48.dp)
                         .clickable { onNavigateToServers() }
-                        .padding(4.dp)
+                        .padding(8.dp)
                 )
             }
 
