@@ -1,7 +1,7 @@
 jest.mock('../db', () => ({ prisma: { $transaction: jest.fn() } }));
 import { prisma } from '../db';
 import { claimReward, grantVerifiedReward, prepareReward } from '../services/rewardClaims';
-const tx = { $executeRaw: jest.fn(), device: { findUniqueOrThrow: jest.fn(), update: jest.fn() },
+const tx = { purchaseClaim:{updateMany:jest.fn()}, $executeRaw: jest.fn(), device: { findUniqueOrThrow: jest.fn(), update: jest.fn() },
   rewardTicket: { findUnique: jest.fn(), findFirst: jest.fn(), update: jest.fn(), create: jest.fn() },
   rewardGrant: { create: jest.fn() }, appConfig: { findUnique: jest.fn() } };
 const now = new Date();

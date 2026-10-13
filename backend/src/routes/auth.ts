@@ -26,7 +26,7 @@ router.post(
   authLimiter,
   validateBody(RegisterDeviceSchema),
   async (req: Request, res: Response) => {
-    const { deviceId, deviceModel, osVersion, appVersion, registrationSecret, registrationProof } = req.body;
+    const { deviceId, deviceModel, osVersion, appVersion, appVersionCode, registrationSecret, registrationProof } = req.body;
     if (!registrationSecret) return res.status(426).json({ success: false, error: 'APP_UPDATE_REQUIRED', message: 'Registration v2 requires a device-held credential' });
 
     try {
@@ -50,7 +50,8 @@ router.post(
           registrationSecretHash: credentialHash,
           deviceModel: deviceModel || undefined,
           osVersion: osVersion || undefined,
-          appVersion: appVersion || undefined
+          appVersion: appVersion || undefined,
+          appVersionCode: appVersionCode || undefined
         },
         create: {
           registrationSecretHash: credentialHash,
@@ -58,6 +59,7 @@ router.post(
           deviceModel,
           osVersion,
           appVersion,
+          appVersionCode,
           tier: 'FREE'
         }
       });

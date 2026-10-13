@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { z } from 'zod';
 import { prisma } from '../db';
+import { preserveNonPurchaseGrant } from './purchaseReconciliation';
 
 export const PromoText = z.string().trim().toUpperCase().regex(/^[A-Z0-9-]{6,32}$/);
 const fields = {
@@ -66,10 +67,19 @@ export async function redeemPromotion(deviceId: string, rawCode: string) {
     if (await tx.promoRedemption.findUnique({ where: { promoId_deviceId: { promoId: promo.id, deviceId } } })) throw new Error('PROMO_ALREADY_REDEEMED');
     if (promo.redemptionCount >= promo.maxRedemptions) throw new Error('PROMO_EXHAUSTED');
     if (device.tier === 'VIP' && !device.passExpiresAt) throw new Error('PROMO_ALREADY_VIP');
-    const until = new Date(Math.max(now.getTime(), device.passExpiresAt?.getTime() || 0) + promo.passMinutes * 60000);
+    // Coupons extend non-purchase VIP only. A refunded paid year must never
+    // become protected coupon time through stacking.
+    const purchases = await tx.purchaseClaim.findMany({where:{deviceId}});
+    const legacy = purchases.some(p=>!p.provenanceInitialized);
+    const protectedExpiry = purchases.reduce((maximum,p)=>Math.max(maximum,p.protectedVipUntil?.getTime()||0),0);
+    const base = purchases.length&&!legacy?protectedExpiry:device.passExpiresAt?.getTime()||0;
+    const until = new Date(Math.max(now.getTime(), base) + promo.passMinutes * 60000);
+    const paidExpiry = purchases.reduce((maximum,p)=>Math.max(maximum,p.active&&!p.adminRevoked?p.expiresAt.getTime():0),0);
+    const effectiveUntil = new Date(Math.max(until.getTime(),paidExpiry));
     await tx.promoRedemption.create({ data: { promoId: promo.id, deviceId, grantExpiresAt: until, durationMinutes: promo.passMinutes } });
     await tx.promoCode.update({ where: { id: promo.id }, data: { redemptionCount: { increment: 1 } } });
-    const updated = await tx.device.update({ where: { id: deviceId }, data: { tier: 'VIP', passExpiresAt: until } });
+    const updated = await tx.device.update({ where: { id: deviceId }, data: { tier: 'VIP', passExpiresAt: effectiveUntil } });
+    await preserveNonPurchaseGrant(tx,deviceId,until);
     return { tier: updated.tier, passExpiresAt: updated.passExpiresAt };
   }, { timeout: 10000 });
 }

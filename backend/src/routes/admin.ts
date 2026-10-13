@@ -1,5 +1,6 @@
 import { csvCell } from '../services/csv';
 import { removeTrackedPeerKeys } from '../services/peerProvisioning';
+import { preserveNonPurchaseGrant } from '../services/purchaseReconciliation';
 import { JWT_SECRET } from "../secrets";
 import { Router, Response } from 'express';
 import { Prisma } from '@prisma/client';
@@ -312,6 +313,10 @@ router.put('/devices/:id/tier', authenticateAdmin('SUPER_ADMIN'), validateBody(z
       const current = await tx.device.findUniqueOrThrow({ where: { id: req.params.id } });
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`reward:${current.deviceId}`}))`;
       const updated = await tx.device.update({ where: { id: current.id }, data: { tier: req.body.tier, passExpiresAt: req.body.tier === 'VIP' ? new Date(Date.now() + 365 * 86400000) : null }, select: deviceSelect });
+      if(req.body.tier==='VIP') await preserveNonPurchaseGrant(tx,current.id,updated.passExpiresAt);
+      else await tx.purchaseClaim.updateMany({where:{deviceId:current.id},data:{active:false,adminRevoked:true,
+        protectedVipUntil:null,protectedVipIndefinite:false}});
+      if(req.body.tier==='FREE') await tx.peerSession.updateMany({where:{deviceId:current.id,server:{isPremiumOnly:true}},data:{expiresAt:new Date()}});
       await tx.auditLog.create({ data: { adminId: req.admin!.adminId, action: 'UPDATE_DEVICE_TIER', targetResource: 'DEVICE', targetId: updated.id, metadata: JSON.stringify({ tier: updated.tier }) } });
       return updated;
     });

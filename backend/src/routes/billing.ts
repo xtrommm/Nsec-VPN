@@ -1,12 +1,12 @@
-import { preserveVipExpiry } from '../services/entitlements';
 import { Router, Response } from 'express';
-import crypto from 'crypto';
 import { prisma } from '../db';
 import { authenticateDevice, AuthenticatedDeviceRequest } from '../middleware/auth';
 import { validateBody } from '../middleware/validate';
 import { VerifySubscriptionSchema } from '../types';
 import { verifyReward } from '../services/rewardVerification';
 import { PlayBillingService } from '../services/billing';
+import { applyVerifiedPurchase, purchaseHash } from '../services/purchaseReconciliation';
+import { authenticatePlayPush, handlePlayNotification } from '../services/playNotifications';
 import { prepareReward, claimReward, grantVerifiedReward } from '../services/rewardClaims';
 import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
@@ -43,63 +43,40 @@ router.get('/rewarded/ssv', async (req, res) => {
   }
 });
 
-router.post(
-  '/verify',
-  authenticateDevice,
-  validateBody(VerifySubscriptionSchema),
-  async (req: AuthenticatedDeviceRequest, res: Response) => {
-    const { packageName, productId, purchaseToken } = req.body;
-    const device = req.device!;
-
-    try {
-      const status = await PlayBillingService.verifySubscription(packageName, productId, purchaseToken);
-
-      if (status.isValid && status.tier === 'VIP') {
-        if (!status.expiryTimeMs) throw new Error('BILLING_EXPIRY_MISSING');
-        const expiresAt = new Date(status.expiryTimeMs);
-        await prisma.$transaction(async tx => {
-          const tokenHash = crypto.createHash('sha256').update(purchaseToken).digest('hex');
-          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${tokenHash}))`;
-          const existing = await tx.purchaseClaim.findUnique({ where: { tokenHash } });
-          if (existing && existing.deviceId !== device.id) throw new Error('PURCHASE_ALREADY_BOUND');
-          await tx.purchaseClaim.upsert({ where: { tokenHash }, create: { tokenHash, deviceId: device.id, expiresAt }, update: { expiresAt } });
-          const current = await tx.device.findUniqueOrThrow({ where: { id: device.id } });
-          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`reward:${current.deviceId}`}))`;
-          const fresh = await tx.device.findUniqueOrThrow({ where: { id: device.id } });
-          if (fresh.isBlocked) throw new Error('DEVICE_BLOCKED');
-          const grant = await tx.promoRedemption.findFirst({ where: { deviceId: device.id, grantExpiresAt: { gt: expiresAt } }, orderBy: { grantExpiresAt: 'desc' } });
-          const effectiveExpiry = preserveVipExpiry(fresh, expiresAt, grant?.grantExpiresAt);
-          await tx.device.update({
-          where: { id: device.id },
-          data: {
-            tier: 'VIP',
-            passExpiresAt: effectiveExpiry
-          }
-        });
-        });
-
-        const entitlement = await prisma.device.findUniqueOrThrow({ where: { id: device.id }, select: { tier: true, passExpiresAt: true } });
-        return res.json({
-          success: true,
-          data: {
-            tier: 'VIP',
-            status: status.state,
-            expiresAt: entitlement.passExpiresAt?.toISOString() || null
-          }
-        });
-      }
-
-      return res.status(400).json({
-        success: false,
-        error: 'SUBSCRIPTION_INVALID',
-        message: `Subscription could not be verified (state: ${status.state})`
-      });
-    } catch (err: unknown) {
-      if (err instanceof Error && err.message === 'DEVICE_BLOCKED') return res.status(403).json({ success: false, error: 'DEVICE_BLOCKED' });
-      if (err instanceof Error && err.message === 'PURCHASE_ALREADY_BOUND') return res.status(409).json({ success: false, error: 'PURCHASE_ALREADY_BOUND', message: 'Purchase belongs to another device identity' });
-      return res.status(500).json({ success: false, error: 'BILLING_ERROR', message: 'Subscription verification unavailable' });
-    }
+router.post('/rtdn', async (req, res) => {
+  try { await authenticatePlayPush(req.get('Authorization')); }
+  catch(error) {
+    const unavailable=error instanceof Error&&error.message==='RTDN_NOT_CONFIGURED';
+    return res.status(unavailable?503:403).json({success:false,error:unavailable?'RTDN_NOT_CONFIGURED':'RTDN_UNAUTHORIZED'});
   }
-);
+  try { await handlePlayNotification(req.body); return res.status(204).end(); }
+  catch(error) {
+    const invalid=error instanceof SyntaxError||(error instanceof Error&&error.message==='RTDN_PAYLOAD_INVALID')||error instanceof z.ZodError;
+    return res.status(invalid?400:503).json({success:false,error:invalid?'RTDN_PAYLOAD_INVALID':'RTDN_RETRY_REQUIRED'});
+  }
+});
+
+router.post('/verify', authenticateDevice, validateBody(VerifySubscriptionSchema),
+  async (req: AuthenticatedDeviceRequest, res: Response) => {
+    const {packageName,productId,purchaseToken}=req.body;
+    const device=req.device!;
+    const startedAt=new Date();
+    try {
+      const status=await PlayBillingService.verifySubscription(packageName,productId,purchaseToken);
+      if(!status.isValid) {
+        const owned=await prisma.purchaseClaim.findUnique({where:{tokenHash:purchaseHash(purchaseToken)}});
+        if(owned?.deviceId===device.id) await applyVerifiedPurchase(device.id,productId,purchaseToken,status,startedAt);
+        return res.status(400).json({success:false,error:'SUBSCRIPTION_INVALID',message:`Subscription could not be verified (state: ${status.state})`});
+      }
+      if(!status.expiryTimeMs) throw new Error('BILLING_EXPIRY_MISSING');
+      const entitlement=await applyVerifiedPurchase(device.id,productId,purchaseToken,status,startedAt);
+      return res.json({success:true,data:{tier:entitlement.tier,status:status.state,
+        expiresAt:entitlement.passExpiresAt?.toISOString()||null}});
+    } catch(error) {
+      const code=error instanceof Error?error.message:'';
+      const errors:Record<string,number>={DEVICE_BLOCKED:403,PURCHASE_ALREADY_BOUND:409,PURCHASE_PRODUCT_MISMATCH:400,BILLING_TOKEN_ENCRYPTION_REQUIRED:503};
+      return res.status(errors[code]||503).json({success:false,error:errors[code]?code:'BILLING_VERIFICATION_UNAVAILABLE',message:'Subscription verification unavailable'});
+    }
+  });
 
 export default router;

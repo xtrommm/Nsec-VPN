@@ -39,6 +39,8 @@ export async function runRetention(now = new Date()) {
       prisma.serverRequest.deleteMany({ where: { status: { in: ['REJECTED', 'DONE'] }, updatedAt: { lt: cutoff } } }),
       prisma.auditLog.deleteMany({ where: { createdAt: { lt: cutoff } } })
     ]);
+    await prisma.purchaseClaim.updateMany({where:{active:false,expiresAt:{lt:cutoff},purchaseTokenCiphertext:{not:null}},
+      data:{purchaseTokenCiphertext:null}});
     return { devices, tokens: tokens.count, tickets: tickets.count, requests: requests.count, audit: audit.count };
   } finally { running = false; }
 }

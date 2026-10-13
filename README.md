@@ -8,6 +8,14 @@ Interrupted connections restore from a Keystore-encrypted node intent using fres
 
 Forced update uses the existing numeric Remote Config fields on both client and peer provisioning. New APKs send `X-App-Version-Code`; enabling forced updates rejects older/missing codes with HTTP 426 `APP_UPDATE_REQUIRED`. This self-reported version is a compatibility gate, not device attestation. Publish the compatible APK before enabling it.
 
+Public agent origins require HTTPS. HTTP is accepted only for literal private/loopback management origins carried by your encrypted management channel; the existing `172.18.0.1:51823` SSH forward is compatible. New installations bind the raw agent to loopback. Existing public HTTP records must migrate before deploying this policy.
+
+Owner-selected retention is 90 days (`RETENTION_DAYS`), cleaned hourly. Expired tokens, unclaimed expired tickets, completed/rejected requests and audit records age out. Inactive free identities are deleted only without recovery credentials, blocked status, purchase/promo/reward history or any peer reservation; these exceptions preserve entitlements and abuse protection. No client IP or traffic data is collected by this cleanup.
+
+The admin console uses the routed `Control*` pages only. Eight obsolete, unreachable screens/sidebar/dialog components were removed after checking the entry-point import graph and test references.
+
+Subscription reconciliation stores AES-GCM encrypted receipts using a separate `PLAY_TOKEN_ENCRYPTION_KEY`, checks Google Play at most every five minutes per tracked receipt, and supports authenticated Pub/Sub pushes at `/api/v1/billing/rtdn`. Configure the Google Play credential, exact push audience and push service-account email. Refunds remove only the paid contribution; promo/reward/admin grants are protected. Older unattributed VIP is preserved conservatively until its existing expiry and needs operator review for stronger revocation. Apply `scripts/migrate-audit-followup.sql` before this backend release and retain the receipt encryption key across deployments.
+
 The v2 deep-audit package preserves main's build-directory ignore update. Its publisher creates an isolated repair checkout; use the printed comparison link to create the pull request when GitHub CLI is unavailable. See [the repair checkpoint](docs/audit/REPAIR-CHECKPOINT.md) before merging or deploying.
 
 # 🛡️ Nsec VPN — High-Speed WireGuard® Android Client & Management Suite
@@ -224,9 +232,3 @@ The current [repair checkpoint](docs/audit/REPAIR-CHECKPOINT.md) records exact c
 The installer now upgrades runtimes older than Node 22, matching CI. Existing Node 20 agents need a maintenance upgrade; the script is not run automatically by this repair. See the checkpoint for the exact node commands.
 
 When connector writes are unavailable, the downloadable bundle publisher (`scripts/publish-deep-audit.py`, copied beside its package manifest/bundle) imports the reviewed commits into a separate checkout. `--publish` pushes only the repair branch; it opens a draft PR with authenticated GitHub CLI when available, otherwise prints the comparison link. It does not stage local edits, modify main, migrate data or deploy services.
-
-The admin console uses the routed `Control*` pages only. Eight obsolete, unreachable screens/sidebar/dialog components were removed after checking the entry-point import graph and test references.
-
-Public agent origins require HTTPS. HTTP is accepted only for literal private/loopback management origins carried by your encrypted management channel; the existing `172.18.0.1:51823` SSH forward is compatible. New installations bind the raw agent to loopback. Existing public HTTP records must migrate before deploying this policy.
-
-Owner-selected retention is 90 days (`RETENTION_DAYS`), cleaned hourly. Expired tokens, unclaimed expired tickets, completed/rejected requests and audit records age out. Inactive free identities are deleted only without recovery credentials, blocked status, purchase/promo/reward history or any peer reservation; these exceptions preserve entitlements and abuse protection. No client IP or traffic data is collected by this cleanup.

@@ -13,7 +13,7 @@ export const RegisterDeviceSchema = z.object({
   deviceModel: z.string().max(64).optional(),
   osVersion: z.string().max(32).optional(),
   appVersion: z.string().max(32).optional(),
-  appVersionCode: z.number().int().positive().optional()
+  appVersionCode: z.number().int().positive().max(2147483647).optional()
 });
 
 export const RefreshTokenSchema = z.object({

@@ -10,6 +10,7 @@ import { expirePeers } from './services/peerProvisioning';
 import { prisma } from './db';
 import { trustedProxyCidrs } from './services/proxyTrust';
 import { retentionDays, runRetention } from './services/retention';
+import { reconcilePurchases } from './services/purchaseReconciliation';
 import { globalLimiter } from './middleware/rateLimit';
 
 // Import Route Handlers
@@ -127,6 +128,7 @@ const server = app.listen(PORT, async () => {
   setInterval(() => { void expirePeers().catch(() => logger.warn("Lease cleanup failed")); }, 60000).unref();
   // Retention failures never emit record contents or identifiers.
   setInterval(() => { void runRetention().catch(() => logger.warn('Retention cleanup failed')); }, 3600000).unref();
+  setInterval(() => { void reconcilePurchases().catch(() => logger.warn('Purchase reconciliation failed')); }, 60000).unref();
 });
 
 // Graceful Process Teardown

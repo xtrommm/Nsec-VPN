@@ -3,16 +3,27 @@ import { prisma } from '../db';
 import { CreatePromo, promoHash, redeemPromotion } from '../services/promotions';
 import { UpdateConfigSchema } from '../types';
 
-const tx = { $executeRaw: jest.fn(), device: { findUniqueOrThrow: jest.fn(), update: jest.fn() },
+const tx = { purchaseClaim:{updateMany:jest.fn(),findMany:jest.fn()}, $executeRaw: jest.fn(), device: { findUniqueOrThrow: jest.fn(), update: jest.fn() },
   promoCode: { findUnique: jest.fn(), update: jest.fn() },
   promoRedemption: { findUnique: jest.fn(), create: jest.fn() } };
 beforeEach(() => {
   jest.clearAllMocks();
+  tx.purchaseClaim.findMany.mockResolvedValue([]);
   (prisma.$transaction as jest.Mock).mockImplementation(work => work(tx));
   tx.device.findUniqueOrThrow.mockResolvedValue({ id: 'device-test', deviceId: 'installation-test', isBlocked: false, tier: 'FREE', passExpiresAt: null });
   tx.promoCode.findUnique.mockResolvedValue({ id: 'promo-test', active: true, expiresAt: null, passMinutes: 30, redemptionCount: 0, maxRedemptions: 1 });
   tx.promoRedemption.findUnique.mockResolvedValue(null);
   tx.device.update.mockImplementation(({ data }) => Promise.resolve(data));
+});
+it('a coupon cannot turn refunded paid time into protected VIP',async()=>{
+  const now=Date.now(), paidUntil=new Date(now+365*86400000);
+  tx.device.findUniqueOrThrow.mockResolvedValue({id:'device-test',deviceId:'installation-test',isBlocked:false,tier:'VIP',passExpiresAt:paidUntil});
+  tx.purchaseClaim.findMany.mockResolvedValue([{active:true,adminRevoked:false,expiresAt:paidUntil,protectedVipUntil:null,provenanceInitialized:true}]);
+  const result=await redeemPromotion('device-test','TEST-CODE');
+  expect(result.passExpiresAt!.getTime()).toBe(paidUntil.getTime());
+  const protectedGrant=tx.promoRedemption.create.mock.calls[0][0].data.grantExpiresAt;
+  expect(protectedGrant.getTime()).toBeGreaterThanOrEqual(now+30*60000);
+  expect(protectedGrant.getTime()).toBeLessThan(now+31*60000);
 });
 it('normalizes codes before hashing and rejects invalid identifiers', () => {
   expect(promoHash('  test-code  ')).toBe(promoHash('TEST-CODE'));

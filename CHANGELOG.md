@@ -2,11 +2,14 @@
 
 ## Unreleased — Audit follow-up
 
+- Add encrypted Play receipts, authenticated RTDN and bounded authoritative subscription rechecks; preserve non-purchase VIP and legacy unattributed grants, reject receipt/product reuse and stale responses, expire premium peers when the last grant is revoked, and retain self-reported numeric build metadata.
+- Add guarded billing-key configuration and exact-image schema approval scripts; update privacy disclosure for encrypted receipts and 90-day retention.
+
+- Remove eight legacy admin modules unreachable from the current entry point; preserve the working console routes and license files.
+
 - Add bounded hourly 90-day retention cleanup with transaction-time eligibility checks and preserved entitlement/replay/recovery/peer protections.
 
 - Reject public cleartext agent management origins and default new node agents to loopback; retain private encrypted-channel compatibility.
-
-- Remove eight legacy admin modules unreachable from the current entry point; preserve the working console routes and license files.
 
 - Enforce existing forced-update settings during peer reservation and registration, retain backward compatibility while disabled, and stop failover on update-required responses.
 
