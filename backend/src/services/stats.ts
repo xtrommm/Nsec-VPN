@@ -6,11 +6,14 @@ export class StatsService {
    * Absolutely NO IP addresses, user identifiers, or traffic payload are stored or logged.
    */
   static async recordConnection(countryCode: string, appVersion: string, tier: string): Promise<void> {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 
     try {
-      const existing = await prisma.anonymousStat.findFirst({
+      await prisma.$transaction(async tx => {
+        const key = `stat:${today.toISOString()}:${countryCode.toUpperCase()}:${appVersion}:${tier}`;
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))`;
+      const existing = await tx.anonymousStat.findFirst({
         where: {
           date: today,
           countryCode: countryCode.toUpperCase(),
@@ -20,12 +23,12 @@ export class StatsService {
       });
 
       if (existing) {
-        await prisma.anonymousStat.update({
+        await tx.anonymousStat.update({
           where: { id: existing.id },
           data: { connectionsCount: { increment: 1 } }
         });
       } else {
-        await prisma.anonymousStat.create({
+        await tx.anonymousStat.create({
           data: {
             date: today,
             countryCode: countryCode.toUpperCase(),
@@ -35,6 +38,7 @@ export class StatsService {
           }
         });
       }
+      });
     } catch (_err) {
       // Fire-and-forget; never block the connection flow on telemetry write errors
     }

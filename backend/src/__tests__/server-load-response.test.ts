@@ -1,6 +1,9 @@
 jest.mock('../db', () => ({ prisma: { serverNode: { findMany: jest.fn() } } }));
 jest.mock('../middleware/auth', () => ({ authenticateDevice: jest.fn() }));
 import router from '../routes/servers';
+import { invalidateServerCatalog } from '../services/serverCatalog';
+beforeEach(()=>{invalidateServerCatalog();jest.spyOn(Date,'now').mockReturnValue(Date.parse('2026-10-12T18:00:00Z'));});
+afterEach(()=>jest.restoreAllMocks());
 import { prisma } from '../db';
 const handler = (router as any).stack.find((layer: any) => layer.route?.path === '/').route.stack.at(-1).handle;
 it('returns the real measurement timestamp in a backward-compatible server response', async () => {
@@ -24,4 +27,16 @@ it('grouped metadata uses the oldest measurement rather than pretending the whol
   const res = { json: jest.fn(), status: jest.fn() };
   await handler({device:{tier:'FREE'},query:{grouped:'true'}},res);
   expect(res.json.mock.calls[0][0].data.servers[0]).toMatchObject({currentLoad:50,loadUpdatedAt:earlier.toISOString()});
+});
+it('never shares device premium filtering through the catalog cache',async()=>{
+ (prisma.serverNode.findMany as jest.Mock).mockClear().mockResolvedValue([
+  {id:'free',city:'Frankfurt',countryCode:'DE',isPremiumOnly:false,healthCheckedAt:new Date(Date.now())},
+  {id:'vip',city:'Frankfurt',countryCode:'DE',isPremiumOnly:true,healthCheckedAt:new Date(Date.now())}
+ ]);
+ const free={json:jest.fn(),status:jest.fn()},vip={json:jest.fn(),status:jest.fn()};
+ await handler({device:{tier:'FREE'},query:{includePremium:'false'}},free);
+ await handler({device:{tier:'VIP'},query:{}},vip);
+ expect(free.json.mock.calls[0][0].data.servers.map((x:any)=>x.id)).toEqual(['free']);
+ expect(vip.json.mock.calls[0][0].data.servers.map((x:any)=>x.id)).toEqual(['free','vip']);
+ expect(prisma.serverNode.findMany).toHaveBeenCalledTimes(1);
 });

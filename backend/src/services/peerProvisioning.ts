@@ -116,15 +116,23 @@ export async function disconnectPeer(deviceId: string, peerId: string) {
 }
 
 let expiring = false;
+let cleanupCursor: string | undefined;
 export async function expirePeers() {
   if (expiring) return;
   expiring = true;
   try {
     const pendingBefore = new Date(Date.now() - 120000);
-    const sessions = await prisma.peerSession.findMany({ where: { active: true, OR: [
+    const where: Prisma.PeerSessionWhereInput = { active: true, OR: [
       { expiresAt: { lte: new Date() } }, { device: { isBlocked: true } }, { server: { active: false } },
       { pendingPublicKey: { not: null }, updatedAt: { lt: pendingBefore } }
-    ] }, take: 100 });
+    ] };
+    let sessions = await prisma.peerSession.findMany({ where: { ...where, ...(cleanupCursor ? { id: { gt: cleanupCursor } } : {}) },
+      orderBy: { id: 'asc' }, take: 100 });
+    if (!sessions.length && cleanupCursor) {
+      cleanupCursor = undefined;
+      sessions = await prisma.peerSession.findMany({ where, orderBy: { id: 'asc' }, take: 100 });
+    }
+    if (sessions.length) cleanupCursor = sessions[sessions.length - 1].id;
     for (const candidate of sessions) {
       try {
         await prisma.$transaction(async tx => {

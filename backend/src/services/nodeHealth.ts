@@ -1,3 +1,4 @@
+import { invalidateServerCatalog } from './serverCatalog';
 import { ServerNode } from '@prisma/client';
 import { lookup } from 'dns/promises';
 import { prisma } from '../db';
@@ -18,7 +19,11 @@ export async function testNode(node: ServerNode, syncKey = false, adminId?: stri
   let resolves = false;
   if (endpoint.success) {
     try {
-      const addresses = await lookup(node.endpoint.split(':')[0], { all: true, family: 4 });
+      let timer: NodeJS.Timeout | undefined;
+      const addresses = await Promise.race([
+        lookup(node.endpoint.split(':')[0], { all: true, family: 4 }),
+        new Promise<never>((_resolve, reject) => { timer = setTimeout(() => reject(new Error('NODE_DNS_TIMEOUT')), 2000); })
+      ]).finally(() => { if (timer) clearTimeout(timer); });
       resolves = addresses.length > 0 && addresses.every(a => isPublicIpv4(a.address)) &&
         addresses.some(a => a.address === health.publicIpv4);
     } catch { resolves = false; }
@@ -45,6 +50,7 @@ export async function testNode(node: ServerNode, syncKey = false, adminId?: stri
     const result = await prisma.serverNode.updateMany({ where: { ...probeFields(node), dnsServers: { equals: node.dnsServers } }, data });
     if (!result.count) return { ...health, online: false, agentOnline: health.online, keyMatches, portMatches, resolves, error: 'NODE_CHANGED' };
   }
+  invalidateServerCatalog();
   return { ...health, online: healthy, agentOnline: health.online, keyMatches, portMatches, resolves,
     endpoint: node.endpoint, dnsServers: node.dnsServers, mtu: node.mtu, nodeName: node.name,
     locationName: `${node.city}, ${node.countryName}`, error: healthy ? undefined : 'NODE_VALIDATION_FAILED' };
@@ -55,7 +61,14 @@ export async function refreshNodeHealth() {
   refreshing = true;
   try {
     const nodes = await prisma.serverNode.findMany({ where: { active: true } });
-    // Bounded concurrency, no automatic adoption of a changed identity/key.
-    for (let i = 0; i < nodes.length; i += 4) await Promise.all(nodes.slice(i, i + 4).map(n => testNode(n).catch(() => undefined)));
+    // A slow node cannot block every fast node in its old four-node chunk.
+    let next = 0, failures = 0;
+    await Promise.all(Array.from({ length: Math.min(8, nodes.length) }, async () => {
+      while (next < nodes.length) {
+        const node = nodes[next++];
+        try { await testNode(node); } catch { failures++; }
+      }
+    }));
+    if (failures) throw new Error('NODE_HEALTH_REFRESH_PARTIAL_FAILURE');
   } finally { refreshing = false; }
 }
