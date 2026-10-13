@@ -268,16 +268,16 @@ fun SettingsScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
-                                    onSelectThemeMode(mode)
                                     showThemeDialog = false
+                                    onSelectThemeMode(mode)
                                 }
                                 .padding(vertical = 8.dp)
                         ) {
                             RadioButton(
                                 selected = themeMode == mode,
                                 onClick = {
-                                    onSelectThemeMode(mode)
                                     showThemeDialog = false
+                                    onSelectThemeMode(mode)
                                 },
                                 colors = RadioButtonDefaults.colors(selectedColor = PrimaryBlue)
                             )
