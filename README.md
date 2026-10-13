@@ -285,3 +285,7 @@ New Compose regressions cover scoped live stats, saved server search, DNS select
 
 ### UI repair publication
 The UI-only repair can be imported with `scripts/publish-ui-audit.py` and its accompanying reviewed Git bundle. Publishing uses a new branch, preserves the original checkout and requires unchanged audited main. See [PR summary](docs/audit/UI-AUDIT-PR.md); no deployment is performed.
+
+
+### Server and speed-test alignment
+Server names and badges share a baseline and wrap without leading spacer items. Speed metrics use balanced two-by-two phone rows, four columns on wide screens, and one column for large text. The speed-test subtitle is centered when it wraps. No VPN or measurement logic changed.

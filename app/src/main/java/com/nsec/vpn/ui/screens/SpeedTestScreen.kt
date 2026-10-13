@@ -136,10 +136,11 @@ fun SpeedTestScreen(
         )
 
         Text(
-            text = "Test your Connected VPN server Speed ",
+            text = "Test Your Connected VPN Server Speed",
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 4.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -197,18 +198,10 @@ fun SpeedTestScreen(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        FlowRow(
-            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.surface)
-                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp)).padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            MetricColumn(modifier = Modifier.widthIn(min = 110.dp).weight(1f), label = "PING", value = pingMs?.let { "$it ms" } ?: "N/A")
-            MetricColumn(modifier = Modifier.widthIn(min = 110.dp).weight(1f), label = "JITTER", value = jitterMs?.let { "$it ms" } ?: "N/A")
-            MetricColumn(modifier = Modifier.widthIn(min = 110.dp).weight(1f), label = "DOWN AVG", value = averageDownloadMbps?.let { String.format(Locale.US, "%.1f M", it) } ?: "N/A")
-            MetricColumn(modifier = Modifier.widthIn(min = 110.dp).weight(1f), label = "UP AVG", value = averageUploadMbps?.let { String.format(Locale.US, "%.1f M", it) } ?: "N/A")
-        }
+        com.nsec.vpn.ui.components.SpeedTestMetrics(
+            pingMs = pingMs, jitterMs = jitterMs,
+            downloadMbps = averageDownloadMbps, uploadMbps = averageUploadMbps
+        )
 
         Spacer(modifier = Modifier.height(14.dp))
 
@@ -246,14 +239,5 @@ fun SpeedTestScreen(
             vpnState = tunnelState,
             modifier = Modifier.fillMaxWidth()
         )
-    }
-}
-
-@Composable
-private fun MetricColumn(label: String, value: String, modifier: Modifier = Modifier) {
-    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(text = label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(text = value, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
     }
 }
