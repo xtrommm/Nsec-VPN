@@ -233,12 +233,14 @@ class MainActivity : ComponentActivity() {
 
                 }
 
-                LaunchedEffect(Unit) {
-                    while (true) {
-                        kotlinx.coroutines.delay(30_000)
-                        remoteConfigManager.fetchRemoteConfig()
-                        vpnRepo.checkRewardedPassExpiry()
-                        vpnRepo.retryPendingReward()
+                LaunchedEffect(lifecycleOwner) {
+                    lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                        while (true) {
+                            kotlinx.coroutines.delay(30_000)
+                            remoteConfigManager.fetchRemoteConfig()
+                            vpnRepo.checkRewardedPassExpiry()
+                            vpnRepo.retryPendingReward()
+                        }
                     }
                 }
 
@@ -430,7 +432,7 @@ class MainActivity : ComponentActivity() {
                                             },
                                             onToggleFavorite = { vpnRepo.toggleFavorite(it) },
                                             onRefreshPings = {
-                                                coroutineScope.launch { vpnRepo.refreshServers() }
+                                                coroutineScope.launch { vpnRepo.refreshServers(force = true) }
                                             },
                                             onUpgradeRequired = { showVipModal = true }
                                         )

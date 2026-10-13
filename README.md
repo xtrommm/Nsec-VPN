@@ -200,3 +200,7 @@ Promo, usage and audit tables recover from an out-of-range page after deletion/f
 Native ads refill their bounded pool when released and react to load events instead of polling every ten seconds. Video ads use a MediaView template and hide when constrained space cannot safely contain it. Template changes recreate the native view. Validate text/video formats, large fonts, rotation and repeated refreshes with live AdMob test devices before publishing.
 
 Ad refresh timing uses a monotonic clock. Local reward expiry checks wake at most once a minute while still scheduling the exact remaining expiry, reducing idle wakeups without changing grant duration.
+
+Catalog refreshes coalesce for five seconds and manual refresh bypasses that window. Latency checks stay asynchronous and refresh at most once a minute. Catalog mapping now indexes previous nodes once (linear work rather than repeated list searches); config/reward polling runs only while the activity is STARTED. Cache-first display remains unchanged. Phone startup/perceived-load and battery measurements still require device profiling.
+
+A delayed profile response cannot overwrite a newer promo/reward response in the app. The backend remains the authority for actual premium access.

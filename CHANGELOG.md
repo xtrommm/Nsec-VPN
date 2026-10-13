@@ -2,6 +2,10 @@
 
 ## Unreleased — Deep audit
 
+- Ignore older profile results after a newer grant is applied; add a delayed-profile/promo regression.
+
+- Coalesce duplicate catalog refreshes, preserve explicit refresh, index old node metadata once and scope configuration polling to the foreground; retain exact reward expiry scheduling.
+
 - Use monotonic native-ad refresh timing and reduce ad-free expiry polling wakeups.
 
 - Refill released native ads, replace loading polls with state events, use media layouts for video, recreate changed templates and test the actual layout policy instead of a duplicated test implementation.

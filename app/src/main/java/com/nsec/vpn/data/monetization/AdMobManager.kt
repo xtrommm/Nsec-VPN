@@ -116,7 +116,8 @@ class AdMobManager(private val context: Context) {
                 rewardedAd = null
             }
             interstitialAd = null
-            val remaining = rewardPrefs.getLong("expiresElapsed", 0) - android.os.SystemClock.elapsedRealtime()
+            val remaining = minOf(rewardPrefs.getLong("expiresElapsed", 0) - android.os.SystemClock.elapsedRealtime(),
+                rewardPrefs.getLong("expiresWall", 0) - System.currentTimeMillis())
             rewardHandler.postDelayed(expiryCheck, remaining.coerceIn(1, 60_000))
         } else if (wasActive) {
             preloadInterstitial()

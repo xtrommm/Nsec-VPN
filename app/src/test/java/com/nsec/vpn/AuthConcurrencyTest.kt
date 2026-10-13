@@ -63,4 +63,30 @@ class AuthConcurrencyTest {
         assertEquals(0, registrations)
         assertEquals("refresh", vault.getRefreshToken())
     }
+    @Test
+    fun olderProfileResponseCannotUndoANewPromoGrant() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val vault = TestVault.create(context)
+        vault.saveTokens("test-access", "test-refresh")
+        val started = CompletableDeferred<Unit>()
+        val finish = CompletableDeferred<Unit>()
+        val api = object : FakeNsecVpnApi() {
+            override suspend fun getDeviceProfile(token: String): Response<DeviceProfileResponse> {
+                started.complete(Unit)
+                finish.await()
+                return Response.success(DeviceProfileResponse(true, DeviceInfoDto("test", "FREE", null)))
+            }
+            override suspend fun redeemPromo(token: String, request: RedeemPromoRequest): Response<RedeemPromoResponse> =
+                Response.success(RedeemPromoResponse(true, RedeemPromoData("VIP", "2099-01-01T00:00:00Z")))
+        }
+        val repository = VpnRepository(context, api, vault)
+        withTimeout(5_000) {
+            val profile = async { repository.refreshVerifiedEntitlement() }
+            started.await()
+            repository.redeemPromo("TEST-CODE")
+            finish.complete(Unit)
+            profile.await()
+        }
+        assertEquals("VIP", repository.userTier.value)
+    }
 }

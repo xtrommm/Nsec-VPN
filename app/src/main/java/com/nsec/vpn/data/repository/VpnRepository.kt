@@ -43,6 +43,8 @@ class VpnRepository(
     private val authMutex = Mutex()
     private val catalogCache = ServerCatalogCache(context)
     private var latencyJob: Job? = null
+    private var lastSuccessfulRefreshMs: Long? = null
+    private var lastLatencyRefreshMs: Long? = null
     private val _deviceIdentity = MutableStateFlow(keyStoreManager.getOrCreateDeviceId())
     val deviceIdentity: StateFlow<String> = _deviceIdentity.asStateFlow()
     private val _serversLoading = MutableStateFlow(false)
@@ -73,6 +75,7 @@ class VpnRepository(
     val autoConnectEnabled: StateFlow<Boolean> = _autoConnectEnabled.asStateFlow()
 
     private var verifiedEntitlementExpiresAtMs: Long? = null
+    private val entitlementGeneration = java.util.concurrent.atomic.AtomicLong(0)
     private val _userTier = MutableStateFlow("FREE")
     val userTier: StateFlow<String> = _userTier.asStateFlow()
 
@@ -116,9 +119,15 @@ class VpnRepository(
         }
     }
 
-    suspend fun refreshServers(refreshLatency: Boolean = true) = withContext(Dispatchers.IO) {
+    suspend fun refreshServers(refreshLatency: Boolean = true, force: Boolean = false) = withContext(Dispatchers.IO) {
         cacheRestoreJob?.join()
         if (!refreshMutex.tryLock()) return@withContext
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (!force && lastSuccessfulRefreshMs?.let { now - it in 0 until 5_000 } == true) {
+            refreshMutex.unlock()
+            if (refreshLatency) refreshLatencyIfDue()
+            return@withContext
+        }
         _serversLoading.value = true
         checkRewardedPassExpiry()
         try {
@@ -143,6 +152,7 @@ class VpnRepository(
                 _usingCachedServers.value = false
                 _serverListError.value = null
                 _servers.value = mapped
+                lastSuccessfulRefreshMs = android.os.SystemClock.elapsedRealtime()
                 repositoryScope.launch { try { refreshVerifiedEntitlement() } catch (e: CancellationException) { throw e } catch (_: Exception) { /* Retain verified state. */ } }
 
                 val currentSelected = _selectedServer.value
@@ -157,18 +167,27 @@ class VpnRepository(
             _serversLoading.value = false
             refreshMutex.unlock()
         }
-        if (refreshLatency) {
-            latencyJob?.cancel()
-            latencyJob = repositoryScope.launch { measurePings() }
-        }
+        if (refreshLatency) refreshLatencyIfDue()
     }
 
-    private fun mapServers(dtos: List<ServerItemDto>): List<Server> = dtos.map { dto ->
-        Server(dto.id, dto.name, dto.countryCode, dto.countryName, dto.city, dto.flagEmoji,
-            dto.currentLoad, dto.isPremiumOnly, dto.isRecommended,
-            isFavorite = _favoriteServerIds.value.contains(dto.id), totalNodes = dto.totalNodes,
-            publicIpv4 = dto.publicIpv4, loadUpdatedAt = dto.loadUpdatedAt,
-            pingMs = _servers.value.firstOrNull { it.id == dto.id && it.publicIpv4 == dto.publicIpv4 }?.pingMs)
+    @Synchronized
+    private fun refreshLatencyIfDue() {
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (latencyJob?.isActive == true || lastLatencyRefreshMs?.let { now - it in 0 until 60_000 } == true) return
+        lastLatencyRefreshMs = now
+        latencyJob = repositoryScope.launch { measurePings() }
+    }
+
+    private fun mapServers(dtos: List<ServerItemDto>): List<Server> {
+        val previous = _servers.value.associateBy { it.id }
+        val favorites = _favoriteServerIds.value
+        return dtos.map { dto ->
+            Server(dto.id, dto.name, dto.countryCode, dto.countryName, dto.city, dto.flagEmoji,
+                dto.currentLoad, dto.isPremiumOnly, dto.isRecommended,
+                isFavorite = dto.id in favorites, totalNodes = dto.totalNodes,
+                publicIpv4 = dto.publicIpv4, loadUpdatedAt = dto.loadUpdatedAt,
+                pingMs = previous[dto.id]?.takeIf { it.publicIpv4 == dto.publicIpv4 }?.pingMs)
+        }
     }
 
     suspend fun fetchTunnelConfig(
@@ -321,7 +340,7 @@ class VpnRepository(
         _deviceIdentity.value = deviceId
         applyVerifiedEntitlement(data.device.tier, data.device.passExpiresAt)
         }
-        refreshServers(refreshLatency = false)
+        refreshServers(refreshLatency = false, force = true)
     }
 
     suspend fun authenticateDevice(): String = withContext(Dispatchers.IO) {
@@ -429,10 +448,11 @@ class VpnRepository(
     }
 
     suspend fun refreshVerifiedEntitlement(): Boolean = withContext(Dispatchers.IO) {
+        val generation = entitlementGeneration.get()
         val response = recoveryAuthenticated { token -> api.getDeviceProfile(token) }
         val profile = response.body()
         if (!response.isSuccessful || profile?.success != true || profile.data == null) return@withContext false
-        applyVerifiedEntitlement(profile.data.tier, profile.data.passExpiresAt)
+        if (generation == entitlementGeneration.get()) applyVerifiedEntitlement(profile.data.tier, profile.data.passExpiresAt)
         _userTier.value != "FREE"
     }
 
@@ -537,6 +557,7 @@ class VpnRepository(
     }
 
     private fun applyVerifiedEntitlement(tier: String, expiresAt: String?) {
+        entitlementGeneration.incrementAndGet()
         require(tier in setOf("FREE", "VIP", "REWARDED_PASS")) { "Invalid Entitlement Response" }
         verifiedEntitlementExpiresAtMs = expiresAt?.let { java.time.Instant.parse(it).toEpochMilli() }
         _userTier.value = tier

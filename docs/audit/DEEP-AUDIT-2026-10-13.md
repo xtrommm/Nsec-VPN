@@ -40,6 +40,8 @@ Read-only baseline: `89a2fc3a19a51944ade35429d6e747a2410141c0` (main, including 
 
 Additional follow-up finding A32 (Low): `admin-panel/src/components/ConsoleUI.tsx:8–20` reinitializes its focus trap whenever busy changes, returning focus to the opener mid-save. Fix: keep the handler stable and read busy through a ref.
 
+Additional follow-up finding A33 (Medium): `VpnRepository.kt:420–426,519–523` applies an older profile response after a completed promo/reward response, briefly reverting UI entitlement. Fix: invalidate stale profile responses when a newer grant has been applied; add a delayed-response regression.
+
 ## Working controls and ruled-out hypotheses
 
 - Node lists contain database records with recent successful health checks; no production fake-server fallback was found. Offline catalog fallback is cached real data (`ServerCatalogCache.kt`, `VpnRepository.kt`). Endpoint/config/public-key validation and handshake gating are present (`types.ts`, `TunnelConfigBuilder.kt`, `TunnelNegotiation.kt`). Client keys are generated and encrypted on the device; they are not sent to the backend.
