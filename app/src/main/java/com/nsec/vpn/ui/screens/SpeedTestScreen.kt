@@ -197,22 +197,17 @@ fun SpeedTestScreen(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
+        FlowRow(
+            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
                 .background(MaterialTheme.colorScheme.surface)
-                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
+                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp)).padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            MetricColumn(modifier = Modifier.weight(1f), label = "PING", value = pingMs?.let { "$it ms" } ?: "N/A")
-            Box(modifier = Modifier.width(1.dp).height(30.dp).background(MaterialTheme.colorScheme.outline))
-            MetricColumn(modifier = Modifier.weight(1f), label = "JITTER", value = jitterMs?.let { "$it ms" } ?: "N/A")
-            Box(modifier = Modifier.width(1.dp).height(30.dp).background(MaterialTheme.colorScheme.outline))
-            MetricColumn(modifier = Modifier.weight(1f), label = "DOWN AVG", value = averageDownloadMbps?.let { String.format(Locale.US, "%.1f M", it) } ?: "N/A")
-            Box(modifier = Modifier.width(1.dp).height(30.dp).background(MaterialTheme.colorScheme.outline))
-            MetricColumn(modifier = Modifier.weight(1f), label = "UP AVG", value = averageUploadMbps?.let { String.format(Locale.US, "%.1f M", it) } ?: "N/A")
+            MetricColumn(modifier = Modifier.widthIn(min = 110.dp).weight(1f), label = "PING", value = pingMs?.let { "$it ms" } ?: "N/A")
+            MetricColumn(modifier = Modifier.widthIn(min = 110.dp).weight(1f), label = "JITTER", value = jitterMs?.let { "$it ms" } ?: "N/A")
+            MetricColumn(modifier = Modifier.widthIn(min = 110.dp).weight(1f), label = "DOWN AVG", value = averageDownloadMbps?.let { String.format(Locale.US, "%.1f M", it) } ?: "N/A")
+            MetricColumn(modifier = Modifier.widthIn(min = 110.dp).weight(1f), label = "UP AVG", value = averageUploadMbps?.let { String.format(Locale.US, "%.1f M", it) } ?: "N/A")
         }
 
         Spacer(modifier = Modifier.height(14.dp))
@@ -224,7 +219,7 @@ fun SpeedTestScreen(
             shape = RoundedCornerShape(14.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(50.dp)
+                .heightIn(min = 50.dp)
                 .testTag("start_speed_test_button"),
         ) {
             Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White)

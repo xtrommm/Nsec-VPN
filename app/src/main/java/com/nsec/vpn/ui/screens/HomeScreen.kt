@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,7 +59,7 @@ fun HomeScreen(
     val isConnected = vpnState is VpnState.Connected
     val connectedNode by tunnelManager.connectedNode.collectAsState()
     val serverListError by com.nsec.vpn.core.network.ServiceLocator.getInstance(androidx.compose.ui.platform.LocalContext.current).vpnRepository.serverListError.collectAsState()
-    var announcementDismissed by remember { mutableStateOf(false) }
+    var announcementDismissed by rememberSaveable(announcementTitle, announcementBody) { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -101,7 +102,7 @@ fun HomeScreen(
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.clickable { announcementDismissed = true }.padding(4.dp)
+                    modifier = Modifier.heightIn(min = 48.dp).clickable { announcementDismissed = true }.padding(8.dp)
                 )
             }
         }
@@ -150,7 +151,7 @@ fun HomeScreen(
                         text = if (userTier == "FREE") "FREE TIER" else "VIP ACTIVE",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (userTier == "FREE") MaterialTheme.colorScheme.onSurfaceVariant else AmberWarning
+                        color = if (userTier == "FREE") MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.statusWarning
                     )
                 }
             }
@@ -182,7 +183,7 @@ fun HomeScreen(
                     text = com.nsec.vpn.ui.components.ConnectionPresentation.homeTitle(vpnState),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (isConnected) EmeraldGreen else CrimsonError,
+                    color = if (isConnected) MaterialTheme.colorScheme.statusSuccess else MaterialTheme.colorScheme.error,
                     letterSpacing = 0.8.sp
                 )
                 Text(
@@ -242,8 +243,9 @@ fun HomeScreen(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
+                        .heightIn(min = 48.dp)
                         .clickable { onNavigateToServers() }
-                        .padding(4.dp)
+                        .padding(8.dp)
                 )
             }
 

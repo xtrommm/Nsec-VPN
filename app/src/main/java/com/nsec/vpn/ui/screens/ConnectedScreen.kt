@@ -62,16 +62,16 @@ fun ConnectedScreen(
     val downloadSpeedText = SpeedFormatter.formatSpeed(vpnStats.downloadSpeedMbps)
     val uploadSpeedText = SpeedFormatter.formatSpeed(vpnStats.uploadSpeedMbps)
 
-    val infiniteTransition = rememberInfiniteTransition(label = "ring_glow")
-    val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.4f,
-        targetValue = 0.9f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1800, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glow_alpha"
-    )
+    val resumed = com.nsec.vpn.ui.components.isUiResumed()
+    val glowAlpha = if (resumed && vpnState is VpnState.Connected) {
+        val transition = rememberInfiniteTransition(label = "ring_glow")
+        transition.animateFloat(
+            initialValue = 0.4f,
+            targetValue = 0.9f,
+            animationSpec = infiniteRepeatable(tween(1800, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+            label = "glow_alpha"
+        )
+    } else remember { mutableFloatStateOf(0.7f) }
 
     val trackColor = MaterialTheme.colorScheme.surfaceVariant
     val activeColor = EmeraldGreen
@@ -110,6 +110,8 @@ fun ConnectedScreen(
 
             Text(
                 text = "VPN ${com.nsec.vpn.ui.components.ConnectionPresentation.status(vpnState).uppercase(java.util.Locale.ROOT)}",
+                modifier = Modifier.weight(1f),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp,
@@ -139,7 +141,7 @@ fun ConnectedScreen(
                         text = if (userTier == "FREE") "FREE" else "VIP",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (userTier == "FREE") MaterialTheme.colorScheme.onSurfaceVariant else AmberWarning
+                        color = if (userTier == "FREE") MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.statusWarning
                     )
                 }
             }
@@ -207,7 +209,7 @@ fun ConnectedScreen(
 
                 // Foreground glowing ring
                 drawCircle(
-                    color = activeColor.copy(alpha = glowAlpha),
+                    color = activeColor.copy(alpha = glowAlpha.value),
                     radius = radius,
                     style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
                 )
@@ -343,7 +345,7 @@ fun ConnectedScreen(
             shape = RoundedCornerShape(16.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp)
+                .heightIn(min = 48.dp)
                 .testTag("disconnect_button")
         ) {
             Row(

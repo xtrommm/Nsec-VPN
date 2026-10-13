@@ -269,3 +269,31 @@ update
 - Package the startup and splash alignment corrections with an isolated Git publisher, runtime verification limits and a phone checklist.
 
 - Refresh reward-startup transport against merged splash PR #19; use a separate final checkout and v2 updater to avoid stale files.
+
+
+## UI audit baseline
+See [UI audit](docs/audit/UI-AUDIT.md) for the source-only findings and explicit device measurement limits. UI-only repair work uses `fix/ui-smoothness-audit`; no database or VPN changes are planned.
+
+
+### UI state and rendering
+Live tunnel statistics are isolated to connection details; tab state is saved, safe insets are consumed once, background animations/native-ad refreshes stop, and connect taps have visible feedback. VPN operations and ad IDs are unchanged.
+
+
+### Responsive UI and honest app lists
+Server controls and skeletons now share one lazy list with saved search/filter state, empty results and 48dp filters. Location badges and speed metrics wrap; recovery forms accommodate the keyboard. Split tunneling displays only real installed apps, with loading/retry/empty states. Server requests have bounded UI waiting.
+
+
+### DNS presentation and splash branding
+The DNS picker uses selectable provider cards, active resolver status and inline custom validation. Saves report automatic application without a manual reconnect instruction. Existing tunnel rebuilding is unchanged. The EU flag follows the splash text at the same size and baseline. No new dependencies, environment variables or migrations.
+
+
+### Status accessibility
+Small success/warning labels use theme-aware foreground colors while preserving brand fills. Device visual checks at large font sizes remain required.
+
+
+### UI regression and profiling checks
+New Compose regressions cover scoped live stats, saved server search, DNS selection/error/status and honest app choices. A device test covers connect/disconnect presentation. The privacy-limited `scripts/profile-ui.py` records actual frame deadlines/startup/memory; parser tests run in CI. See [UI verification](docs/audit/UI-VERIFY.md) for low-end, large-font and day/night checks. Android checks remain pending where no SDK/device is available.
+
+
+### UI repair publication
+The UI-only repair can be imported with `scripts/publish-ui-audit.py` and its accompanying reviewed Git bundle. Publishing uses a new branch, preserves the original checkout and requires unchanged audited main. See [PR summary](docs/audit/UI-AUDIT-PR.md); no deployment is performed.

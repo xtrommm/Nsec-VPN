@@ -3,6 +3,10 @@ package com.nsec.vpn.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,6 +18,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,10 +57,11 @@ fun ServerListScreen(
     adMobConfig: AdMobConfig = AdMobConfig(),
     isLoading: Boolean = false,
     usingCache: Boolean = false,
-    errorMessage: String? = null
+    errorMessage: String? = null,
+    vpnState: VpnState = VpnState.Disconnected
 ) {
-    var searchQuery by remember { mutableStateOf("") }
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
 
     val locations = remember(servers, userTier) { LocationSelection.group(servers, userTier) }
     val favCount = remember(locations) { locations.count { it.isFavorite } }
@@ -93,12 +99,13 @@ fun ServerListScreen(
         items
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 20.dp, vertical = 16.dp)
+    LazyColumn(
+        modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).imePadding(),
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
+        item(key = "controls", contentType = "controls") {
+        Column {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -124,15 +131,9 @@ fun ServerListScreen(
 
         if (usingCache) Text("Saved Server List · Refreshing Availability", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         errorMessage?.let { Text(it, fontSize = 12.sp, color = MaterialTheme.colorScheme.error) }
-        if (isLoading && servers.isEmpty()) Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            repeat(3) { Box(Modifier.fillMaxWidth().height(64.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant)) }
-            Text("Loading Servers…", fontSize = 12.sp)
-        }
-        Spacer(modifier = Modifier.height(12.dp))
-
         OutlinedTextField(
             value = searchQuery,
-            onValueChange = { searchQuery = it },
+            onValueChange = { searchQuery = it.take(200) },
             placeholder = { Text("Search Country Or City...", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp) },
             leadingIcon = {
                 Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -198,14 +199,14 @@ fun ServerListScreen(
         Spacer(modifier = Modifier.height(14.dp))
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             tabs.forEachIndexed { index, tabTitle ->
                 val isSelected = selectedTab == index
                 Box(
                     modifier = Modifier
-                        .weight(1f)
+                        .heightIn(min = 48.dp)
                         .clip(RoundedCornerShape(10.dp))
                         .background(if (isSelected) PrimaryBlue else MaterialTheme.colorScheme.surface)
                         .border(
@@ -213,8 +214,8 @@ fun ServerListScreen(
                             if (isSelected) PrimaryBlue else MaterialTheme.colorScheme.outline,
                             RoundedCornerShape(10.dp)
                         )
-                        .clickable { selectedTab = index }
-                        .padding(vertical = 8.dp),
+                        .selectable(selected = isSelected, role = Role.Tab, onClick = { selectedTab = index })
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -230,60 +231,27 @@ fun ServerListScreen(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        if (selectedTab == 3 && filteredServers.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(MaterialTheme.colorScheme.surface)
-                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
-                        .padding(24.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.StarBorder,
-                        contentDescription = null,
-                        tint = AmberWarning,
-                        modifier = Modifier.size(48.dp)
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = "No Favorite Servers Yet",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = "Tap The Star Icon On Any Server Location To Save It To Your Favorites List For Quick Access.",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                        lineHeight = 17.sp
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(
-                        onClick = { selectedTab = 0 },
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Text("Explore All Locations", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
+        }
+        }
+        if (isLoading && servers.isEmpty()) {
+            items(3, key = { "loading_$it" }, contentType = { "skeleton" }) {
+                Box(Modifier.fillMaxWidth().height(72.dp).clip(RoundedCornerShape(14.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant))
+            }
+        } else if (filteredServers.isEmpty()) {
+            item(key = "empty", contentType = "empty") {
+                Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(if (selectedTab == 3) "No Favorite Servers Yet" else if (servers.isEmpty()) "No Servers Available" else "No Matching Locations",
+                        fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    Text(if (selectedTab == 3) "Tap A Server’s Star To Save It." else "Refresh Or Try Another Filter.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                    TextButton(onClick = { selectedTab = 0; searchQuery = ""; onRefreshPings() }) { Text("Show All And Refresh") }
                 }
             }
-        } else {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier.weight(1f)
-            ) {
+        }
                 items(
                     items = listItems,
+                    contentType = { item -> if (item is ServerListItem.ServerItem) "server" else "ad" },
                     key = { item ->
                         when (item) {
                             is ServerListItem.ServerItem -> item.server.id
@@ -312,13 +280,11 @@ fun ServerListScreen(
                                 nativeAdManager = nativeAdManager,
                                 adMobConfig = adMobConfig,
                                 userTier = userTier,
-                                vpnState = VpnState.Disconnected,
+                                vpnState = vpnState,
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
                     }
                 }
-            }
-        }
     }
 }

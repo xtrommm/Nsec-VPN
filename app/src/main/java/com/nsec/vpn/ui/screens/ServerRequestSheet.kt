@@ -41,7 +41,7 @@ fun ServerRequestSheet(onDismiss: () -> Unit, onSubmit: suspend (String, String,
     val badCharacters = remember { Regex("[<>\\p{Cntrl}]") }
     val countryValid = country.trim().length in 2..80 && !badCharacters.containsMatchIn(country)
     val cityValid = city.trim().length in 2..80 && !badCharacters.containsMatchIn(city)
-    val noteValid = note.length <= 500 && !Regex("[\\p{Cntrl}&&[^\\n\\r\\t]]").containsMatchIn(note)
+    val noteValid = note.length <= 500 && !remember { Regex("[\\p{Cntrl}&&[^\\n\\r\\t]]") }.containsMatchIn(note)
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     fun submit() {
@@ -50,10 +50,11 @@ fun ServerRequestSheet(onDismiss: () -> Unit, onSubmit: suspend (String, String,
         focus.clearFocus(); submitting = true; error = null
         scope.launch {
             try {
-                val result = onSubmit(country.trim(), city.trim(), note.trim().takeIf { it.isNotEmpty() })
+                val result = kotlinx.coroutines.withTimeout(20_000) { onSubmit(country.trim(), city.trim(), note.trim().takeIf { it.isNotEmpty() }) }
                 Toast.makeText(context, result, Toast.LENGTH_LONG).show()
                 onDismiss()
-            } catch (cancelled: CancellationException) { throw cancelled }
+            } catch (_: kotlinx.coroutines.TimeoutCancellationException) { error = "Request Timed Out. It May Have Been Received; Check Before Retrying." }
+            catch (cancelled: CancellationException) { throw cancelled }
             catch (failure: Exception) { error = failure.message ?: "Could Not Send Your Request. Please Try Again." }
             finally { submitting = false }
         }
@@ -125,7 +126,7 @@ fun ServerRequestSheet(onDismiss: () -> Unit, onSubmit: suspend (String, String,
             }
             Button(onClick = { submit() }, enabled = !submitting, modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp), shape = RoundedCornerShape(16.dp)) {
                 if (submitting) {
-                    CircularProgressIndicator(Modifier.size(18.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, strokeWidth = 2.dp)
+                    CircularProgressIndicator(Modifier.size(18.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
                     Spacer(Modifier.width(10.dp))
                 }
                 Text(if (submitting) "Sending Request…" else "Send Location Request", fontWeight = FontWeight.SemiBold)

@@ -59,6 +59,7 @@ fun SettingsScreen(
     deviceId: String = "",
     customDns: String = "",
     activeDns: List<String> = emptyList(),
+    vpnState: com.nsec.vpn.data.model.VpnState = com.nsec.vpn.data.model.VpnState.Disconnected,
     onRestorePurchases: (suspend () -> Unit)? = null,
     onRecoveryStatus: suspend () -> Boolean = { error("Recovery Unavailable") },
     onSetRecoveryPin: suspend (String, String?) -> Unit = { _, _ -> error("Recovery Unavailable") },
@@ -75,9 +76,6 @@ fun SettingsScreen(
         Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
     }
     var showThemeDialog by remember { mutableStateOf(false) }
-    var showCustomDns by remember { mutableStateOf(false) }
-    var customDnsText by remember(customDns) { mutableStateOf(customDns) }
-    var dnsError by remember { mutableStateOf<String?>(null) }
     var showDnsDialog by remember { mutableStateOf(false) }
     var showKillSwitchDialog by remember { mutableStateOf(false) }
 
@@ -124,7 +122,7 @@ fun SettingsScreen(
         SettingsClickableItem(
             icon = Icons.Default.Dns,
             title = "DNS Resolver Through VPN",
-            subtitle = selectedDns.displayName + if (activeDns.isNotEmpty()) "\nActive: ${activeDns.joinToString()}" else "\nApplied on next connection",
+            subtitle = selectedDns.displayName + "\n" + com.nsec.vpn.ui.components.DnsFeedback.status(vpnState, activeDns),
             onClick = { showDnsDialog = true }
         )
 
@@ -141,7 +139,7 @@ fun SettingsScreen(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.clickable { onOpenSplitTunnelApps() }
+                        modifier = Modifier.heightIn(min = 48.dp).clickable { onOpenSplitTunnelApps() }.padding(vertical = 12.dp)
                     )
                 }
             } else null
@@ -255,17 +253,6 @@ fun SettingsScreen(
         onDismiss = { showRecovery = false }, onStatus = onRecoveryStatus,
         onSetPin = onSetRecoveryPin, onRecover = onRecoverDevice)
 
-    if (showCustomDns) AlertDialog(
-        onDismissRequest = { showCustomDns = false }, title = { Text("Custom DNS") },
-        text = { Column { Text("Enter Public DNS IPs Separated By Commas. IPv4/IPv6 Syntax Is Validated, But This IPv4-Only Node Cannot Route IPv6 Resolvers.", fontSize = 12.sp)
-            OutlinedTextField(value = customDnsText, onValueChange = { customDnsText = it.take(200); dnsError = null }, label = { Text("DNS IP Addresses") })
-            dnsError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        } }, confirmButton = { TextButton(onClick = {
-            try { onCustomDns(customDnsText); showCustomDns = false; Toast.makeText(context, "DNS Saved. Reconnecting If Active.", Toast.LENGTH_SHORT).show() }
-            catch (e: IllegalArgumentException) { dnsError = e.message ?: "Invalid DNS Resolver." }
-        }) { Text("Apply DNS") } }, dismissButton = { TextButton(onClick = { showCustomDns = false }) { Text("Cancel") } }
-    )
-
     if (showRequestDialog) ServerRequestSheet(
         onDismiss = { showRequestDialog = false },
         onSubmit = onRequestServer
@@ -311,48 +298,10 @@ fun SettingsScreen(
         )
     }
 
-    if (showDnsDialog) {
-        AlertDialog(
-            onDismissRequest = { showDnsDialog = false },
-            containerColor = MaterialTheme.colorScheme.surface,
-            title = { Text("Select DNS resolver", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    DnsProvider.entries.forEach { provider ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    if (provider == DnsProvider.CUSTOM) { dnsError = null; showCustomDns = true } else onSelectDns(provider)
-                                    showDnsDialog = false
-                                }
-                                .padding(vertical = 8.dp)
-                        ) {
-                            RadioButton(
-                                selected = selectedDns == provider,
-                                onClick = {
-                                    if (provider == DnsProvider.CUSTOM) { dnsError = null; showCustomDns = true } else onSelectDns(provider)
-                                    showDnsDialog = false
-                                },
-                                colors = RadioButtonDefaults.colors(selectedColor = PrimaryBlue)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Column {
-                                Text(provider.displayName, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
-                                Text("${provider.primary}, ${provider.secondary}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showDnsDialog = false }) {
-                    Text("Close", color = MaterialTheme.colorScheme.primary)
-                }
-            }
-        )
-    }
+    if (showDnsDialog) com.nsec.vpn.ui.components.DnsSelectionSheet(
+        selectedDns = selectedDns, customDns = customDns, activeDns = activeDns, vpnState = vpnState,
+        onSelect = onSelectDns, onCustom = onCustomDns, onDismiss = { showDnsDialog = false }
+    )
 
     if (showKillSwitchDialog) {
         AlertDialog(
@@ -373,7 +322,9 @@ fun SettingsScreen(
                         showKillSwitchDialog = false
                         try {
                             context.startActivity(Intent(Settings.ACTION_VPN_SETTINGS))
-                        } catch (_: Exception) {}
+                        } catch (_: Exception) {
+                            Toast.makeText(context, "Android VPN Settings Are Unavailable On This Device.", Toast.LENGTH_LONG).show()
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
                 ) {

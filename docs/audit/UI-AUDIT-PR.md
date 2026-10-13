@@ -1,0 +1,7 @@
+# UI smoothness and DNS controls
+
+Per-second tunnel stats invalidated the root UI, server tab state reset, large headers crowded small screens, and a failed app query could show invented package choices. This branch isolates live stats, saves tab state, pauses background visual work, moves server controls/skeletons into one keyed lazy list, wraps cards/metrics, improves keyboard handling and status contrast, and shows actual app-query states.
+
+The owner-authorized DNS picker reskin presents real resolver values/active status and replaces manual-reconnect instructions with automatic-application feedback. The existing tunnel manager still briefly rebuilds the tunnel when DNS changes. The splash EU flag follows the text at the existing size/baseline. Existing consent choices, ad unit IDs, signing, models, VPN routing, API/backend/admin and node logic remain unchanged.
+
+Validation: 11 Python Android configuration/branding checks, 23 deployment regressions and 3 profiling parser tests pass locally. Changed Kotlin sources parse after normalization for a tree-sitter catch/newline grammar limitation; this is not type checking. Gradle compilation failed before compilation because the distribution download is unreachable; no Android SDK/device is present. New Compose/device tests await CI/Android Studio. No FPS, startup or memory improvement is claimed without phone captures. Use docs/audit/UI-VERIFY.md before merging; docs/audit/UI-AUDIT.md records the baseline findings and remaining profile candidates. No migrations/env/runtime dependencies.

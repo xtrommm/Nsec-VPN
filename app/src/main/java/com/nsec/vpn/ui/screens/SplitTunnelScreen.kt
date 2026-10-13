@@ -38,8 +38,13 @@ fun SplitTunnelScreen(
     val context = LocalContext.current
     var installedApps by remember { mutableStateOf<List<AppItem>>(emptyList()) }
 
-    LaunchedEffect(Unit) {
-        withContext(Dispatchers.IO) {
+    var loading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var retry by remember { mutableIntStateOf(0) }
+    LaunchedEffect(retry) {
+        loading = true; error = null
+        try {
+        installedApps = withContext(Dispatchers.IO) {
             val pm = context.packageManager
             val mainIntent = Intent(Intent.ACTION_MAIN, null).apply {
                 addCategory(Intent.CATEGORY_LAUNCHER)
@@ -62,13 +67,11 @@ fun SplitTunnelScreen(
                 .distinctBy { it.packageName }
                 .sortedBy { it.appName }
 
-            installedApps = if (packages.isNotEmpty()) packages else listOf(
-                AppItem("Netflix", "com.netflix.mediaclient"),
-                AppItem("Spotify", "com.spotify.music"),
-                AppItem("Banking App", "com.bank.app"),
-                AppItem("Chrome Browser", "com.android.chrome")
-            )
+            packages
         }
+        } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+        catch (_: Exception) { error = "Could Not Load Installed Apps. Please Retry." }
+        finally { loading = false }
     }
 
     Scaffold(
@@ -98,6 +101,12 @@ fun SplitTunnelScreen(
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
+            if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+            error?.let { message ->
+                Text(message, color = MaterialTheme.colorScheme.error)
+                TextButton(onClick = { retry++ }) { Text("Retry") }
+            }
+            if (!loading && error == null && installedApps.isEmpty()) Text("No Other Launchable Apps Found.")
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 items(installedApps, key = { it.packageName }) { app ->
                     val isExcluded = excludedPackages.contains(app.packageName)

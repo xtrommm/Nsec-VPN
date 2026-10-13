@@ -64,8 +64,9 @@ fun SmartNativeAd(
     modifier: Modifier = Modifier,
     visible: Boolean = true
 ) {
+    val resumed = isUiResumed()
     val isFreeUser = userTier == "FREE"
-    val isAdAllowed = visible && isFreeUser && adMobConfig.nativeEnabled && vpnState !is VpnState.Connecting && vpnState !is VpnState.Disconnecting
+    val isAdAllowed = resumed && visible && isFreeUser && adMobConfig.nativeEnabled && vpnState !is VpnState.Connecting && vpnState !is VpnState.Disconnecting
 
     val adLoadedEvent by nativeAdManager.adLoadedEvent.collectAsStateWithLifecycle()
     var currentAd by remember { mutableStateOf<NativeAd?>(null) }

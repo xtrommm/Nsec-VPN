@@ -41,11 +41,11 @@ fun DeviceRecoverySheet(deviceId: String, onDismiss: () -> Unit,
     LaunchedEffect(Unit) { loadStatus() }
     ModalBottomSheet(onDismissRequest = { if (!busy) onDismiss() }, sheetGesturesEnabled = !busy,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp),
+        Column(Modifier.fillMaxWidth().imePadding().verticalScroll(rememberScrollState()).padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Device VIP Recovery", style = MaterialTheme.typography.headlineSmall)
             Text("Save Your Device ID And A Private PIN Before Clearing App Data. Recovery Restores Existing VIP And Its Original Expiry.")
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(selected = !restore, enabled = !busy, onClick = { restore = false; pin = ""; confirm = ""; oldPin = ""; message = null }, label = { Text("Protect VIP") })
                 FilterChip(selected = restore, enabled = !busy, onClick = { restore = true; pin = ""; confirm = ""; oldPin = ""; message = null }, label = { Text("Restore VIP") })
             }

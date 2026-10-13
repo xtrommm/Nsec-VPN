@@ -1,0 +1,48 @@
+# UI audit: baseline c5bd3497b0f6427a587b40f8fd1ce8ff757bc7f2
+
+Phase 1 recorded before UI source changes. This is a static audit, not evidence of a measured 60/120 fps result. No Android SDK, adb, emulator, Perfetto, or connected device is available in this environment. Gradle requires JDK 21 and a distribution unavailable to this runner. An actual compile attempt failed before compilation with Network is unreachable while downloading Gradle 9.8.1. Runtime timings, recomposition counts, memory, startup, APK size and low-end light/dark testing remain unmeasured; no numbers are invented.
+
+Paths below are relative to app/src/main/java/com/nsec/vpn unless otherwise stated. Line references identify the baseline, before edits.
+
+| ID | Severity | Evidence | Cause and planned fix |
+|---|---|---|---|
+| U01 | High | ui/screens/SplitTunnelScreen.kt:41–70 | Missing launcher apps are replaced with Netflix/Spotify/banking/Chrome fixtures; package lookup exceptions escape the effect. Display only actual packages with loading, retry and empty states. |
+| U02 | Medium | MainActivity.kt:84,390–392 | Per-second tunnel statistics are collected by the entire root, including hidden tabs. Collect only within the connected presentation. |
+| U03 | Medium | MainActivity.kt:366,449–522; ui/screens/ServerListScreen.kt:57–58 | Removed tabs have no saveable state boundary; search/filter/scroll reset. Add a route state holder and save UI inputs without keeping hidden ads alive. |
+| U04 | Medium | MainActivity.kt:101 | User-initiated connection navigation intent is not saveable during recreation. Save that UI flag; leave connection state in the existing manager. |
+| U05 | Medium | MainActivity.kt:366; ui/screens/LegalScreen.kt:29–46; ui/screens/SplitTunnelScreen.kt:74–93 | Parent padding does not consume safe drawing insets; nested scaffolds can apply them twice. Consume the parent insets. |
+| U06 | Medium | ui/components/ConnectButton.kt:43–52,87–88; ui/screens/ConnectedScreen.kt:65–73 | Pulse is read in composition; animations remain instantiated when activity is stopped. Read pulse in graphicsLayer and gate animation on RESUMED. |
+| U07 | Medium | ui/components/SmartNativeAd.kt:67,94–106; ui/screens/ServerListScreen.kt:315 | Refresh timer survives backgrounding; server-list ad eligibility receives a fabricated Disconnected state. Gate foreground eligibility and pass the real state. |
+| U08 | Medium | ui/screens/ServerListScreen.kt:127–131,200–229,233–283 | Skeletons move search controls; fixed header can crowd out list in landscape/large fonts; only favorites have an empty state; small filter targets. Put controls, skeletons and cards in a single keyed lazy list; scroll filters and expose selection semantics. |
+| U09 | Medium | ui/components/ServerCard.kt:55–97,139 | Long location name shares unbounded space with badges; favorite target is 32dp. Constrain location text and give favorite a 48dp target. |
+| U10 | Medium | ui/screens/SpeedTestScreen.kt:193–208,226–230 | Four metric columns squeeze narrow/large-font screens and a fixed button height clips scaled text. Use a wrapping metric grid and minimum button height. |
+| U11 | Medium | ui/components/DeviceRecoverySheet.kt:44–50 | No IME padding and fixed chip row can hide recovery actions with keyboard/large fonts. Add IME padding and wrapping choices; keep PIN unsaved. |
+| U12 | Medium | ui/screens/SettingsScreen.kt:127,258–268,314–362; MainActivity.kt:486 | DNS dialog prints empty addresses for Automatic/Custom and manual-reconnect wording contradicts automatic application. Reskin with actual provider descriptions, active values, inline custom validation and automatic-application wording. |
+| U13 | Low | ui/screens/HomeScreen.kt:110–112,243–247; ui/screens/SettingsScreen.kt:148 | Small text-only actions lack adequate targets. Enlarge hit regions without changing their visual labels. |
+| U14 | Low | ui/screens/ServerRequestSheet.kt:44–47,52–59 | Note validation recompiles regex each render; submission modal has no UI timeout. Cache regex and bound UI waiting with explicit timeout feedback. |
+| U15 | Low | ui/screens/SettingsScreen.kt:379 | Failure opening Android VPN settings is swallowed. Show a clear failure toast. |
+| U16 | Low | app/src/main/res/drawable/splash_europe_branding.xml:3–5 | EU flag precedes text; owner requests text then flag. Translate existing vector paths, retaining size, baseline, colors and logo. |
+
+Reviewed screens: Home, Connected, Servers, Settings, Speed Test, Split Tunnel, Server Request, Legal, Troubleshooting and debug diagnostics; shared connection host, buttons, cards, VIP offer/sheet, recovery sheet, native ads, navigation, typography, themes and native splash assets. The speed helper has no screen; its traffic logic is out of scope. Troubleshooting already uses IO and bounded API checks and honestly distinguishes observations from proof. Server cards already use LazyColumn keys. Settings/legal/connected are finite scrollable screens. Speed-test jobs are canceled on disposal/disconnect. Native ad leases are released on disposal. Debug diagnostics are release-stripped. No confirmed UI-only critical issue or new navigation crash was found; this does not prove no runtime bugs.
+
+Remaining measurement candidates: main-thread startup vault access at MainActivity.kt:57–61; grouping/sorting at ServerListScreen.kt:60–81; bitmap decoding and shader cost; hidden-home measure cost in HomeConnectionHost.kt:29–30; real ad asset layout jumps; rotation of in-flight reward/promo/purchase flows. These need a profile before broad refactors. Speed-test cancellation on tab departure is intentional; the running test does not continue invisibly. Backend, VPN lifecycle, security, signing, ad unit IDs, data models and speed-helper traffic must remain unchanged.
+
+Suggestions ranked: (1) scoped state reads and saved tab position: low effort/high value, implemented; (2) accessible DNS and filter selection: low effort/high value, implemented; (3) device frame capture: low effort/high diagnostic value, implemented; (4) full Macrobenchmark module and baseline profile: medium effort/high value, proposed pending runnable SDK and representative device; (5) a new connection animation/design: medium effort, owner approval required. No speculative FPS or startup target is claimed.
+
+Additional static contrast finding U17 (Medium): ui/theme/Color.kt:29–33 and ui/components/ConnectButton.kt:174, ui/components/ServerCard.kt:79,118 use brand green/amber as small text on light surfaces. Brand fills remain; semantic status text now uses darker green/amber in light mode and lighter counterparts in dark mode. This is a computed palette check, not a screenshot/physical-device check.
+
+## Outcome and verification status
+
+U01–U17 have scoped source fixes on this branch. No backend, agent, tunnel manager, routing, consent, API, persisted data model, signing or ad unit ID changed. DNS changes still perform the existing automatic tunnel rebuild; no UI text promises a seamless socket-preserving DNS swap.
+
+| Measure | Before | After | Evidence |
+|---|---|---|---|
+| Root live-stat subscriptions | 1 | 0 | MainActivity source; collection now inside LiveTunnelStats only while connection details are composed |
+| Production invented launcher entries | 4 | 0 | SplitTunnelScreen source |
+| Server list filter target minimum | content + 16dp padding | 48dp | Modifier constraints, not a device measurement |
+| FPS / frame percentiles / recompositions | Unmeasured | Unmeasured | Phone/emulator capture required |
+| Cold start / memory / APK size | Unmeasured | Unmeasured | Phone/build capture required |
+
+Native vector rendered and visually inspected in both palettes: flag now follows the text and keeps the prior baseline/footprint. Python backup/native-branding and measurement-parser tests run locally. New Compose regressions and Android device presentation test are added but NOT executed here; complete Gradle compilation, lint, unit tests and device tests must run on CI/Android Studio before merging. Existing HomeConnectionHostTest and ConnectedScreenUiTest cover retained Home, immediate Disconnecting feedback, timer and disconnect action. New tests cover stat scope isolation, background/resume gating, DNS status/provider/validation, saved server search and absence of invented launcher choices. Device test exercises actual ConnectButton/ConnectedScreen components, not a real WireGuard handshake.
+
+No measured speedup, low-end pass, physical-device accessibility pass, zero-warning build or bug-free claim is made. See UI-VERIFY.md for reproducible checks and residual profile candidates. No migration or new env variable is required.
