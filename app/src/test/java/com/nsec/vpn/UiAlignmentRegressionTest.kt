@@ -42,30 +42,32 @@ class UiAlignmentRegressionTest {
         assertTrue(badge.top < title.bottom && badge.bottom > title.top)
     }
 
-    @Test fun speedMetricsFormTwoEqualRowsOnPhone() {
-        compose.setContent { NsecVpnTheme { Box(Modifier.width(380.dp)) { SpeedTestMetrics(12, 2, 8.5f, 6.2f) } } }
+    @Test fun speedMetricsStayInOneEqualRowOnPhone() {
+        compose.setContent { NsecVpnTheme { Box(Modifier.width(380.dp)) { SpeedTestMetrics(12, 2, 8.5f) } } }
         val ping = compose.onNodeWithTag("speed_metric_ping").getUnclippedBoundsInRoot()
         val jitter = compose.onNodeWithTag("speed_metric_jitter").getUnclippedBoundsInRoot()
-        val down = compose.onNodeWithTag("speed_metric_download").getUnclippedBoundsInRoot()
-        val up = compose.onNodeWithTag("speed_metric_upload").getUnclippedBoundsInRoot()
+        val peak = compose.onNodeWithTag("speed_metric_peak").getUnclippedBoundsInRoot()
         assertEquals(ping.top.value, jitter.top.value, 0.1f)
-        assertEquals(down.top.value, up.top.value, 0.1f)
-        assertEquals(ping.left.value, down.left.value, 0.1f)
-        assertEquals(jitter.left.value, up.left.value, 0.1f)
-        assertEquals((ping.right - ping.left).value, (up.right - up.left).value, 0.1f)
-        assertTrue(down.top > ping.bottom)
+        assertEquals(ping.top.value, peak.top.value, 0.1f)
+        // Equal weights distribute indivisible physical pixels between cells.
+        val onePixelDp = 1f / ApplicationProvider.getApplicationContext<Context>().resources.displayMetrics.density
+        assertEquals((ping.right - ping.left).value, (peak.right - peak.left).value, onePixelDp + 0.0001f)
+        compose.onNodeWithTag("speed_metric_download").assertDoesNotExist()
+        compose.onNodeWithTag("speed_metric_upload").assertDoesNotExist()
     }
 
-    @Test fun largeFontsUseOneReadableMetricColumn() {
+    @Test fun largeFontsKeepThreeMetricsInOneRow() {
         compose.setContent { NsecVpnTheme {
             CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 2f)) {
-                Box(Modifier.width(280.dp)) { SpeedTestMetrics(null, null, null, null) }
+                Box(Modifier.width(280.dp)) { SpeedTestMetrics(null, null, null) }
             }
         } }
         val ping = compose.onNodeWithTag("speed_metric_ping").getUnclippedBoundsInRoot()
         val jitter = compose.onNodeWithTag("speed_metric_jitter").getUnclippedBoundsInRoot()
-        assertEquals(ping.left.value, jitter.left.value, 0.1f)
-        assertTrue(jitter.top > ping.bottom)
+        val peak = compose.onNodeWithTag("speed_metric_peak").getUnclippedBoundsInRoot()
+        assertEquals(ping.top.value, jitter.top.value, 0.1f)
+        assertEquals(ping.top.value, peak.top.value, 0.1f)
+        assertTrue(peak.left >= jitter.right)
     }
 
     @Test fun recoverySheetCopiesTheDisplayedDeviceId() {
@@ -90,6 +92,10 @@ class UiAlignmentRegressionTest {
         val version = compose.onNodeWithText("App Version").getUnclippedBoundsInRoot()
         assertTrue(version.top > header.bottom)
         compose.onNodeWithText("ACCOUNT & RECOVERY").assertExists()
+        compose.onNodeWithTag("settings_device_card").performScrollTo().assertIsDisplayed()
+        val device = compose.onNodeWithTag("settings_device_card").getUnclippedBoundsInRoot()
+        val finalVersion = compose.onNodeWithText("App Version").getUnclippedBoundsInRoot()
+        assertTrue(device.top > finalVersion.bottom)
     }
 
     @Test fun refreshDisablesDuplicatesUntilRequestFinishes() {

@@ -90,6 +90,7 @@ class MainActivity : ComponentActivity() {
                 val selectedServer by vpnRepo.selectedServer.collectAsStateWithLifecycle()
                 val userTier by vpnRepo.userTier.collectAsStateWithLifecycle()
                 val rewardPending by vpnRepo.rewardPending.collectAsStateWithLifecycle()
+                val rewardVerificationMessage by vpnRepo.rewardVerificationMessage.collectAsStateWithLifecycle()
                 val activeDns by tunnelManager.activeDns.collectAsStateWithLifecycle()
                 val selectedDns by vpnRepo.selectedDns.collectAsStateWithLifecycle()
                 val splitTunnelingEnabled by vpnRepo.splitTunnelingEnabled.collectAsStateWithLifecycle()
@@ -103,13 +104,14 @@ class MainActivity : ComponentActivity() {
 
 
                 var showVipModal by remember { mutableStateOf(false) }
+                var showVipRequired by rememberSaveable { mutableStateOf(false) }
                 var rewardBusy by remember { mutableStateOf(false) }
                 var serverStatusNow by remember { mutableLongStateOf(System.currentTimeMillis()) }
                 val lifecycleOwner = LocalLifecycleOwner.current
                 val displayedServer = ServerStatus.current(servers, connectedNode?.nodeId, tunnelManager.activeServer ?: selectedServer)
                 val rewardOffer = RewardOffer.from(remoteConfigLoaded, remoteConfig.rewardedEnabled,
                     remoteConfig.rewardedPassMinutes ?: 0, userTier, rewardPending,
-                    failed = remoteConfigError != null)
+                    failed = remoteConfigError != null, pendingDetail = rewardVerificationMessage)
                 var showPromoDialog by remember { mutableStateOf(false) }
                 var promoCodeInput by rememberSaveable { mutableStateOf("") }
 
@@ -121,6 +123,11 @@ class MainActivity : ComponentActivity() {
                     remoteConfigLoaded, remoteConfig.maintenanceMode, remoteConfig.forceUpdate,
                     remoteConfig.minAppVersionCode, BuildConfig.VERSION_CODE)
 
+                fun needsVipAccess(server: com.nsec.vpn.data.model.Server): Boolean {
+                    vpnRepo.checkRewardedPassExpiry()
+                    return com.nsec.vpn.ui.components.VipAccessGate.requiresVip(server, vpnRepo.userTier.value)
+                }
+
                 val vpnPermissionLauncher = rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.StartActivityForResult()
                 ) { result ->
@@ -131,6 +138,11 @@ class MainActivity : ComponentActivity() {
                         }
                         val server = selectedServer ?: servers.firstOrNull()
                         if (server != null) {
+                            if (needsVipAccess(server)) {
+                                isUserInitiatedConnect = false
+                                showVipRequired = true
+                                return@rememberLauncherForActivityResult
+                            }
                             val dns = try { vpnRepo.dnsServersForConnection() } catch (error: IllegalArgumentException) {
                                 Toast.makeText(this@MainActivity, error.message ?: "Invalid DNS Settings.", Toast.LENGTH_LONG).show()
                                 return@rememberLauncherForActivityResult
@@ -155,6 +167,11 @@ class MainActivity : ComponentActivity() {
                     isUserInitiatedConnect = isUserInitiated
                     val server = selectedServer ?: servers.firstOrNull()
                     if (server != null) {
+                        if (needsVipAccess(server)) {
+                            isUserInitiatedConnect = false
+                            showVipRequired = true
+                            return
+                        }
                         val dns = try { vpnRepo.dnsServersForConnection() } catch (error: IllegalArgumentException) {
                             Toast.makeText(this@MainActivity, error.message ?: "Invalid DNS Settings.", Toast.LENGTH_LONG).show()
                             return
@@ -249,18 +266,17 @@ class MainActivity : ComponentActivity() {
                     if (rewardPending) lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
                         while (true) {
                             vpnRepo.retryPendingReward()
-                            kotlinx.coroutines.delay(15_000)
+                            kotlinx.coroutines.delay(2_000)
                         }
                     }
                 }
 
-                LaunchedEffect(lifecycleOwner) {
+                LaunchedEffect(lifecycleOwner, currentTab, activeSubScreen) {
                     lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                         while (true) {
-                            kotlinx.coroutines.delay(30_000)
                             remoteConfigManager.fetchRemoteConfig()
                             vpnRepo.checkRewardedPassExpiry()
-                            vpnRepo.retryPendingReward()
+                            kotlinx.coroutines.delay(if (currentTab == Screen.Home && activeSubScreen == null) 5_000 else 30_000)
                         }
                     }
                 }
@@ -482,7 +498,7 @@ class MainActivity : ComponentActivity() {
                                             onRefreshPings = {
                                                 coroutineScope.launch { vpnRepo.refreshServers(force = true) }
                                             },
-                                            onUpgradeRequired = { showVipModal = true }
+                                            onUpgradeRequired = { showVipRequired = true }
                                         )
                                     }
                                     Screen.SpeedTest -> {
@@ -541,6 +557,14 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                if (showVipRequired) {
+                    com.nsec.vpn.ui.components.VipRequiredDialog(
+                        rewardEnabled = rewardOffer.available && !rewardBusy,
+                        onDismiss = { showVipRequired = false },
+                        onPurchase = { showVipRequired = false; showVipModal = true },
+                        onWatchAd = { showVipRequired = false; watchReward() }
+                    )
+                }
                 if (showVipModal) {
                     VipAccessSheet(
                         offer = rewardOffer,
