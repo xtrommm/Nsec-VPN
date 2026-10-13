@@ -2,6 +2,10 @@
 
 ## Unreleased — Deep audit
 
+
+
+- Protect entitlement expiry against concurrent grants/recovery, preserve longer VIP on purchase verification, and handle profile database failures without unhandled async rejections.
+
 - Commit durable peer reservations before agent mutation; track uncertain keys, compensate only under locks, reconcile abandoned reservations, and rotate disconnect handles on renewal. Add the nullable pending-public-key migration and regression/integration tests.
 
 - Require signed AdMob verification before rewarded VIP; make claims read-only, guard ticket ownership/event time, prevent replay/expiry extension, and poll pending verification without delaying local ad-free time.

@@ -1,3 +1,4 @@
+import { preserveVipExpiry } from '../services/entitlements';
 import { Router, Response } from 'express';
 import crypto from 'crypto';
 import { prisma } from '../db';
@@ -67,12 +68,12 @@ router.post(
           const fresh = await tx.device.findUniqueOrThrow({ where: { id: device.id } });
           if (fresh.isBlocked) throw new Error('DEVICE_BLOCKED');
           const grant = await tx.promoRedemption.findFirst({ where: { deviceId: device.id, grantExpiresAt: { gt: expiresAt } }, orderBy: { grantExpiresAt: 'desc' } });
-          const effectiveExpiry = grant?.grantExpiresAt || expiresAt;
+          const effectiveExpiry = preserveVipExpiry(fresh, expiresAt, grant?.grantExpiresAt);
           await tx.device.update({
           where: { id: device.id },
           data: {
             tier: 'VIP',
-            passExpiresAt: fresh.tier === 'VIP' && !fresh.passExpiresAt ? null : effectiveExpiry
+            passExpiresAt: effectiveExpiry
           }
         });
         });
@@ -94,6 +95,7 @@ router.post(
         message: `Subscription could not be verified (state: ${status.state})`
       });
     } catch (err: unknown) {
+      if (err instanceof Error && err.message === 'DEVICE_BLOCKED') return res.status(403).json({ success: false, error: 'DEVICE_BLOCKED' });
       if (err instanceof Error && err.message === 'PURCHASE_ALREADY_BOUND') return res.status(409).json({ success: false, error: 'PURCHASE_ALREADY_BOUND', message: 'Purchase belongs to another device identity' });
       return res.status(500).json({ success: false, error: 'BILLING_ERROR', message: 'Subscription verification unavailable' });
     }
