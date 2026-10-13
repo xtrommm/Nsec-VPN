@@ -58,6 +58,9 @@ fun SettingsScreen(
     deviceId: String = "",
     customDns: String = "",
     activeDns: List<String> = emptyList(),
+    privacyOptionsRequired: Boolean = false,
+    privacyUpdateFailed: Boolean = false,
+    onPrivacyOptions: () -> Unit = {},
     onRecoveryStatus: suspend () -> Boolean = { error("Recovery Unavailable") },
     onSetRecoveryPin: suspend (String, String?) -> Unit = { _, _ -> error("Recovery Unavailable") },
     onRecoverDevice: suspend (String, String) -> Unit = { _, _ -> error("Recovery Unavailable") }
@@ -197,8 +200,21 @@ fun SettingsScreen(
         SettingsClickableItem(
             icon = Icons.Default.Description,
             title = "Zero-Logs Privacy Policy",
-            subtitle = "Verified No-Log WireGuard Infrastructure",
+            subtitle = "Traffic Privacy And Operational Data Policy",
             onClick = onOpenPrivacyPolicy
+        )
+
+        if (privacyOptionsRequired) SettingsClickableItem(
+            icon = Icons.Default.PrivacyTip,
+            title = "Ad Privacy Choices",
+            subtitle = "Review Or Change Your Advertising Consent",
+            onClick = onPrivacyOptions
+        )
+        else if (privacyUpdateFailed) SettingsClickableItem(
+            icon = Icons.Default.PrivacyTip,
+            title = "Retry Privacy Update",
+            subtitle = "Check Advertising Privacy Choices Again",
+            onClick = onPrivacyOptions
         )
 
         SettingsClickableItem(

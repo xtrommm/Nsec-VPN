@@ -107,6 +107,7 @@ dependencies {
   implementation(libs.androidx.navigation.compose)
   implementation(libs.wireguard.tunnel)
   implementation(libs.play.services.ads)
+  implementation(libs.user.messaging.platform)
   implementation(libs.play.billing)
   implementation(libs.converter.moshi)
   implementation(libs.kotlinx.coroutines.android)

@@ -2,6 +2,8 @@
 
 ## Unreleased — Audit follow-up
 
+- Gate all ad placements on UMP authorization and SDK initialization, invalidate cached ads when choices change, and provide privacy options/retry controls in Settings.
+
 - Complete local disconnect without waiting for remote peer removal; bound asynchronous cleanup and disable repeated Connected-screen disconnect taps.
 
 ## Unreleased — Deep audit

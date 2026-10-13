@@ -87,6 +87,8 @@ class MainActivity : ComponentActivity() {
                 val splitTunnelingEnabled by vpnRepo.splitTunnelingEnabled.collectAsStateWithLifecycle()
                 val autoConnectEnabled by vpnRepo.autoConnectEnabled.collectAsStateWithLifecycle()
                 val installationId by vpnRepo.deviceIdentity.collectAsStateWithLifecycle()
+                val privacyOptionsRequired by serviceLocator.adConsentManager.privacyOptionsRequired.collectAsStateWithLifecycle()
+                val consentError by serviceLocator.adConsentManager.error.collectAsStateWithLifecycle()
                 val excludedPackages by vpnRepo.excludedPackages.collectAsStateWithLifecycle()
 
                 var currentTab by rememberSaveable(stateSaver = Saver<Screen, String>(save = { it.route }, restore = { route -> listOf(Screen.Home, Screen.Servers, Screen.SpeedTest, Screen.Settings).firstOrNull { it.route == route } ?: Screen.Home })) { mutableStateOf<Screen>(Screen.Home) }
@@ -221,6 +223,7 @@ class MainActivity : ComponentActivity() {
                 }
 
                 LaunchedEffect(Unit) {
+                    serviceLocator.adConsentManager.request(this@MainActivity)
                     val configRefresh = launch { remoteConfigManager.fetchRemoteConfig() }
                     vpnRepo.refreshServers()
                     configRefresh.join()
@@ -271,6 +274,10 @@ class MainActivity : ComponentActivity() {
 
                 LaunchedEffect(operationError) {
                     operationError?.let { Toast.makeText(this@MainActivity, it, Toast.LENGTH_LONG).show() }
+                }
+
+                LaunchedEffect(consentError) {
+                    consentError?.let { Toast.makeText(this@MainActivity, it, Toast.LENGTH_LONG).show() }
                 }
 
                 LaunchedEffect(remoteConfigError) {
@@ -479,6 +486,9 @@ class MainActivity : ComponentActivity() {
                                             onOpenPrivacyPolicy = { activeSubScreen = "legal" },
                                             onRedeemPromoCode = { showPromoDialog = true },
                                             supportEmail = remoteConfig.supportEmail,
+                                            privacyOptionsRequired = privacyOptionsRequired,
+                                            privacyUpdateFailed = consentError != null,
+                                            onPrivacyOptions = { serviceLocator.adConsentManager.showPrivacyOptions(this@MainActivity) },
                                             deviceId = installationId,
                                             onRecoveryStatus = { vpnRepo.recoveryConfigured() },
                                             onSetRecoveryPin = { pin, oldPin -> vpnRepo.setRecoveryPin(pin, oldPin) },

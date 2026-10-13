@@ -34,7 +34,7 @@ data class AdMobConfig(
     val appOpenAdUnitId: String = "ca-app-pub-3940256099942544/9257395921"
 )
 
-class AdMobManager(private val context: Context) {
+class AdMobManager(private val context: Context, private val initializeSdk: ((() -> Unit) -> Unit)? = null) {
     val nativeAdManager = NativeAdManager(context)
     private val _config = MutableStateFlow(AdMobConfig(
         bannerEnabled = com.nsec.vpn.BuildConfig.DEBUG, nativeEnabled = com.nsec.vpn.BuildConfig.DEBUG,
@@ -44,6 +44,9 @@ class AdMobManager(private val context: Context) {
     val config: StateFlow<AdMobConfig> = _config.asStateFlow()
 
     private var baseConfig = _config.value
+    private var consentAllowed = false
+    private var sdkInitialized = false
+    private var sdkInitializationStarted = false
     private var configGeneration = 0
     private val rewardPrefs = context.getSharedPreferences("nsec_ad_free_reward", Context.MODE_PRIVATE)
     private val rewardHandler = android.os.Handler(android.os.Looper.getMainLooper())
@@ -59,13 +62,32 @@ class AdMobManager(private val context: Context) {
     private var isPreloadingRewarded = false
 
     init {
-        try {
-            val requestConfig = RequestConfiguration.Builder()
-                .setTestDeviceIds(listOf(AdRequest.DEVICE_ID_EMULATOR))
-                .build()
-            MobileAds.setRequestConfiguration(requestConfig)
-            MobileAds.initialize(context) {}
-        } catch (_: Throwable) {}
+        refreshAdFreeConfig()
+    }
+
+    fun applyConsent(allowed: Boolean) {
+        if (consentAllowed != allowed) {
+            configGeneration++
+            interstitialAd = null; rewardedAd = null
+            isPreloadingInterstitial = false; isPreloadingRewarded = false
+        }
+        consentAllowed = allowed
+        if (allowed && !sdkInitializationStarted) {
+            try {
+                sdkInitializationStarted = true
+                val ready = {
+                    sdkInitialized = true
+                    refreshAdFreeConfig()
+                    preloadInterstitial()
+                    preloadRewarded()
+                }
+                if (initializeSdk != null) initializeSdk.invoke(ready) else {
+                    MobileAds.setRequestConfiguration(RequestConfiguration.Builder()
+                        .setTestDeviceIds(listOf(AdRequest.DEVICE_ID_EMULATOR)).build())
+                    MobileAds.initialize(context) { ready() }
+                }
+            } catch (_: Exception) { sdkInitializationStarted = false; consentAllowed = false }
+        }
         refreshAdFreeConfig()
     }
 
@@ -103,7 +125,8 @@ class AdMobManager(private val context: Context) {
             rewardPrefs.getInt("boot", -1), android.provider.Settings.Global.getInt(context.contentResolver,
                 android.provider.Settings.Global.BOOT_COUNT, -1), System.currentTimeMillis(),
             android.os.SystemClock.elapsedRealtime())
-        val config = if (active) baseConfig.copy(bannerEnabled = false, nativeEnabled = false,
+        val config = if (!consentAllowed || !sdkInitialized) baseConfig.copy(bannerEnabled = false, nativeEnabled = false,
+            interstitialEnabled = false, rewardedEnabled = false, appOpenEnabled = false) else if (active) baseConfig.copy(bannerEnabled = false, nativeEnabled = false,
             interstitialEnabled = false, appOpenEnabled = false,
             adFreeUntilEpochMillis = rewardPrefs.getLong("expiresWall", 0)) else baseConfig
         _config.value = config
