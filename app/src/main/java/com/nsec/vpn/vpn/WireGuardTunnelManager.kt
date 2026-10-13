@@ -317,7 +317,7 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
                         config.forceUpdate, config.minAppVersionCode, BuildConfig.VERSION_CODE)?.let { error(it) }
                     vpnRepository.refreshServers(refreshLatency = false)
                     val server = vpnRepository.servers.value.firstOrNull { it.id == nodeId }
-                        ?: vpnRepository.servers.value.firstOrNull { it.countryCode == country && it.city == city }
+                        ?: vpnRepository.servers.value.firstOrNull { it.countryCode.equals(country, ignoreCase = true) && it.city.trim().equals(city.trim(), ignoreCase = true) }
                         ?: error("Previously Connected Location Is Unavailable.")
                     lastDns = vpnRepository.dnsServersForConnection()
                     lastExcludedApps = if (vpnRepository.splitTunnelingEnabled.value)

@@ -38,7 +38,8 @@ class ConnectedScreenFlowTest {
     @Test
     fun adShowDecision_logicValidation() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-        val adMobManager = AdMobManager(context)
+        val adMobManager = AdMobManager(context, initializeSdk = { it() })
+        adMobManager.applyConsent(true)
 
         // Case 1: Premium user tier ("VIP") should skip ad
         val userTier = "VIP"

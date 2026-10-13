@@ -2,6 +2,8 @@
 
 ## Unreleased — Audit follow-up
 
+- Cover consent-aware ad flow and match restored location names without case sensitivity.
+
 - Add encrypted Play receipts, authenticated RTDN and bounded authoritative subscription rechecks; preserve non-purchase VIP and legacy unattributed grants, reject receipt/product reuse and stale responses, expire premium peers when the last grant is revoked, and retain self-reported numeric build metadata.
 - Add guarded billing-key configuration and exact-image schema approval scripts; update privacy disclosure for encrypted receipts and 90-day retention.
 
