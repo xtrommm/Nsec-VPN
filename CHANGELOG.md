@@ -2,6 +2,8 @@
 
 ## Unreleased — Deep audit
 
+- Serialize Android authentication/recovery and reuse concurrent renewal results; propagate cancellation and retain pending rewards during transient rate limits. Add concurrent-refresh and cancelled-refresh regressions.
+
 - Add opt-in CIDR-based proxy trust, separate readiness from user API quotas, and reject malformed agent request bodies with safe errors.
 
 
