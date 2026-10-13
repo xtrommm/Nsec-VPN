@@ -117,16 +117,7 @@ fun ServerListScreen(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground
             )
-            IconButton(
-                onClick = onRefreshPings,
-                modifier = Modifier.testTag("refresh_servers_button")
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = "Refresh Servers & Latencies",
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }
+            com.nsec.vpn.ui.components.ServerRefreshButton(isLoading, onRefreshPings)
         }
 
         if (usingCache) Text("Saved Server List · Refreshing Availability", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)

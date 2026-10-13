@@ -52,53 +52,34 @@ fun ServerCard(
         )
 
         Column(modifier = Modifier.weight(1f)) {
-            Column {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 Text(
                     text = server.city,
                     maxLines = 2,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.alignByBaseline().testTag("server_title_${server.id}")
                 )
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                if (server.totalNodes > 1) {
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "${server.totalNodes} NODES",
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(4.dp))
-                            .padding(horizontal = 5.dp, vertical = 2.dp)
-                    )
-                }
-                if (server.isRecommended) {
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "FASTEST",
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.statusSuccess,
-                        modifier = Modifier
-                            .background(MaterialTheme.colorScheme.emeraldBadgeContainer, RoundedCornerShape(4.dp))
-                            .padding(horizontal = 5.dp, vertical = 2.dp)
-                    )
-                }
-                if (server.isPremiumOnly) {
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "VIP",
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AmberWarning,
-                        modifier = Modifier
-                            .background(MaterialTheme.colorScheme.amberBadgeContainer, RoundedCornerShape(4.dp))
-                            .padding(horizontal = 5.dp, vertical = 2.dp)
-                    )
-                }
-                }
+                if (server.totalNodes > 1) ServerBadge(
+                    "${server.totalNodes} NODES", MaterialTheme.colorScheme.primary,
+                    MaterialTheme.colorScheme.primaryContainer,
+                    Modifier.alignByBaseline().testTag("server_nodes_${server.id}")
+                )
+                if (server.isRecommended) ServerBadge(
+                    "FASTEST", MaterialTheme.colorScheme.statusSuccess,
+                    MaterialTheme.colorScheme.emeraldBadgeContainer,
+                    Modifier.alignByBaseline().testTag("server_fastest_${server.id}")
+                )
+                if (server.isPremiumOnly) ServerBadge(
+                    "VIP", MaterialTheme.colorScheme.statusWarning,
+                    MaterialTheme.colorScheme.amberBadgeContainer,
+                    Modifier.alignByBaseline().testTag("server_vip_${server.id}")
+                )
             }
 
             Spacer(modifier = Modifier.height(2.dp))
@@ -152,4 +133,12 @@ fun ServerCard(
             }
         }
     }
+}
+
+@Composable
+private fun ServerBadge(text: String, foreground: androidx.compose.ui.graphics.Color,
+                        background: androidx.compose.ui.graphics.Color, modifier: Modifier) {
+    Text(text, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = foreground,
+        modifier = modifier.background(background, RoundedCornerShape(4.dp))
+            .padding(horizontal = 5.dp, vertical = 2.dp))
 }

@@ -89,6 +89,7 @@ class MainActivity : ComponentActivity() {
                 val servers by vpnRepo.servers.collectAsStateWithLifecycle()
                 val selectedServer by vpnRepo.selectedServer.collectAsStateWithLifecycle()
                 val userTier by vpnRepo.userTier.collectAsStateWithLifecycle()
+                val rewardPending by vpnRepo.rewardPending.collectAsStateWithLifecycle()
                 val activeDns by tunnelManager.activeDns.collectAsStateWithLifecycle()
                 val selectedDns by vpnRepo.selectedDns.collectAsStateWithLifecycle()
                 val splitTunnelingEnabled by vpnRepo.splitTunnelingEnabled.collectAsStateWithLifecycle()
@@ -107,7 +108,7 @@ class MainActivity : ComponentActivity() {
                 val lifecycleOwner = LocalLifecycleOwner.current
                 val displayedServer = ServerStatus.current(servers, connectedNode?.nodeId, tunnelManager.activeServer ?: selectedServer)
                 val rewardOffer = RewardOffer.from(remoteConfigLoaded, remoteConfig.rewardedEnabled,
-                    remoteConfig.rewardedPassMinutes ?: 0, userTier, adMobConfig.adFreeUntilEpochMillis != null,
+                    remoteConfig.rewardedPassMinutes ?: 0, userTier, rewardPending,
                     failed = remoteConfigError != null)
                 var showPromoDialog by remember { mutableStateOf(false) }
                 var promoCodeInput by rememberSaveable { mutableStateOf("") }
@@ -201,14 +202,14 @@ class MainActivity : ComponentActivity() {
                                 verificationTicket = ticket,
                                 onRewarded = {
                                     earned = true
-                                    adMobManager.grantAdFreeReward()
                                     coroutineScope.launch {
                                         try {
                                             vpnRepo.claimReward(ticket)
+                                            adMobManager.grantAdFreeReward()
                                             Toast.makeText(this@MainActivity, "VIP Activated: Ad-Free And VIP Servers Unlocked.", Toast.LENGTH_LONG).show()
                                         } catch (error: kotlinx.coroutines.CancellationException) { throw error }
                                         catch (error: Exception) {
-                                            Toast.makeText(this@MainActivity, error.message ?: "Ad-Free Is Active; VIP Activation Will Retry.", Toast.LENGTH_LONG).show()
+                                            Toast.makeText(this@MainActivity, error.message ?: "Could Not Confirm Your VIP Reward. We’ll Retry Automatically.", Toast.LENGTH_LONG).show()
                                         }
                                     }
                                 },
@@ -242,6 +243,15 @@ class MainActivity : ComponentActivity() {
                     }
                     vpnRepo.checkRewardedPassExpiry()
 
+                }
+
+                LaunchedEffect(lifecycleOwner, rewardPending) {
+                    if (rewardPending) lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                        while (true) {
+                            vpnRepo.retryPendingReward()
+                            kotlinx.coroutines.delay(15_000)
+                        }
+                    }
                 }
 
                 LaunchedEffect(lifecycleOwner) {

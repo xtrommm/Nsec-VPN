@@ -31,6 +31,12 @@ class NativeBrandingTest(unittest.TestCase):
         self.assertIn('34.586', flag_path)
         self.assertIn('50.586', flag_path)
 
+    def test_main_activity_handles_theme_without_disabling_rotation_recreation(self):
+        manifest = ET.parse(ROOT / 'app/src/main/AndroidManifest.xml')
+        main = next(a for a in manifest.findall('./application/activity') if a.attrib.get(ANDROID + 'name') == '.MainActivity')
+        changes = set(main.attrib.get(ANDROID + 'configChanges', '').split('|'))
+        self.assertEqual({'uiMode'}, changes)
+
     def test_extra_page_and_its_delay_are_removed(self):
         self.assertFalse((ROOT / 'app/src/main/java/com/nsec/vpn/ui/components/StartupScreen.kt').exists())
         source = (ROOT / 'app/src/main/java/com/nsec/vpn/MainActivity.kt').read_text()

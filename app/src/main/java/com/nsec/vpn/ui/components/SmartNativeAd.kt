@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -154,7 +155,9 @@ fun SmartNativeAd(
             }
         }
 
-        key(template, currentAd) {
+        // XML colors resolve on inflation; refresh the view for in-place night-mode changes.
+        val nightMode = LocalConfiguration.current.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
+        key(template, currentAd, nightMode) {
         AndroidView(
             modifier = Modifier.fillMaxWidth(),
             factory = { ctx ->

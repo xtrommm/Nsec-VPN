@@ -285,3 +285,31 @@ New Compose regressions cover scoped live stats, saved server search, DNS select
 
 ### UI repair publication
 The UI-only repair can be imported with `scripts/publish-ui-audit.py` and its accompanying reviewed Git bundle. Publishing uses a new branch, preserves the original checkout and requires unchanged audited main. See [PR summary](docs/audit/UI-AUDIT-PR.md); no deployment is performed.
+
+
+### Server and speed-test alignment
+Server names and badges share a baseline and wrap without leading spacer items. Speed metrics use balanced two-by-two phone rows, four columns on wide screens, and one column for large text. The speed-test subtitle is centered when it wraps. No VPN or measurement logic changed.
+
+
+### Settings and recovery alignment
+App Version is inside Developer / Debug and remains visible in release; debug diagnostics remain gated. Account recovery has its own section. Settings and the Device VIP Recovery sheet share a wrapping Device ID card with Copy/Copied feedback. Only the installation ID is copied. Home text actions are vertically centered in their touch targets.
+
+
+### In-place theme switching
+MainActivity handles `uiMode` configuration changes so Compose updates the palette without activity recreation. Existing native splash preference synchronization remains intact. System-bar appearance updates only when theme/view changes, and native ad XML views refresh for new night-mode resources. Routing, data models, consent and ad IDs are unchanged; confirm real transition timing on the phone.
+
+
+### VIP sheet and verified reward feedback
+The VIP options sheet is compact with a close action and balanced plan rows. Pending VIP now comes from an actual reward ticket, not ad-free time. Claims check verified grants more promptly, serialize requests, bound waiting, retry while foregrounded without the prior five-minute throttle, and reject expired/free responses rather than showing false activation. Both benefits start from a confirmed VIP grant. This requested reward follow-up changes only Android reward coordination; backend signature verification remains mandatory and unchanged. Live SSV delivery/configuration still requires verification; debug test-unit rewards are not production VIP proof.
+
+
+### Server refresh feedback
+The server refresh icon rotates during the actual catalog refresh, disables duplicate taps and announces its loading state. Rotation stops in the background and when the request completes. Lazy latency probing retains its existing behavior. Reward request timeouts retain pending tickets and no longer cancel the foreground retry loop.
+
+
+### Alignment and reward regressions
+Tests cover inline server badges, balanced metrics, large fonts, recovery ID clipboard content, Settings ordering, duplicate refresh taps, verified/pending/expired reward responses and the retry-throttle regression. A manifest check keeps in-place theme handling limited to uiMode. Android runtime checks require CI/Android Studio.
+
+
+### Alignment follow-up publication
+See [alignment and VIP follow-up](docs/audit/UI-ALIGNMENT-UPDATE.md) for evidence, scope, AdMob SSV setup and phone checks. The accompanying Git bundle and `scripts/publish-alignment-vip.py` import a reviewed branch into a separate checkout. No backend deployment or migration is performed.

@@ -497,40 +497,66 @@ class VpnRepository(
         result.data.ticketId
     }
 
-    suspend fun claimReward(ticketId: String) = withContext(Dispatchers.IO) {
+    private val rewardClaimMutex = Mutex()
+    private val _rewardPending = MutableStateFlow(keyStoreManager.getPendingRewardTicket() != null)
+    val rewardPending: StateFlow<Boolean> = _rewardPending.asStateFlow()
+
+    private fun savePendingReward(ticketId: String?) {
         keyStoreManager.savePendingRewardTicket(ticketId)
-        repeat(11) { attempt ->
-            var token = keyStoreManager.getAccessToken() ?: authenticateDevice()
-            var response = api.claimReward("Bearer $token", com.nsec.vpn.data.api.ClaimRewardRequest(ticketId))
-            if (response.code() == 401) {
-                token = tryRefreshToken(token) ?: throw IllegalStateException("Please Sign In Again")
-                response = api.claimReward("Bearer $token", com.nsec.vpn.data.api.ClaimRewardRequest(ticketId))
-            }
-            val result = response.body()
-            if (response.code() == 202) {
-                if (attempt < 10) {
-                    kotlinx.coroutines.delay(3_000)
-                    return@repeat
+        _rewardPending.value = ticketId != null
+    }
+
+    suspend fun claimReward(ticketId: String) = withContext(Dispatchers.IO) {
+        rewardClaimMutex.withLock {
+            savePendingReward(ticketId)
+            try {
+            kotlinx.coroutines.withTimeout(35_000) {
+                repeat(21) { attempt ->
+                    var token = keyStoreManager.getAccessToken() ?: authenticateDevice()
+                    var response = api.claimReward("Bearer $token", com.nsec.vpn.data.api.ClaimRewardRequest(ticketId))
+                    if (response.code() == 401) {
+                        token = tryRefreshToken(token) ?: throw IllegalStateException("Please Sign In Again")
+                        response = api.claimReward("Bearer $token", com.nsec.vpn.data.api.ClaimRewardRequest(ticketId))
+                    }
+                    val result = response.body()
+                    if (response.code() == 202) {
+                        if (attempt < 20) {
+                            kotlinx.coroutines.delay(if (attempt < 10) 1_000 else 2_000)
+                            return@repeat
+                        }
+                        throw IllegalStateException(if (BuildConfig.DEBUG)
+                            "Test Ad Completed. Live AdMob Verification Is Required For VIP Servers."
+                            else "Reward Confirmation Is Taking Longer. We’ll Retry Automatically.")
+                    }
+                    if (!response.isSuccessful || result?.success != true || result.data == null) {
+                        if (response.code() in listOf(400, 403, 404, 410)) savePendingReward(null)
+                        throw IllegalStateException("Could Not Confirm The VIP Reward. Please Check Your Connection.")
+                    }
+                    val grant = result.data
+                    val expired = grant.passExpiresAt?.let { java.time.Instant.parse(it).toEpochMilli() <= System.currentTimeMillis() } == true
+                    if (grant.tier !in setOf("VIP", "REWARDED_PASS") || expired) {
+                        savePendingReward(null)
+                        throw IllegalStateException("This Reward Pass Has Expired. Watch A New Ad For A New Pass.")
+                    }
+                    applyVerifiedEntitlement(grant.tier, grant.passExpiresAt)
+                    savePendingReward(null)
+                    return@withTimeout
                 }
-                throw IllegalStateException("Ad-Free Is Active; VIP Is Waiting For Server Verification. It Will Retry Automatically.")
             }
-            if (!response.isSuccessful || result?.success != true || result.data == null) {
-                if (response.code() in listOf(400, 403, 404, 410)) keyStoreManager.savePendingRewardTicket(null)
-                throw IllegalStateException("VIP Grant Unavailable. A Completed Reward Will Retry When The Service Returns")
+            } catch (_: kotlinx.coroutines.TimeoutCancellationException) {
+                throw IllegalStateException("Reward Confirmation Timed Out. We’ll Retry Automatically.")
             }
-            applyVerifiedEntitlement(result.data.tier, result.data.passExpiresAt)
-            keyStoreManager.savePendingRewardTicket(null)
-            return@withContext
         }
     }
 
     private var nextRewardRetryElapsedMs = 0L
     suspend fun retryPendingReward() {
+        val ticket = keyStoreManager.getPendingRewardTicket() ?: return
+        if (rewardClaimMutex.isLocked) return
         val now = android.os.SystemClock.elapsedRealtime()
         if (now < nextRewardRetryElapsedMs) return
-        nextRewardRetryElapsedMs = now + 300_000L
-        val ticket = keyStoreManager.getPendingRewardTicket() ?: return
-        try { claimReward(ticket) } catch (e: CancellationException) { throw e } catch (_: Exception) { /* Retained until retry or terminal rejection. */ }
+        nextRewardRetryElapsedMs = now + 15_000L
+        try { claimReward(ticket) } catch (e: CancellationException) { throw e } catch (_: Exception) { /* Persist until verified or terminal rejection. */ }
     }
 
     suspend fun redeemPromo(code: String) = withContext(Dispatchers.IO) {
