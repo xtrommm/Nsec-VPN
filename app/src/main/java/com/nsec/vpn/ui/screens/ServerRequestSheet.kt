@@ -38,7 +38,7 @@ fun ServerRequestSheet(onDismiss: () -> Unit, onSubmit: suspend (String, String,
     var attempted by remember { mutableStateOf(false) }
     var submitting by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    val badCharacters = remember { Regex("[<>\\p{Cntrl}]") } }
+    val badCharacters = remember { Regex("[<>\\p{Cntrl}]") }
     val countryValid = country.trim().length in 2..80 && !badCharacters.containsMatchIn(country)
     val cityValid = city.trim().length in 2..80 && !badCharacters.containsMatchIn(city)
     val noteValid = note.length <= 500 && !remember { Regex("[\\p{Cntrl}&&[^\\n\\r\\t]]") }.containsMatchIn(note)

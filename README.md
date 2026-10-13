@@ -269,3 +269,7 @@ Live tunnel statistics are isolated to connection details; tab state is saved, s
 
 ### Responsive UI and honest app lists
 Server controls and skeletons now share one lazy list with saved search/filter state, empty results and 48dp filters. Location badges and speed metrics wrap; recovery forms accommodate the keyboard. Split tunneling displays only real installed apps, with loading/retry/empty states. Server requests have bounded UI waiting.
+
+
+### DNS presentation and splash branding
+The DNS picker uses selectable provider cards, active resolver status and inline custom validation. Saves report automatic application without a manual reconnect instruction. Existing tunnel rebuilding is unchanged. The EU flag follows the splash text at the same size and baseline. No new dependencies, environment variables or migrations.

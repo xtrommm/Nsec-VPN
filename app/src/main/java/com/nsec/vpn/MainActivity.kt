@@ -489,12 +489,13 @@ class MainActivity : ComponentActivity() {
                                             onSelectThemeMode = { vpnRepo.setThemeMode(it) },
                                             selectedDns = selectedDns,
                                             onSelectDns = { provider ->
-                                                try { vpnRepo.setDns(provider); tunnelManager.updateDns(vpnRepo.dnsServersForConnection()); Toast.makeText(this@MainActivity, "DNS Saved. Active Tunnels Reconnect To Apply It.", Toast.LENGTH_SHORT).show() }
+                                                try { vpnRepo.setDns(provider); tunnelManager.updateDns(vpnRepo.dnsServersForConnection()); Toast.makeText(this@MainActivity, com.nsec.vpn.ui.components.DnsFeedback.saved(vpnState), Toast.LENGTH_SHORT).show() }
                                                 catch (e: IllegalArgumentException) { Toast.makeText(this@MainActivity, e.message, Toast.LENGTH_LONG).show() }
                                             },
                                             customDns = vpnRepo.customDns(),
                                             activeDns = activeDns,
-                                            onCustomDns = { raw -> vpnRepo.setCustomDns(raw); tunnelManager.updateDns(vpnRepo.dnsServersForConnection()) },
+                                            vpnState = vpnState,
+                                            onCustomDns = { raw -> vpnRepo.setCustomDns(raw); tunnelManager.updateDns(vpnRepo.dnsServersForConnection()); Toast.makeText(this@MainActivity, com.nsec.vpn.ui.components.DnsFeedback.saved(vpnState), Toast.LENGTH_SHORT).show() },
                                             splitTunnelingEnabled = splitTunnelingEnabled,
                                             onToggleSplitTunneling = {
                                                 vpnRepo.setSplitTunneling(it)
