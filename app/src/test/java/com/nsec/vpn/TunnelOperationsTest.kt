@@ -8,6 +8,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
 import org.junit.Test
 
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class TunnelOperationsTest {
     @Test
     fun remotePeerRemovalCannotDelayLocalDisconnectedState() = runTest {

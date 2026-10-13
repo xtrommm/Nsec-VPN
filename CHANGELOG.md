@@ -333,3 +333,5 @@ VIP-only server selection and connection now offer Purchase VIP Plan / Watch An 
 UI follow-up: centered live Home announcement with X; full-width equal server filters; single-row Ping/Jitter/Peak speed metrics; Device ID remains the last Settings item. Regression coverage includes large fonts, dismissal/content updates and premium selection.
 
 Publication: `scripts/publish-vip-home.py` imports reviewed commits into an isolated `Nsec-VPN-vip-home-repair` checkout and pushes only the repair branch with an exact-main guard. Source project edits, main, deployment and credentials are preserved.
+
+CI correction: allow one physical pixel of Compose rounding in equal-width metric tests and explicitly opt into the coroutine virtual-time API. Runtime UI remains unchanged.

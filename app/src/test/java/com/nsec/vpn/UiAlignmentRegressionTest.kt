@@ -49,7 +49,9 @@ class UiAlignmentRegressionTest {
         val peak = compose.onNodeWithTag("speed_metric_peak").getUnclippedBoundsInRoot()
         assertEquals(ping.top.value, jitter.top.value, 0.1f)
         assertEquals(ping.top.value, peak.top.value, 0.1f)
-        assertEquals((ping.right - ping.left).value, (peak.right - peak.left).value, 0.1f)
+        // Equal weights distribute indivisible physical pixels between cells.
+        val onePixelDp = 1f / ApplicationProvider.getApplicationContext<Context>().resources.displayMetrics.density
+        assertEquals((ping.right - ping.left).value, (peak.right - peak.left).value, onePixelDp + 0.0001f)
         compose.onNodeWithTag("speed_metric_download").assertDoesNotExist()
         compose.onNodeWithTag("speed_metric_upload").assertDoesNotExist()
     }
