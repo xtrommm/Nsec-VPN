@@ -67,13 +67,20 @@ class AdMobManagerTest {
     @Test fun localAdFreeRewardIsVisibleBeforeSdkInitialization() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         context.getSharedPreferences("nsec_ad_free_reward", 0).edit().clear().commit()
-        val manager = AdMobManager(context, initializeSdk = {})
-        manager.updateConfig(AdMobConfig(rewardedPassMinutes = 45))
-        manager.grantAdFreeReward()
-        assertTrue(manager.config.value.adFreeUntilEpochMillis != null)
-        assertFalse(manager.config.value.nativeEnabled)
-        assertFalse(manager.config.value.rewardedEnabled)
-        context.getSharedPreferences("nsec_ad_free_reward", 0).edit().clear().commit()
+        val bootKey = android.provider.Settings.Global.BOOT_COUNT
+        val previousBoot = android.provider.Settings.Global.getString(context.contentResolver, bootKey)
+        android.provider.Settings.Global.putInt(context.contentResolver, bootKey, 1)
+        try {
+            val manager = AdMobManager(context, initializeSdk = {})
+            manager.updateConfig(AdMobConfig(rewardedPassMinutes = 45))
+            manager.grantAdFreeReward()
+            assertTrue(manager.config.value.adFreeUntilEpochMillis != null)
+            assertFalse(manager.config.value.nativeEnabled)
+            assertFalse(manager.config.value.rewardedEnabled)
+        } finally {
+            context.getSharedPreferences("nsec_ad_free_reward", 0).edit().clear().commit()
+            android.provider.Settings.Global.putString(context.contentResolver, bootKey, previousBoot)
+        }
     }
 
 }

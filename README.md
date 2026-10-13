@@ -252,3 +252,4 @@ See [Disconnect UI update](docs/audit/DISCONNECT-UI-FIX.md) for video findings, 
 - Align the EU flag with Made in Europe on the native splash; preserve logo size and theme colours.
 
 Reward-offer startup: validated real settings are restored off Main before the first Home frame, with a native splash wait capped at 250ms and never held for HTTP. Offer text uses authoritative config independently of SDK readiness; SDK requests still wait for initialization. A first install without verified cache shows a compact static skeleton instead of a temporary marketing/loading card; live errors are explicit. Existing local ad-free reward state is visible before SDK initialization.
+The startup regression uses an isolated test boot count to exercise the real monotonic reward-expiry policy; production expiry rules are unchanged.
