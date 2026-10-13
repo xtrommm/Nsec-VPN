@@ -15,5 +15,9 @@ class NsecVpnApp : Application() {
         } catch (_: Throwable) {
             serviceLocator = ServiceLocator(this)
         }
+        com.wireguard.android.backend.GoBackend.setAlwaysOnCallback {
+            serviceLocator.tunnelManager.restoreConnection()
+        }
+        serviceLocator.tunnelManager.restoreConnection()
     }
 }

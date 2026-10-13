@@ -4,6 +4,8 @@ Disconnect confirms the local tunnel is DOWN before returning Home; backend peer
 
 Advertising uses Google UMP 4.0.0: requests wait for UMP authorization and SDK initialization. Configure Privacy & Messaging in the existing AdMob account; Settings exposes required privacy choices and update retries. VPN access never depends on ad consent.
 
+Interrupted connections restore from a Keystore-encrypted node intent using fresh authenticated peer negotiation. Manual disconnect clears that intent. Android always-on/lockdown remains optional in Settings and may block excluded ad/API traffic; test it on the actual phone. Split-tunnel changes now reconnect to apply immediately.
+
 The v2 deep-audit package preserves main's build-directory ignore update. Its publisher creates an isolated repair checkout; use the printed comparison link to create the pull request when GitHub CLI is unavailable. See [the repair checkpoint](docs/audit/REPAIR-CHECKPOINT.md) before merging or deploying.
 
 # 🛡️ Nsec VPN — High-Speed WireGuard® Android Client & Management Suite

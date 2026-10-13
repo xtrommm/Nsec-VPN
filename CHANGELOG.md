@@ -2,6 +2,8 @@
 
 ## Unreleased — Audit follow-up
 
+- Restore interrupted connections from an encrypted node intent with fresh negotiation, clear intent on manual disconnect, register the WireGuard always-on callback, and apply split-tunnel changes through a serialized reconnect.
+
 - Gate all ad placements on UMP authorization and SDK initialization, invalidate cached ads when choices change, and provide privacy options/retry controls in Settings.
 
 - Complete local disconnect without waiting for remote peer removal; bound asynchronous cleanup and disable repeated Connected-screen disconnect taps.

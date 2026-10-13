@@ -385,8 +385,7 @@ class MainActivity : ComponentActivity() {
                                     excludedPackages = excludedPackages,
                                     onTogglePackage = {
                                         vpnRepo.togglePackageExclusion(it)
-                                        if (vpnState is VpnState.Connected || vpnState is VpnState.Connecting)
-                                            Toast.makeText(this@MainActivity, "Exclusion Saved. Reconnect To Apply It.", Toast.LENGTH_SHORT).show()
+                                        tunnelManager.updateExcludedApps(if (splitTunnelingEnabled) vpnRepo.excludedPackages.value else emptySet())
                                     },
                                     onBack = { activeSubScreen = null }
                                 )
@@ -476,8 +475,7 @@ class MainActivity : ComponentActivity() {
                                             splitTunnelingEnabled = splitTunnelingEnabled,
                                             onToggleSplitTunneling = {
                                                 vpnRepo.setSplitTunneling(it)
-                                                if (vpnState is VpnState.Connected || vpnState is VpnState.Connecting)
-                                                    Toast.makeText(this@MainActivity, "Split Tunneling Saved. Reconnect To Apply It.", Toast.LENGTH_SHORT).show()
+                                                tunnelManager.updateExcludedApps(if (it) vpnRepo.excludedPackages.value else emptySet())
                                             },
                                             autoConnectEnabled = autoConnectEnabled,
                                             onToggleAutoConnect = { vpnRepo.setAutoConnect(it) },
