@@ -52,7 +52,7 @@ class UiAlignmentRegressionTest {
         assertEquals(down.top.value, up.top.value, 0.1f)
         assertEquals(ping.left.value, down.left.value, 0.1f)
         assertEquals(jitter.left.value, up.left.value, 0.1f)
-        assertEquals(ping.width.value, up.width.value, 0.1f)
+        assertEquals((ping.right - ping.left).value, (up.right - up.left).value, 0.1f)
         assertTrue(down.top > ping.bottom)
     }
 
