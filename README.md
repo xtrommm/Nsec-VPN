@@ -198,3 +198,5 @@ Node create/update responses preserve a successful database write even when the 
 Promo, usage and audit tables recover from an out-of-range page after deletion/filter changes. Modal keyboard focus remains in the dialog during saves and returns to the opener only on close. Regression checklist: delete the last campaign on page 2; change usage search; save with keyboard while the form is busy; verify focus and pagination.
 
 Native ads refill their bounded pool when released and react to load events instead of polling every ten seconds. Video ads use a MediaView template and hide when constrained space cannot safely contain it. Template changes recreate the native view. Validate text/video formats, large fonts, rotation and repeated refreshes with live AdMob test devices before publishing.
+
+Ad refresh timing uses a monotonic clock. Local reward expiry checks wake at most once a minute while still scheduling the exact remaining expiry, reducing idle wakeups without changing grant duration.

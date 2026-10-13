@@ -15,21 +15,8 @@ import org.robolectric.annotation.Config
 @Config(sdk = [36])
 class SmartNativeAdTest {
 
-    private fun determineTemplate(widthDp: Float, heightDp: Float): NativeAdTemplate {
-        val minWidth = 220f
-        val minHeight = 70f
-        val compactMaxHeight = 120f
-        val mediumMaxHeight = 240f
-        val compactMaxWidth = 340f
-        val mediumMaxWidth = 550f
-
-        return when {
-            widthDp < minWidth || heightDp < minHeight -> NativeAdTemplate.HIDDEN
-            heightDp <= compactMaxHeight || widthDp <= compactMaxWidth -> NativeAdTemplate.COMPACT
-            heightDp <= mediumMaxHeight || widthDp <= mediumMaxWidth -> NativeAdTemplate.MEDIUM
-            else -> NativeAdTemplate.LARGE
-        }
-    }
+    private fun determineTemplate(widthDp: Float, heightDp: Float): NativeAdTemplate =
+        com.nsec.vpn.ui.components.NativeAdLayoutPolicy.select(widthDp, heightDp)
 
     @Test
     fun testTemplateSelection_smallPhone_compact() {
@@ -78,5 +65,12 @@ class SmartNativeAdTest {
         // 4. Free + enabled + connecting -> NOT allowed
         val isAllowed4 = "FREE" == "FREE" && defaultConfig.nativeEnabled && connectingState !is VpnState.Connecting
         assertFalse(isAllowed4)
+    }
+    @Test
+    fun videoUsesMediaLayoutAndDoesNotFitInCompactSpace() {
+        val policy = com.nsec.vpn.ui.components.NativeAdLayoutPolicy
+        assertEquals(NativeAdTemplate.MEDIUM, policy.select(320f, Float.POSITIVE_INFINITY, video = true))
+        assertEquals(NativeAdTemplate.HIDDEN, policy.select(320f, 120f, video = true))
+        assertEquals(NativeAdTemplate.HIDDEN, policy.select(320f, 300f, video = true, fontScale = 2f))
     }
 }

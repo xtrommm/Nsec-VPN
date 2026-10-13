@@ -10,6 +10,7 @@ import com.google.android.gms.ads.nativead.NativeAd
 import com.google.android.gms.ads.nativead.NativeAdOptions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +19,7 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 
 class NativeAdManager(private val context: Context) {
-    private val scope = CoroutineScope(Dispatchers.Main)
+    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val pool = mutableListOf<NativeAd>()
     private val assignedAds = mutableSetOf<NativeAd>()
     private val maxPoolSize = 3
@@ -61,7 +62,7 @@ class NativeAdManager(private val context: Context) {
                         retryAttempt = 0
                         if (pool.size < maxPoolSize) {
                             pool.add(nativeAd)
-                            _adLoadedEvent.value = System.currentTimeMillis()
+                            _adLoadedEvent.value += 1
                         } else {
                             nativeAd.destroy()
                         }
@@ -109,10 +110,11 @@ class NativeAdManager(private val context: Context) {
 
     fun releaseAd(ad: NativeAd?) {
         if (ad == null) return
-        assignedAds.remove(ad)
+        if (!assignedAds.remove(ad)) return
         try {
             ad.destroy()
         } catch (_: Throwable) {}
+        configuredUnit?.takeIf { it.isNotBlank() }?.let { preloadNativeAds(it, configuredEnabled) }
     }
 
     fun destroyAll() {

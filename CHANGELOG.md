@@ -2,6 +2,8 @@
 
 ## Unreleased — Deep audit
 
+- Use monotonic native-ad refresh timing and reduce ad-free expiry polling wakeups.
+
 - Refill released native ads, replace loading polls with state events, use media layouts for video, recreate changed templates and test the actual layout policy instead of a duplicated test implementation.
 
 - Clamp promo/usage/audit pages after results shrink and preserve modal keyboard focus while operations are busy.
