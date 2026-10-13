@@ -14,7 +14,7 @@ branch or apply the source package to its documented base commit first.
    Review `scripts/migrate-e2e.sql`, resolve duplicate active peer rows, then migrate.
 2. Set BACKEND_ENV_FILE to a protected file with actual per-node, billing and reward environment values; Compose loads it into the backend. Supply backend secrets through protected environment variables: JWT signing,
    bootstrap admin credentials, each node's agent credential, and enabled TOTP
-   seeds. `agentSecretHash` and `totpSecret` store only env:VARIABLE references.
+   seeds. `agentSecretHash` stores an env:VARIABLE reference. Legacy `totpSecret` references remain supported; new authenticator enrollment stores AES-GCM ciphertext encrypted with the dedicated ADMIN_TOTP_ENCRYPTION_KEY. See docs/audit/BACKEND-ADMIN-ROLLOUT.md before enabling it.
    Privately migrate legacy raw credentials. Never paste environment contents.
 3. Install/build/test the authoritative agent source and run the reviewed checkout:
    `sudo bash deployment/install-wireguard-node.sh`. Supply the real backend egress

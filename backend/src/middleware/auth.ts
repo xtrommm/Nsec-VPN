@@ -1,3 +1,4 @@
+import { totpVersion } from '../services/totp';
 import { JWT_SECRET } from "../secrets";
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
@@ -40,6 +41,8 @@ export const authenticateDevice = async (
       algorithms: ['HS256'], clockTolerance: 30 // 30 seconds clock skew tolerance
     }) as JwtDevicePayload;
 
+    if (typeof decoded.deviceId !== 'string' || decoded.deviceId.length < 8 || 'adminId' in decoded)
+      return res.status(401).json({ success: false, error: 'TOKEN_INVALID' });
     const device = await prisma.device.findUnique({
       where: { deviceId: decoded.deviceId },
       select: { id: true, deviceId: true, tier: true, isBlocked: true, passExpiresAt: true, authEpoch: true }
@@ -104,6 +107,8 @@ export const authenticateAdmin = (requiredRole?: 'SUPER_ADMIN') => {
 
       const admin = typeof decoded.adminId === 'string' ? await prisma.adminUser.findUnique({ where: { id: decoded.adminId } }) : null;
       if (!admin) return res.status(401).json({ success: false, error: 'TOKEN_INVALID' });
+      if (admin.totpEnabled && (!totpVersion(admin.totpSecret) || decoded.mfaVersion !== totpVersion(admin.totpSecret)))
+        return res.status(401).json({ success: false, error: 'MFA_SESSION_REQUIRED' });
       decoded.role = admin.role;
       if (requiredRole && admin.role !== requiredRole) {
         return res.status(403).json({

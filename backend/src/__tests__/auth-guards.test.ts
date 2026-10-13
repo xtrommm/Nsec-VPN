@@ -47,3 +47,19 @@ it('profile outages are handled rather than escaping an Express 4 async handler'
   await handler({device:{id:'internal'}},response);
   expect(response.code).toBe(503);expect(response.body.error).toBe('PROFILE_UNAVAILABLE');
 });
+
+it('rejects admin-shaped or malformed JWT payloads at device routes', async () => {
+  const response = res(), next = jest.fn();
+  await authenticateDevice(req({ adminId: 'admin' }), response, next);
+  expect(response.code).toBe(401); expect(next).not.toHaveBeenCalled();
+});
+it('an enabled authenticator invalidates previously issued non-MFA admin tokens', async () => {
+  (prisma.adminUser.findUnique as jest.Mock).mockResolvedValue({ role: 'ADMIN', totpEnabled: true, totpSecret: 'env:AUDIT_TOTP_FIXTURE' });
+  process.env.AUDIT_TOTP_FIXTURE = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';
+  const response = res(), next = jest.fn();
+  await authenticateAdmin()(req({ adminId: 'admin' }), response, next);
+  expect(response.code).toBe(401); expect(response.body.error).toBe('MFA_SESSION_REQUIRED');
+  const version = require('../services/totp').totpVersion('env:AUDIT_TOTP_FIXTURE');
+  await authenticateAdmin()(req({ adminId: 'admin', mfaVersion: version }), response, next);
+  expect(next).toHaveBeenCalledTimes(1); delete process.env.AUDIT_TOTP_FIXTURE;
+});

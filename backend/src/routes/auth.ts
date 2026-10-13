@@ -8,7 +8,7 @@ import { RegisterDeviceSchema, RefreshTokenSchema, JwtDevicePayload } from '../t
 import { authenticateDevice, AuthenticatedDeviceRequest } from '../middleware/auth';
 import { authLimiter } from '../middleware/rateLimit';
 import { expireEntitlement } from '../services/entitlements';
-import { currentAuthEpoch } from '../services/deviceRecovery';
+import { rotateRefreshToken } from '../services/refreshTokens';
 
 const router = Router();
 router.get('/me', authenticateDevice, async (req: AuthenticatedDeviceRequest, res) => {
@@ -127,100 +127,12 @@ router.post(
   authLimiter,
   validateBody(RefreshTokenSchema),
   async (req: Request, res: Response) => {
-    const { refreshToken } = req.body;
-    const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
-
     try {
-      const storedToken = await prisma.refreshToken.findUnique({
-        where: { tokenHash },
-        include: { device: true }
-      });
-
-      if (!storedToken) {
-        return res.status(401).json({
-          success: false,
-          error: 'INVALID_REFRESH_TOKEN',
-          message: 'Refresh token expired or invalid'
-        });
-      }
-
-      if (!currentAuthEpoch(storedToken.authEpoch, storedToken.device.authEpoch)) {
-        return res.status(401).json({ success: false, error: 'TOKEN_REVOKED' });
-      }
-      // Security defense: Token reuse detection (RFC 6749)
-      // If a revoked token is presented, suspect token compromise and revoke all tokens for this device
-      if (storedToken.revoked) {
-        await prisma.refreshToken.updateMany({
-          where: { deviceId: storedToken.deviceId },
-          data: { revoked: true }
-        });
-        return res.status(401).json({
-          success: false,
-          error: 'TOKEN_COMPROMISED',
-          message: 'Security violation: Refresh token reuse detected. Re-authentication required.'
-        });
-      }
-
-      if (storedToken.expiresAt < new Date()) {
-        return res.status(401).json({
-          success: false,
-          error: 'REFRESH_TOKEN_EXPIRED',
-          message: 'Refresh token has expired'
-        });
-      }
-
-      if (storedToken.device.isBlocked) {
-        return res.status(403).json({
-          success: false,
-          error: 'DEVICE_BLOCKED',
-          message: 'This device is restricted from connecting'
-        });
-      }
-
-      // Generate fresh token pair inside transaction
-      const newRawRefreshToken = crypto.randomBytes(32).toString('hex');
-      const newTokenHash = crypto.createHash('sha256').update(newRawRefreshToken).digest('hex');
-
-      await prisma.$transaction([
-        prisma.refreshToken.update({
-          where: { id: storedToken.id, revoked: false },
-          data: { revoked: true }
-        }),
-        prisma.refreshToken.create({
-          data: {
-            tokenHash: newTokenHash,
-            deviceId: storedToken.device.id,
-            authEpoch: storedToken.device.authEpoch,
-            expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS)
-          }
-        })
-      ]);
-
-      const entitled = await expireEntitlement(storedToken.device);
-      if (entitled.isBlocked) return res.status(403).json({ success: false, error: 'DEVICE_BLOCKED' });
-      const currentTier = entitled.tier;
-
-      const payload: JwtDevicePayload = {
-        deviceId: storedToken.device.deviceId,
-        tier: currentTier,
-        authEpoch: storedToken.device.authEpoch
-      };
-      const newAccessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: ACCESS_TOKEN_TTL });
-
-      return res.json({
-        success: true,
-        data: {
-          accessToken: newAccessToken,
-          refreshToken: newRawRefreshToken
-        }
-      });
-    } catch (_err) {
-      if (_err instanceof Error && _err.message === 'TOKEN_REVOKED') return res.status(401).json({ success: false, error: 'TOKEN_REVOKED' });
-      return res.status(500).json({
-        success: false,
-        error: 'INTERNAL_ERROR',
-        message: 'Failed to refresh authentication'
-      });
+      const result = await rotateRefreshToken(req.body.refreshToken);
+      if (result.error) return res.status(result.status!).json({ success: false, error: result.error });
+      return res.json({ success: true, data: result.data });
+    } catch {
+      return res.status(503).json({ success: false, error: 'AUTH_UNAVAILABLE', message: 'Authentication is temporarily unavailable' });
     }
   }
 );

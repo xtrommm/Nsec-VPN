@@ -1,5 +1,6 @@
+import { invalidateServerCatalog } from '../services/serverCatalog';
 import { csvCell } from '../services/csv';
-import { removeTrackedPeerKeys } from '../services/peerProvisioning';
+import { disconnectPeer, removeTrackedPeerKeys } from '../services/peerProvisioning';
 import { preserveNonPurchaseGrant } from '../services/purchaseReconciliation';
 import { JWT_SECRET } from "../secrets";
 import { Router, Response } from 'express';
@@ -21,8 +22,7 @@ import {
 } from '../types';
 import { adminLoginLimiter } from '../middleware/rateLimit';
 import { StatsService } from '../services/stats';
-import { AgentClient } from '../services/agentClient';
-import { verifyConfiguredTotp } from '../services/totp';
+import { consumeAdminTotp } from '../services/adminMfa';
 import { testNode } from '../services/nodeHealth';
 import { invalidateConfigCache } from './config';
 
@@ -86,11 +86,12 @@ router.post(
         });
       }
 
-      if (admin.totpEnabled && (!verifyConfiguredTotp(admin.totpSecret, req.body.totpCode || ''))) return res.status(401).json({ success: false, error: 'TOTP_REQUIRED', message: 'Valid authenticator code required' });
+      const mfa = admin.totpEnabled ? await consumeAdminTotp(admin.id, req.body.totpCode || '') : null;
       const payload: JwtAdminPayload = {
         adminId: admin.id,
         email: admin.email,
-        role: admin.role
+        role: admin.role,
+        ...(mfa ? { mfaVersion: mfa.mfaVersion } : {})
       };
 
       const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '12h' });
@@ -107,10 +108,12 @@ router.post(
         }
       });
     } catch (_err) {
-      return res.status(500).json({
+      if (_err instanceof Error && ['TOTP_REQUIRED','TOTP_STATE_CHANGED'].includes(_err.message))
+        return res.status(401).json({ success: false, error: 'TOTP_REQUIRED', message: 'Use a current, unused authenticator code' });
+      return res.status(503).json({
         success: false,
-        error: 'INTERNAL_ERROR',
-        message: 'Login processing failed'
+        error: _err instanceof Error && _err.message === 'TOTP_ENCRYPTION_NOT_CONFIGURED' ? 'TOTP_ENCRYPTION_NOT_CONFIGURED' : 'ADMIN_AUTH_UNAVAILABLE',
+        message: 'Login processing unavailable'
       });
     }
   }
@@ -160,6 +163,7 @@ router.post(
         await tx.auditLog.create({ data: { adminId: req.admin!.adminId, action: 'CREATE_SERVER', targetResource: 'SERVER', targetId: result.id } });
         return result;
       });
+      invalidateServerCatalog();
       const checked = await savedNodeHealth(server);
       return res.status(201).json({ success: true, ...checked });
     } catch (err: any) {
@@ -181,18 +185,25 @@ router.put(
     const { agentSecret, ...updateData } = req.body;
 
     try {
-      const dataToUpdate: any = { ...updateData, healthy: false, healthCheckedAt: null };
+      const dataToUpdate: any = { ...updateData };
       if (agentSecret) {
         dataToUpdate.agentSecretHash = agentSecret;
       }
 
       const server = await prisma.$transaction(async tx => {
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${id}))`;
-        const result = await tx.serverNode.update({ where: { id }, data: dataToUpdate });
+        const previous = await tx.serverNode.findUniqueOrThrow({ where: { id } });
+        const sensitive = ['endpoint', 'publicKey', 'subnetIpv4', 'agentUrl', 'agentSecretHash', 'dnsServers', 'mtu', 'maxPeers', 'active'];
+        const needsProbe = sensitive.some(field => field in dataToUpdate &&
+          JSON.stringify(dataToUpdate[field]) !== JSON.stringify((previous as unknown as Record<string, unknown>)[field]));
+        const result = await tx.serverNode.update({ where: { id }, data: { ...dataToUpdate,
+          ...(needsProbe ? { healthy: false, healthCheckedAt: null } : {}) } });
         await tx.auditLog.create({ data: { adminId: req.admin!.adminId, action: 'UPDATE_SERVER', targetResource: 'SERVER', targetId: id, metadata: JSON.stringify({ fields: Object.keys(req.body).filter(k => k !== 'agentSecret') }) } });
-        return result;
+        return { result, needsProbe };
       });
-      const checked = await savedNodeHealth(server);
+      invalidateServerCatalog();
+      const { agentSecretHash: _credential, ...metadata } = server.result;
+      const checked = server.needsProbe ? await savedNodeHealth(server.result) : { server: metadata, healthCheckError: null };
       return res.json({ success: true, ...checked });
     } catch (error) {
       const missing = databaseError(error) === 'P2025';
@@ -214,6 +225,7 @@ router.delete(
         await tx.auditLog.create({ data: { adminId: req.admin!.adminId, action: 'DISABLE_SERVER_FOR_DELETION', targetResource: 'SERVER', targetId: id } });
         return result;
       });
+      invalidateServerCatalog();
       try { for (const peer of node.peerSessions) if (peer.active) await removeTrackedPeerKeys(node, peer); }
       catch { return res.status(502).json({ success: false, error: 'NODE_PEER_REMOVAL_PENDING', message: 'Node disabled. Recover its agent and retry deletion to revoke its peers.' }); }
       await prisma.$transaction(async tx => {
@@ -275,6 +287,7 @@ router.put('/servers-order', authenticateAdmin('SUPER_ADMIN'), validateBody(z.ob
       for (const [sortOrder, id] of ids.entries()) await tx.serverNode.update({ where: { id }, data: { sortOrder } });
       await tx.auditLog.create({ data: { adminId: req.admin!.adminId, action: 'REORDER_SERVERS', targetResource: 'SERVER', metadata: JSON.stringify({ count: ids.length }) } });
     });
+    invalidateServerCatalog();
     return res.json({ success: true });
   } catch (e) { return res.status(e instanceof Error && e.message === 'SERVER_ORDER_STALE' ? 409 : 503).json({ success: false, error: e instanceof Error && e.message === 'SERVER_ORDER_STALE' ? 'SERVER_ORDER_STALE' : 'SERVER_ORDER_FAILED' }); }
 });
@@ -337,8 +350,7 @@ router.put('/devices/:id/block', authenticateAdmin(), validateBody(z.object({ is
       const peers = await prisma.peerSession.findMany({ where: { deviceId: device.id, active: true }, include: { server: true } });
       for (const peer of peers) {
         try {
-          await AgentClient.removePeer(peer.server.agentUrl, peer.server.agentSecretHash, { publicKey: peer.clientPublicKey });
-          await prisma.peerSession.delete({ where: { id: peer.id } });
+          await disconnectPeer(device.id, peer.peerId);
         } catch { return res.status(502).json({ success: false, error: 'DEVICE_BLOCKED_PEER_REMOVAL_PENDING', message: 'Device blocked; live peer removal needs agent recovery or manual removal.' }); }
       }
     }
@@ -371,13 +383,14 @@ router.put(
   validateBody(UpdateConfigSchema),
   async (req: AuthenticatedAdminRequest, res: Response) => {
     try {
-      const sanitized = { ...req.body };
+      const { expectedUpdatedAt, ...sanitized } = req.body;
       if (sanitized.announcementTitle === '') sanitized.announcementTitle = null;
       if (sanitized.announcementBody === '') sanitized.announcementBody = null;
 
       const updated = await prisma.$transaction(async tx => {
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'config:global'}))`;
         const existing = await tx.appConfig.findUnique({ where: { id: 'global_config' } });
+        if (expectedUpdatedAt && existing?.updatedAt.toISOString() !== expectedUpdatedAt) throw new Error('CONFIG_CHANGED');
         const merged = { ...existing, ...sanitized };
         if ((merged.latestAppVersionCode ?? 1) < (merged.minAppVersionCode ?? 1)) throw new Error('VERSION_RANGE_INVALID');
         if (merged.announcementActive && (!merged.announcementTitle?.trim() || !merged.announcementBody?.trim())) throw new Error('ANNOUNCEMENT_CONTENT_REQUIRED');
@@ -394,8 +407,8 @@ router.put(
         lastUpdated: updated.updatedAt
       });
     } catch (err: unknown) {
-      const invalid = err instanceof Error && ['VERSION_RANGE_INVALID','ANNOUNCEMENT_CONTENT_REQUIRED'].includes(err.message);
-      return res.status(invalid ? 400 : 503).json({ success: false, error: invalid ? (err as Error).message : 'CONFIG_SAVE_FAILED' });
+      const invalid = err instanceof Error && ['VERSION_RANGE_INVALID','ANNOUNCEMENT_CONTENT_REQUIRED','CONFIG_CHANGED'].includes(err.message);
+      return res.status(invalid ? ((err as Error).message === 'CONFIG_CHANGED' ? 409 : 400) : 503).json({ success: false, error: invalid ? (err as Error).message : 'CONFIG_SAVE_FAILED' });
     }
   }
 );

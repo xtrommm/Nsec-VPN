@@ -341,3 +341,7 @@ CI correction: allow one physical pixel of Compose rounding in equal-width metri
 VIP access prompts now use a compact card with an X, a prominent rewarded-ad action, a separate purchase action and the actual reward availability reason. Centered Home announcements use the same surface, spacing and close treatment in both themes. Device VIP Recovery adds a pinned X, preserving the existing in-flight-operation dismissal guard. Servers checks live metadata every five seconds while visible, without toggling foreground loaders. No backend/API/schema changes or migrations. See [rollout notes](docs/audit/POPUPS-LIVE-SERVERS.md).
 
 Publication: `scripts/publish-popups-live.py` imports this review into an isolated `Nsec-VPN-popup-live-repair` checkout, preserving existing edits and publishing only its new branch after checking the main revision.
+
+## Backend security and administration audit (2026-10-14)
+
+Added password-reauthenticated, encrypted authenticator enrollment and one-use TOTP counters; MFA session version checks, serialized refresh rotation/replay epoch revocation, fail-closed bootstrap, bounded graceful shutdown, safe JSON/body errors and guarded concurrent config editing. Blocked devices now use tracked current/pending-key cleanup. One nullable AdminUser.totpLastStep migration and stable ADMIN_TOTP_ENCRYPTION_KEY are required before rollout. See docs/audit/BACKEND-ADMIN-ROLLOUT.md and BACKEND-API-CHANGES.md, including MFA rollback limitations. Android/agent source is unchanged.
