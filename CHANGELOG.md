@@ -2,6 +2,8 @@
 
 ## Unreleased — Deep audit
 
+- Preserve main's recursive build-directory ignore update in the v2 repair package and document branch publication versus pull-request creation.
+
 - Add an isolated Git-bundle publisher for connector write failures; preserve original local edits and provide draft-PR creation without main updates or deployment.
 
 - Require Node 22 rather than retaining the EOL Node 20 runtime during node installation; add the runtime decision regression and existing-node maintenance instructions.

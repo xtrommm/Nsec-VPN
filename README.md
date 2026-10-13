@@ -1,5 +1,7 @@
 > Repair candidate: see [E2E repair report](docs/E2E-REPAIR-REPORT.md). Production readiness and real-device verification remain pending.
 
+The v2 deep-audit package preserves main's build-directory ignore update. Its publisher creates an isolated repair checkout; use the printed comparison link to create the pull request when GitHub CLI is unavailable. See [the repair checkpoint](docs/audit/REPAIR-CHECKPOINT.md) before merging or deploying.
+
 # 🛡️ Nsec VPN — High-Speed WireGuard® Android Client & Management Suite
 
 [![Platform](https://img.shields.io/badge/Platform-Android_API_24%2B-blue.svg)](https://developer.android.com)

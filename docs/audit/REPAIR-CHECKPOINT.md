@@ -1,6 +1,8 @@
 # Security and core repair checkpoint — 2026-10-13
 
-Branch: `fix/deep-audit-security-core`. Base: `89a2fc3a19a51944ade35429d6e747a2410141c0`.
+Branch: `fix/deep-audit-security-core`. Audit base: `89a2fc3a19a51944ade35429d6e747a2410141c0`. Publication base: `6eef29f96a2333f05c29a823dd32219c93217949`.
+
+The newer main commit changes only `.gitignore` from `/build` to `build/`. It was reviewed and merged into the repair branch without rewriting the existing repair commits. The v2 package preserves this change and updates the publication guard accordingly. Pushing a branch does not create a PR unless authenticated GitHub CLI is installed; otherwise use the exact comparison link printed after a successful push.
 
 The full audit is [DEEP-AUDIT-2026-10-13.md](DEEP-AUDIT-2026-10-13.md). This checkpoint is not completion of the whole requested audit/fix/features programme. It contains reviewed repairs and clearly identified outstanding work. No deployment or main-branch update was performed. GitHub branch creation was rejected with HTTP 403, `Resource not accessible by integration`; a local Git bundle and publisher preserve the conventional commits for the owner's authenticated Git client.
 
