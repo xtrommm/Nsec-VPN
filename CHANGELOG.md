@@ -264,3 +264,6 @@ update
 - Replace uncached startup marketing/loading text with a compact static skeleton; show a clear failure state.
 - Keep local ad-free reward status visible before SDK initialization; add cache, offer and UI regression coverage.
 - Isolate the Robolectric boot-count fixture for the pre-initialization ad-free reward regression.
+
+### Reward startup delivery
+- Package the startup and splash alignment corrections with an isolated Git publisher, runtime verification limits and a phone checklist.

@@ -253,3 +253,5 @@ See [Disconnect UI update](docs/audit/DISCONNECT-UI-FIX.md) for video findings, 
 
 Reward-offer startup: validated real settings are restored off Main before the first Home frame, with a native splash wait capped at 250ms and never held for HTTP. Offer text uses authoritative config independently of SDK readiness; SDK requests still wait for initialization. A first install without verified cache shows a compact static skeleton instead of a temporary marketing/loading card; live errors are explicit. Existing local ad-free reward state is visible before SDK initialization.
 The startup regression uses an isolated test boot count to exercise the real monotonic reward-expiry policy; production expiry rules are unchanged.
+
+See [Reward startup fix](docs/audit/REWARD-STARTUP-FIX.md) for screenshot findings, validated cache bootstrap, SDK-independent offer text, preserved splash alignment and installation. `scripts/publish-reward-startup.py` prepares an isolated checkout; no migration is required.
