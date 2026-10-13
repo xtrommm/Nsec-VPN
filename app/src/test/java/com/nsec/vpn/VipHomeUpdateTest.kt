@@ -68,4 +68,24 @@ class VipHomeUpdateTest {
         compose.onNodeWithTag("server_title_fixture-node", useUnmergedTree = true).performScrollTo().performClick()
         compose.runOnIdle { assertEquals(1, prompts); assertEquals(0, selections) }
     }
+    @Test fun vipPopupCloseWorksAndUnavailableRewardExplainsWhy() {
+        var dismissed = false
+        compose.setContent { NsecVpnTheme {
+            VipRequiredDialog(false, { dismissed = true }, {}, {}, rewardDetail = "Waiting For Signed Verification")
+        } }
+        compose.onNodeWithText("Watch An Ad").assertIsNotEnabled()
+        compose.onNodeWithText("Waiting For Signed Verification").assertIsDisplayed()
+        compose.onNodeWithTag("vip_popup_close").performClick()
+        compose.runOnIdle { assertTrue(dismissed) }
+    }
+
+    @Test fun recoveryHasAnExplicitCloseButton() {
+        var dismissed = false
+        compose.setContent { NsecVpnTheme {
+            DeviceRecoverySheet("fixture-device", { dismissed = true }, { false }, { _, _ -> }, { _, _ -> })
+        } }
+        compose.onNodeWithTag("recovery_close").assertIsDisplayed().performClick()
+        compose.runOnIdle { assertTrue(dismissed) }
+    }
+
 }

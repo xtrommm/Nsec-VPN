@@ -285,12 +285,12 @@ class MainActivity : ComponentActivity() {
                     if (servers.isNotEmpty() && autoConnectEnabled && remoteConfigLoaded && vpnState is VpnState.Disconnected) triggerConnectSequence(isUserInitiated = false)
                 }
 
-                LaunchedEffect(lifecycleOwner) {
+                LaunchedEffect(lifecycleOwner, currentTab) {
                     lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                         while (true) {
-                            vpnRepo.refreshServers(refreshLatency = false)
+                            vpnRepo.refreshServers(refreshLatency = false, force = currentTab == Screen.Servers, showLoading = false)
                             serverStatusNow = System.currentTimeMillis()
-                            kotlinx.coroutines.delay(15_000)
+                            kotlinx.coroutines.delay(if (currentTab == Screen.Servers) 5_000 else 15_000)
                         }
                     }
                 }
@@ -562,7 +562,8 @@ class MainActivity : ComponentActivity() {
                         rewardEnabled = rewardOffer.available && !rewardBusy,
                         onDismiss = { showVipRequired = false },
                         onPurchase = { showVipRequired = false; showVipModal = true },
-                        onWatchAd = { showVipRequired = false; watchReward() }
+                        onWatchAd = { showVipRequired = false; watchReward() },
+                        rewardDetail = rewardOffer.detail.takeIf { it.isNotBlank() }
                     )
                 }
                 if (showVipModal) {

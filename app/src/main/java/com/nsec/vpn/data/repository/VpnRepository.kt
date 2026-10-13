@@ -119,7 +119,7 @@ class VpnRepository(
         }
     }
 
-    suspend fun refreshServers(refreshLatency: Boolean = true, force: Boolean = false) = withContext(Dispatchers.IO) {
+    suspend fun refreshServers(refreshLatency: Boolean = true, force: Boolean = false, showLoading: Boolean = true) = withContext(Dispatchers.IO) {
         cacheRestoreJob?.join()
         if (!refreshMutex.tryLock()) return@withContext
         val now = android.os.SystemClock.elapsedRealtime()
@@ -128,7 +128,7 @@ class VpnRepository(
             if (refreshLatency) refreshLatencyIfDue()
             return@withContext
         }
-        _serversLoading.value = true
+        if (showLoading) _serversLoading.value = true
         checkRewardedPassExpiry()
         try {
             var token = keyStoreManager.getAccessToken() ?: authenticateDevice()
@@ -164,7 +164,7 @@ class VpnRepository(
             _serverListError.value = "Server List Unavailable; Check Your Internet Connection"
             // No fallback to mock servers. Keep existing servers or empty list.
         } finally {
-            _serversLoading.value = false
+            if (showLoading) _serversLoading.value = false
             refreshMutex.unlock()
         }
         if (refreshLatency) refreshLatencyIfDue()

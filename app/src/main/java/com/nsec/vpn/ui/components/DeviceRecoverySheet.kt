@@ -4,7 +4,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.testTag
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
@@ -41,9 +45,14 @@ fun DeviceRecoverySheet(deviceId: String, onDismiss: () -> Unit,
     LaunchedEffect(Unit) { loadStatus() }
     ModalBottomSheet(onDismissRequest = { if (!busy) onDismiss() }, sheetGesturesEnabled = !busy,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+        Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("Device VIP Recovery", modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
+            IconButton(onClick = onDismiss, enabled = !busy, modifier = Modifier.testTag("recovery_close")) {
+                Icon(Icons.Default.Close, contentDescription = "Close Device VIP Recovery")
+            }
+        }
         Column(Modifier.fillMaxWidth().imePadding().verticalScroll(rememberScrollState()).padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Device VIP Recovery", style = MaterialTheme.typography.headlineSmall)
             Text("Save Your Device ID And A Private PIN Before Clearing App Data. Recovery Restores Existing VIP And Its Original Expiry.")
             DeviceIdCard(deviceId, label = "Current Device ID", tagPrefix = "recovery_device")
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
