@@ -7,7 +7,7 @@ import { testNode } from '../services/nodeHealth';
 import { provisionPeer, disconnectPeer } from '../services/peerProvisioning';
 const node = { id: 'n1', active: true, isPremiumOnly: false, endpoint: '47.85.109.170:51820', publicKey: Buffer.alloc(32, 8).toString('base64'),
   subnetIpv4: '10.8.0.0/24', maxPeers: 250, agentUrl: 'http://node', agentSecretHash: 'env:TEST_SECRET', dnsServers: ['1.1.1.1'], mtu: 1420, name: 'Node', city: 'City', countryName: 'Country' };
-const tx = { device: { findUniqueOrThrow: jest.fn() }, $executeRaw: jest.fn(), serverNode: { findUniqueOrThrow: jest.fn() },
+const tx = { appConfig: {findUnique: jest.fn()}, device: { findUniqueOrThrow: jest.fn() }, $executeRaw: jest.fn(), serverNode: { findUniqueOrThrow: jest.fn() },
   peerSession: { findFirst: jest.fn(), findMany: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() } };
 const clientKey = Buffer.alloc(32, 9).toString('base64');
 let rows: any[];
@@ -18,6 +18,7 @@ function find(where: any) {
 beforeEach(() => {
   jest.clearAllMocks(); rows = []; commits = 0;
   (prisma.appConfig.findUnique as jest.Mock).mockResolvedValue({ maintenanceMode: false });
+  tx.appConfig.findUnique.mockResolvedValue({maintenanceMode:false});
   tx.device.findUniqueOrThrow.mockResolvedValue({ isBlocked: false, tier: 'FREE', passExpiresAt: null });
   (prisma.serverNode.findUnique as jest.Mock).mockResolvedValue(node);
   (testNode as jest.Mock).mockResolvedValue({ online: true, agentOnline: true, publicIpv4: '47.85.109.170' });
@@ -34,6 +35,16 @@ beforeEach(() => {
   });
   (AgentClient.addPeer as jest.Mock).mockResolvedValue(undefined);
   (AgentClient.removePeer as jest.Mock).mockResolvedValue(undefined);
+});
+it('forced updates reject a stale client before reserving an IP or calling the agent', async () => {
+  (prisma.appConfig.findUnique as jest.Mock).mockResolvedValue({forceUpdate:true,minAppVersionCode:3});
+  await expect(provisionPeer('d1','n1',clientKey,'FREE',2)).rejects.toThrow('APP_UPDATE_REQUIRED');
+  expect(AgentClient.addPeer).not.toHaveBeenCalled(); expect(rows).toHaveLength(0);
+});
+it('a forced update enabled after health probing is checked again in the transaction', async () => {
+  tx.appConfig.findUnique.mockResolvedValue({forceUpdate:true,minAppVersionCode:3});
+  await expect(provisionPeer('d1','n1',clientKey,'FREE',2)).rejects.toThrow('APP_UPDATE_REQUIRED');
+  expect(AgentClient.addPeer).not.toHaveBeenCalled(); expect(rows).toHaveLength(0);
 });
 it('commits a reservation before external mutation and returns config only after confirmation', async () => {
   (AgentClient.addPeer as jest.Mock).mockImplementation(async () => {

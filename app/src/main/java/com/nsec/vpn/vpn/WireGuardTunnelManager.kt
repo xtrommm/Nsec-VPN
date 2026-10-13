@@ -159,7 +159,7 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
                 }
                 if (error is VpnApiException) lastApiStatusCode = error.statusCode
                 teardown()
-                if (error is VpnApiException && error.errorCode in setOf("ALL_SERVERS_FULL", "DEVICE_BLOCKED", "TIER_UPGRADE_REQUIRED", "MAINTENANCE_MODE")) {
+                if (error is VpnApiException && error.errorCode in setOf("ALL_SERVERS_FULL", "DEVICE_BLOCKED", "TIER_UPGRADE_REQUIRED", "MAINTENANCE_MODE", "APP_UPDATE_REQUIRED")) {
                     _vpnState.value = VpnState.Error(lastError ?: "Connection Failed")
                     return
                 }

@@ -6,6 +6,8 @@ Advertising uses Google UMP 4.0.0: requests wait for UMP authorization and SDK i
 
 Interrupted connections restore from a Keystore-encrypted node intent using fresh authenticated peer negotiation. Manual disconnect clears that intent. Android always-on/lockdown remains optional in Settings and may block excluded ad/API traffic; test it on the actual phone. Split-tunnel changes now reconnect to apply immediately.
 
+Forced update uses the existing numeric Remote Config fields on both client and peer provisioning. New APKs send `X-App-Version-Code`; enabling forced updates rejects older/missing codes with HTTP 426 `APP_UPDATE_REQUIRED`. This self-reported version is a compatibility gate, not device attestation. Publish the compatible APK before enabling it.
+
 The v2 deep-audit package preserves main's build-directory ignore update. Its publisher creates an isolated repair checkout; use the printed comparison link to create the pull request when GitHub CLI is unavailable. See [the repair checkpoint](docs/audit/REPAIR-CHECKPOINT.md) before merging or deploying.
 
 # 🛡️ Nsec VPN — High-Speed WireGuard® Android Client & Management Suite

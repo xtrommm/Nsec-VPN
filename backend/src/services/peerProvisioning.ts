@@ -5,6 +5,7 @@ import { IpPoolService } from './ipPool';
 import { AgentClient } from './agentClient';
 import { testNode } from './nodeHealth';
 import { EndpointSchema, PublicKeySchema } from '../types';
+import { enforceClientVersion } from './clientVersion';
 
 const transactionOptions = { timeout: 20000, maxWait: 10000 };
 export async function removeTrackedPeerKeys(node: { agentUrl: string; agentSecretHash: string }, session: Pick<PeerSession, 'clientPublicKey' | 'pendingPublicKey'>) {
@@ -16,10 +17,11 @@ async function lockDeviceAndNode(tx: Prisma.TransactionClient, deviceId: string,
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${serverId}))`;
 }
 
-export async function provisionPeer(deviceId: string, serverId: string, clientPublicKey: string, tier: string) {
+export async function provisionPeer(deviceId: string, serverId: string, clientPublicKey: string, tier: string, versionCode?: number) {
   PublicKeySchema.parse(clientPublicKey);
   const config = await prisma.appConfig.findUnique({ where: { id: 'global_config' } });
   if (config?.maintenanceMode) throw new Error('MAINTENANCE_MODE');
+  enforceClientVersion(config, versionCode);
   const node = await prisma.serverNode.findUnique({ where: { id: serverId } });
   if (!node) throw new Error('SERVER_NOT_FOUND');
   if (!node.active) throw new Error('NODE_DISABLED');
@@ -29,6 +31,9 @@ export async function provisionPeer(deviceId: string, serverId: string, clientPu
   if (!health.online || !health.publicIpv4) throw new Error(health.agentOnline ? 'NODE_OFFLINE' : 'AGENT_UNREACHABLE');
 
   const validateCurrent = async (tx: Prisma.TransactionClient) => {
+    const policy = await tx.appConfig.findUnique({ where: { id: 'global_config' } });
+    if (policy?.maintenanceMode) throw new Error('MAINTENANCE_MODE');
+    enforceClientVersion(policy, versionCode);
     const device = await tx.device.findUniqueOrThrow({ where: { id: deviceId } });
     if (device.isBlocked) throw new Error('DEVICE_BLOCKED');
     const effectiveTier = device.passExpiresAt && device.passExpiresAt <= new Date() ? 'FREE' : device.tier;

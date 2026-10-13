@@ -229,6 +229,7 @@ class VpnRepository(
                 "ALL_SERVERS_FULL" -> "All Servers Is Full, Try Again Later"
                 "SERVER_FULL" -> "Server Is Full"
                 "MAINTENANCE_MODE" -> "VPN Maintenance Is In Progress. Please Try Again Later."
+                "APP_UPDATE_REQUIRED" -> "Update Nsec VPN Before Connecting."
                 "NODE_DISABLED" -> "Server Is Disabled"
                 "NODE_OFFLINE", "AGENT_UNREACHABLE" -> "Server Is Offline"
                 "TIER_UPGRADE_REQUIRED" -> "This Server Requires An Active Premium Pass"
