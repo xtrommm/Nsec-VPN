@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — Deep audit
+
+- Record the current main commit, security/core/admin/performance findings, dependency/history scan scope, and device/operator verification limits before source fixes.
+
 ## Unreleased — Device VIP recovery and native splash
 
 - Add authenticated recovery-PIN setup and Device ID + PIN restoration of existing VIP/promo ownership without extending expiry.

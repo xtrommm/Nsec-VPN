@@ -174,3 +174,7 @@ The Android catalog displays one country/city location backed by individual node
 ### VIP recovery after clearing storage
 
 Use Settings → Device VIP Recovery to configure a private PIN before clearing app data. Save the original Device ID and PIN; restore with both to recover the same backend VIP record and expiry. Device ID alone cannot authorize recovery. The required additive SQL migration and reviewed-schema deployment steps are in [DEVICE-VIP-RECOVERY-NATIVE-SPLASH.md](docs/DEVICE-VIP-RECOVERY-NATIVE-SPLASH.md). Europe branding now appears on the original native launch window; the extra splash page is removed. The disclosure action reads Continue while consent and Android VPN permission remain.
+
+## Deep audit and repair
+
+The read-only baseline review, severity-ranked findings and verification limits are in [Deep audit](docs/audit/DEEP-AUDIT-2026-10-13.md). Findings are not a guarantee of production readiness.
