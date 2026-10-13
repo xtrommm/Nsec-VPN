@@ -335,3 +335,9 @@ UI follow-up: centered live Home announcement with X; full-width equal server fi
 Publication: `scripts/publish-vip-home.py` imports reviewed commits into an isolated `Nsec-VPN-vip-home-repair` checkout and pushes only the repair branch with an exact-main guard. Source project edits, main, deployment and credentials are preserved.
 
 CI correction: allow one physical pixel of Compose rounding in equal-width metric tests and explicitly opt into the coroutine virtual-time API. Runtime UI remains unchanged.
+
+## Popup And Live Server Status Polish
+
+VIP access prompts now use a compact card with an X, a prominent rewarded-ad action, a separate purchase action and the actual reward availability reason. Centered Home announcements use the same surface, spacing and close treatment in both themes. Device VIP Recovery adds a pinned X, preserving the existing in-flight-operation dismissal guard. Servers checks live metadata every five seconds while visible, without toggling foreground loaders. No backend/API/schema changes or migrations. See [rollout notes](docs/audit/POPUPS-LIVE-SERVERS.md).
+
+Publication: `scripts/publish-popups-live.py` imports this review into an isolated `Nsec-VPN-popup-live-repair` checkout, preserving existing edits and publishing only its new branch after checking the main revision.
