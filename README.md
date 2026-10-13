@@ -224,3 +224,5 @@ The current [repair checkpoint](docs/audit/REPAIR-CHECKPOINT.md) records exact c
 The installer now upgrades runtimes older than Node 22, matching CI. Existing Node 20 agents need a maintenance upgrade; the script is not run automatically by this repair. See the checkpoint for the exact node commands.
 
 When connector writes are unavailable, the downloadable bundle publisher (`scripts/publish-deep-audit.py`, copied beside its package manifest/bundle) imports the reviewed commits into a separate checkout. `--publish` pushes only the repair branch; it opens a draft PR with authenticated GitHub CLI when available, otherwise prints the comparison link. It does not stage local edits, modify main, migrate data or deploy services.
+
+The admin console uses the routed `Control*` pages only. Eight obsolete, unreachable screens/sidebar/dialog components were removed after checking the entry-point import graph and test references.

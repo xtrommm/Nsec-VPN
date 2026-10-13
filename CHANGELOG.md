@@ -2,6 +2,8 @@
 
 ## Unreleased — Audit follow-up
 
+- Remove eight legacy admin modules unreachable from the current entry point; preserve the working console routes and license files.
+
 - Enforce existing forced-update settings during peer reservation and registration, retain backward compatibility while disabled, and stop failover on update-required responses.
 
 - Restore interrupted connections from an encrypted node intent with fresh negotiation, clear intent on manual disconnect, register the WireGuard always-on callback, and apply split-tunnel changes through a serialized reconnect.
