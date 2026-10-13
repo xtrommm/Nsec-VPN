@@ -317,3 +317,5 @@ See [alignment and VIP follow-up](docs/audit/UI-ALIGNMENT-UPDATE.md) for evidenc
 ## VIP Access And Home Banner Update
 
 VIP-only server selection and connection now offer Purchase VIP Plan / Watch An Ad before creating a tunnel. Settings keeps Device ID last. Server filters occupy equal widths, and speed-test Ping, Jitter and measured Peak occupy a single row. Home announcements appear as centered dismissible banners, preserve dismissal for unchanged content and refresh every five seconds while Home is visible. See [the rollout notes](docs/audit/VIP-HOME-UPDATE.md). No backend API, schema or migration changes.
+
+UI follow-up: centered live Home announcement with X; full-width equal server filters; single-row Ping/Jitter/Peak speed metrics; Device ID remains the last Settings item. Regression coverage includes large fonts, dismissal/content updates and premium selection.

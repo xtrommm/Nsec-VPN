@@ -57,8 +57,7 @@ fun SpeedTestScreen(
     var currentSpeedMbps by remember { mutableFloatStateOf(0f) }
     var pingMs by remember { mutableStateOf<Long?>(null) }
     var jitterMs by remember { mutableStateOf<Long?>(null) }
-    var averageDownloadMbps by remember { mutableStateOf<Float?>(null) }
-    var averageUploadMbps by remember { mutableStateOf<Float?>(null) }
+    var peakSpeedMbps by remember { mutableStateOf<Float?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var confirmTest by remember { mutableStateOf(false) }
     var testJob by remember { mutableStateOf<Job?>(null) }
@@ -85,15 +84,15 @@ fun SpeedTestScreen(
         if (nodeName.isNullOrBlank()) { errorMessage = "The Connected Node Has No Verified Name. Reconnect And Retry."; return }
         isTesting = true
         currentSpeedMbps = 0f; pingMs = null; jitterMs = null
-        averageDownloadMbps = null; averageUploadMbps = null
+        peakSpeedMbps = null
         testJob = coroutineScope.launch {
             try {
                 withTimeout(65000) {
                     SpeedTestClient.measure(context, manager).collect { result ->
                         phase = result.phase; currentSpeedMbps = result.speed
                         if (result.ping > 0) { pingMs = result.ping.toLong(); jitterMs = result.jitter.toLong() }
-                        if (result.download > 0) averageDownloadMbps = result.download
-                        if (result.upload > 0) averageUploadMbps = result.upload
+                        val measuredPeak = maxOf(result.speed, result.download, result.upload)
+                        if (measuredPeak > 0) peakSpeedMbps = maxOf(peakSpeedMbps ?: 0f, measuredPeak)
                         result.error?.let { errorMessage = it }
                         if (result.completed) {
                             phase = "Complete"
@@ -200,7 +199,7 @@ fun SpeedTestScreen(
 
         com.nsec.vpn.ui.components.SpeedTestMetrics(
             pingMs = pingMs, jitterMs = jitterMs,
-            downloadMbps = averageDownloadMbps, uploadMbps = averageUploadMbps
+            peakMbps = peakSpeedMbps
         )
 
         Spacer(modifier = Modifier.height(14.dp))

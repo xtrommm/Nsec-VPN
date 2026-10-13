@@ -3,8 +3,6 @@ package com.nsec.vpn.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
@@ -190,13 +188,15 @@ fun ServerListScreen(
         Spacer(modifier = Modifier.height(14.dp))
 
         Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            modifier = Modifier.fillMaxWidth().testTag("server_filter_row"),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             tabs.forEachIndexed { index, tabTitle ->
                 val isSelected = selectedTab == index
                 Box(
                     modifier = Modifier
+                        .weight(1f)
+                        .testTag("server_filter_$index")
                         .heightIn(min = 48.dp)
                         .clip(RoundedCornerShape(10.dp))
                         .background(if (isSelected) PrimaryBlue else MaterialTheme.colorScheme.surface)
@@ -206,7 +206,7 @@ fun ServerListScreen(
                             RoundedCornerShape(10.dp)
                         )
                         .selectable(selected = isSelected, role = Role.Tab, onClick = { selectedTab = index })
-                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                        .padding(horizontal = 2.dp, vertical = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -257,7 +257,7 @@ fun ServerListScreen(
                                 server = server,
                                 isSelected = selectedServer?.let { LocationSelection.sameLocation(it, server) } == true,
                                 onSelect = {
-                                    if (server.isPremiumOnly && userTier == "FREE") {
+                                    if (com.nsec.vpn.ui.components.VipAccessGate.requiresVip(server, userTier)) {
                                         onUpgradeRequired()
                                     } else {
                                         onSelectServer(server)

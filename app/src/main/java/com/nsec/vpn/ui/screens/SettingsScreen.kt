@@ -224,8 +224,6 @@ fun SettingsScreen(
             })
         SettingsClickableItem(icon = Icons.Default.Lock, title = "Device VIP Recovery",
             subtitle = "Protect Or Restore VIP With Device ID And A Private PIN", onClick = { showRecovery = true })
-        Spacer(Modifier.height(12.dp))
-        com.nsec.vpn.ui.components.DeviceIdCard(deviceId, tagPrefix = "settings_device")
         Spacer(Modifier.height(20.dp))
         SectionHeader("DEVELOPER / DEBUG")
         SettingsClickableItem(
@@ -243,6 +241,8 @@ fun SettingsScreen(
                 onClick = onOpenDebugDiagnostics
             )
         }
+        Spacer(Modifier.height(20.dp))
+        com.nsec.vpn.ui.components.DeviceIdCard(deviceId, tagPrefix = "settings_device")
 
     }
 

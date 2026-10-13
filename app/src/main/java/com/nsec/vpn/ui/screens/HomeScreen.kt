@@ -15,7 +15,6 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,7 +58,8 @@ fun HomeScreen(
     val isConnected = vpnState is VpnState.Connected
     val connectedNode by tunnelManager.connectedNode.collectAsState()
     val serverListError by com.nsec.vpn.core.network.ServiceLocator.getInstance(androidx.compose.ui.platform.LocalContext.current).vpnRepository.serverListError.collectAsState()
-    var announcementDismissed by rememberSaveable(announcementTitle, announcementBody) { mutableStateOf(false) }
+
+    com.nsec.vpn.ui.components.HomeAnnouncement(announcementTitle, announcementBody, visible = isVisible)
 
     Column(
         modifier = modifier
@@ -71,38 +71,6 @@ fun HomeScreen(
     ) {
         serverListError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
 
-        if (!announcementDismissed && !announcementTitle.isNullOrEmpty()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 12.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer)
-                    .border(1.dp, PrimaryBlue.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
-                    .padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = announcementTitle,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                    if (!announcementBody.isNullOrEmpty()) {
-                        Text(
-                            text = announcementBody,
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.9f)
-                        )
-                    }
-                }
-                TextButton(onClick = { announcementDismissed = true }, contentPadding = PaddingValues(8.dp)) {
-                    Text("DISMISS", fontSize = 10.sp, fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        }
 
         Row(
             modifier = Modifier.fillMaxWidth(),
