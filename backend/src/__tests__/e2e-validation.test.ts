@@ -41,9 +41,9 @@ describe('Agent response confirmation', () => {
       return new Response(tamper ? body.replace('true','false') : body, { headers: { 'X-Agent-Response-Signature': signature } });
     }) as typeof fetch;
     const input = { publicKey: key, allocatedIp: '10.8.0.2/32', expiresAt: new Date().toISOString() };
-    await expect(AgentClient.addPeer('http://test.invalid','env:NSEC_TEST_AGENT_KEY',input)).resolves.toBeUndefined();
+    await expect(AgentClient.addPeer('http://127.0.0.1:51821','env:NSEC_TEST_AGENT_KEY',input)).resolves.toBeUndefined();
     tamper = true;
-    await expect(AgentClient.addPeer('http://test.invalid','env:NSEC_TEST_AGENT_KEY',input)).rejects.toThrow('AGENT_RESPONSE_UNAUTHENTICATED');
+    await expect(AgentClient.addPeer('http://127.0.0.1:51821','env:NSEC_TEST_AGENT_KEY',input)).rejects.toThrow('AGENT_RESPONSE_UNAUTHENTICATED');
   });
   it('does not treat an offline HTTP-200 health response as online', async () => {
     global.fetch = jest.fn(async (_url, options) => {
@@ -63,8 +63,8 @@ describe('Authenticator enforcement', () => {
 });
 
 it('does not accept raw database agent credentials or fabricate an environment credential', async () => {
-  await expect(AgentClient.addPeer('http://test.invalid','x'.repeat(32),{publicKey:key,allocatedIp:'10.8.0.2/32',expiresAt:new Date().toISOString()})).rejects.toThrow('AGENT_CREDENTIAL_REFERENCE_REQUIRED');
-  await expect(AgentClient.addPeer('http://test.invalid','env:NSEC_ABSENT_TEST_KEY',{publicKey:key,allocatedIp:'10.8.0.2/32',expiresAt:new Date().toISOString()})).rejects.toThrow('AGENT_CREDENTIAL_CONFIGURATION_MISSING');
+  await expect(AgentClient.addPeer('http://127.0.0.1:51821','x'.repeat(32),{publicKey:key,allocatedIp:'10.8.0.2/32',expiresAt:new Date().toISOString()})).rejects.toThrow('AGENT_CREDENTIAL_REFERENCE_REQUIRED');
+  await expect(AgentClient.addPeer('http://127.0.0.1:51821','env:NSEC_ABSENT_TEST_KEY',{publicKey:key,allocatedIp:'10.8.0.2/32',expiresAt:new Date().toISOString()})).rejects.toThrow('AGENT_CREDENTIAL_CONFIGURATION_MISSING');
 });
 
 it('TOTP secrets are resolved from environment references only', () => {

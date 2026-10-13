@@ -226,3 +226,5 @@ The installer now upgrades runtimes older than Node 22, matching CI. Existing No
 When connector writes are unavailable, the downloadable bundle publisher (`scripts/publish-deep-audit.py`, copied beside its package manifest/bundle) imports the reviewed commits into a separate checkout. `--publish` pushes only the repair branch; it opens a draft PR with authenticated GitHub CLI when available, otherwise prints the comparison link. It does not stage local edits, modify main, migrate data or deploy services.
 
 The admin console uses the routed `Control*` pages only. Eight obsolete, unreachable screens/sidebar/dialog components were removed after checking the entry-point import graph and test references.
+
+Public agent origins require HTTPS. HTTP is accepted only for literal private/loopback management origins carried by your encrypted management channel; the existing `172.18.0.1:51823` SSH forward is compatible. New installations bind the raw agent to loopback. Existing public HTTP records must migrate before deploying this policy.

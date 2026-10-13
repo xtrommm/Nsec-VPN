@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { z } from 'zod';
 import { PublicKeySchema, isPublicIpv4 } from '../types';
+import { managementOriginAllowed } from './managementTransport';
 
 export interface AddPeerPayload { publicKey: string; allocatedIp: string; expiresAt: string }
 export interface RemovePeerPayload { publicKey: string }
@@ -18,6 +19,7 @@ export class AgentClient {
     if (!/^env:[A-Z][A-Z0-9_]{2,95}$/.test(credentialReference)) throw new Error('AGENT_CREDENTIAL_REFERENCE_REQUIRED');
     const secret = process.env[credentialReference.slice(4)];
     if (!secret || secret.length < 32) throw new Error('AGENT_CREDENTIAL_CONFIGURATION_MISSING');
+    if (!managementOriginAllowed(url)) throw new Error('AGENT_ENCRYPTED_CHANNEL_REQUIRED');
     const timestamp = Date.now().toString();
     const body = payload === undefined ? '' : JSON.stringify(payload);
     // v2 binds the signature to method and path; the updated agent accepts v1 during rollout.

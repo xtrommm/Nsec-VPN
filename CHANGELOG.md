@@ -2,6 +2,8 @@
 
 ## Unreleased — Audit follow-up
 
+- Reject public cleartext agent management origins and default new node agents to loopback; retain private encrypted-channel compatibility.
+
 - Remove eight legacy admin modules unreachable from the current entry point; preserve the working console routes and license files.
 
 - Enforce existing forced-update settings during peer reservation and registration, retain backward compatibility while disabled, and stop failover on update-required responses.
