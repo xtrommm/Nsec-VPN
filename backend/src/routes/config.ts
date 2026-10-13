@@ -86,7 +86,7 @@ router.get('/legal/:type', (req: Request, res: Response) => {
         contentMarkdown: `# Nsec VPN Privacy Information
 
 ### Operational records
-The service persists a random installation identifier, device authentication records, account entitlements, purchase-token hashes, rewarded-ad verification records, and expiring WireGuard public-key/address leases. The node persists peer configuration and lease metadata to restore authorized peers after reboot. The installation identifier is not a hardware identifier.
+The service persists a random installation identifier, device authentication records, account entitlements, purchase-token hashes and encrypted Google Play receipts used for subscription/refund verification, rewarded-ad verification records, and expiring WireGuard public-key/address leases. The node persists peer configuration and lease metadata to restore authorized peers after reboot. The installation identifier is not a hardware identifier.
 
 ### Tunnel keys and traffic
 Client private keys remain on the device and are protected using Android Keystore encryption. Server and client public keys and assigned tunnel addresses are operational records, not RAM-only records. WireGuard keeps runtime endpoint, handshake and transfer-counter state in memory. This implementation does not persist originating client IPs, browsing activity, DNS queries or traffic content. Hosting and third-party provider settings require a separate operator review.
@@ -98,7 +98,7 @@ Google Play processes payments. Google AdMob serves advertising and verifies rew
 Users may configure a private recovery PIN while authenticated. The server stores a salted PIN hash and failed-attempt/lock metadata, never the raw PIN. The existing installation identifier plus the PIN can restore the same entitlement record after clearing local data, without extending its expiry. Recovery rotates device authentication and expires old peer leases for cleanup. Device ID alone cannot authorize recovery.
 
 ### Retention and deletion
-Expired peers are removed by lease cleanup; failed node cleanup is retried. Clearing app data removes local data and does not delete backend records. The operator must publish verified retention periods, a deletion contact and its identity before release.`
+Expired peers are removed by lease cleanup; failed node cleanup is retried. Clearing app data removes local data and does not delete backend records. Eligible inactive free device records, completed/rejected server requests and administrator audit records are cleaned after the operator-selected retention period (90 days by default). Expired credentials and unclaimed reward tickets are cleaned after that period following expiry. Active VIP, recovery credentials, replay/abuse protections and uncertain peer reservations are retained as needed for their purpose. Encrypted receipts are removed after expiry and the retention period, while minimal receipt hashes/ownership records remain to prevent reuse. The operator must publish its configured periods, deletion contact and identity before release.`
       }
     });
   }

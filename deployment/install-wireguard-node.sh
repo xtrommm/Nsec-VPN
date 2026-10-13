@@ -130,7 +130,7 @@ cp -r "$TASK_ROOT/agent/src" /opt/nsec-agent/
 if [[ ! -f /etc/nsec-agent.env ]]; then
   if [[ -z ${AGENT_SECRET:-} ]]; then read -r -s -p 'Agent shared credential (at least 32 characters; input hidden): ' AGENT_SECRET; printf '\n'; fi
   [[ ${#AGENT_SECRET} -ge 32 && $AGENT_SECRET =~ ^[A-Za-z0-9_-]+$ ]] || { echo 'Use a random alphanumeric/hex credential of at least 32 characters'; exit 1; }
-  printf 'AGENT_SECRET=%s\nAGENT_PORT=%s\nAGENT_BIND=0.0.0.0\nWG_INTERFACE=wg0\n' "$AGENT_SECRET" "$AGENT_PORT" > /etc/nsec-agent.env
+  printf 'AGENT_SECRET=%s\nAGENT_PORT=%s\nAGENT_BIND=127.0.0.1\nWG_INTERFACE=wg0\n' "$AGENT_SECRET" "$AGENT_PORT" > /etc/nsec-agent.env
 fi
 chmod 600 /etc/nsec-agent.env
 cat > /etc/systemd/system/nsec-agent.service <<'UNIT'
@@ -161,8 +161,8 @@ systemctl enable nsec-agent
 systemctl restart nsec-agent
 printf 'WireGuard endpoint: %s:%s\nNode public key: ' "$PUBLIC_IP" "$(wg show wg0 listen-port)"
 wg show wg0 public-key
-printf 'Agent URL: http://%s:%s (backend source restricted)\n' "$PUBLIC_IP" "$AGENT_PORT"
+printf 'Node-local agent: http://127.0.0.1:%s; configure an encrypted SSH/private-management channel or HTTPS proxy before adding the node.\n' "$AGENT_PORT"
 echo 'Credential retained in root-only /etc/nsec-agent.env; never paste it into chat.'
 echo 'Configure the same credential privately in a backend environment variable. Enter its env:VARIABLE reference in the admin node form; do not store the raw credential in the database.'
-echo 'Cloud Security Group: allow WireGuard UDP publicly; allow agent TCP only from backend egress IPv4.'
-echo 'Prefer HTTPS/mTLS or a private management network for agent traffic before production.'
+echo 'Cloud Security Group: allow WireGuard UDP publicly; keep the raw agent TCP port closed publicly.'
+echo 'Existing agent listener configuration is retained on reruns. Review any old public bind and move it behind the encrypted channel.'

@@ -28,7 +28,8 @@ class NsecVpnService : Service() {
         }
         scope.launch {
             WireGuardTunnelManager.getInstance(this@NsecVpnService).vpnState.collect { state ->
-                if (state is VpnState.Connected || state is VpnState.Connecting) notifyState(state is VpnState.Connected)
+                if (state is VpnState.Connected || state is VpnState.Connecting || state is VpnState.Error)
+                    notifyState(state is VpnState.Connected)
             }
         }
     }
@@ -41,8 +42,9 @@ class NsecVpnService : Service() {
         } else {
             serverName = intent?.getStringExtra(EXTRA_SERVER_NAME).orEmpty()
             notifyState(WireGuardTunnelManager.getInstance(this).vpnState.value is VpnState.Connected)
+            if (intent == null) WireGuardTunnelManager.getInstance(this).restoreConnection()
         }
-        return START_NOT_STICKY
+        return if (intent?.action == ACTION_DISCONNECT) START_NOT_STICKY else START_STICKY
     }
     private fun notifyState(connected: Boolean) {
         if (android.net.VpnService.prepare(this) != null) {
@@ -53,7 +55,8 @@ class NsecVpnService : Service() {
         val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val disconnect = PendingIntent.getService(this, 1, Intent(this, NsecVpnService::class.java).setAction(ACTION_DISCONNECT), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val notification = NotificationCompat.Builder(this, CHANNEL_ID).setSmallIcon(R.drawable.ic_notification_small)
-            .setContentTitle(if (connected) "Nsec VPN Connected" else "Nsec VPN Connecting")
+            .setContentTitle(if (connected) "Nsec VPN Connected" else if (WireGuardTunnelManager.getInstance(this).vpnState.value is VpnState.Error)
+                "Nsec VPN Connection Needs Attention" else "Nsec VPN Connecting")
             .setContentText(serverName).setContentIntent(open).setOngoing(true).addAction(0, "Disconnect", disconnect).build()
         if (Build.VERSION.SDK_INT >= 34) ServiceCompat.startForeground(this, 1001, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED)
         else startForeground(1001, notification)

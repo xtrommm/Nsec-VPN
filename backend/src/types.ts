@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { managementOriginAllowed } from './services/managementTransport';
 
 // ==========================================
 // 1. Zod Input Validation Schemas
@@ -12,7 +13,7 @@ export const RegisterDeviceSchema = z.object({
   deviceModel: z.string().max(64).optional(),
   osVersion: z.string().max(32).optional(),
   appVersion: z.string().max(32).optional(),
-  appVersionCode: z.number().int().positive().optional()
+  appVersionCode: z.number().int().positive().max(2147483647).optional()
 });
 
 export const RefreshTokenSchema = z.object({
@@ -75,10 +76,8 @@ export const CreateServerSchema = z.object({
   endpoint: EndpointSchema, publicKey: PublicKeySchema, subnetIpv4: SubnetSchema.default('10.8.0.0/24'),
   dnsServers: DnsSchema.default(['1.1.1.1', '1.0.0.1']), mtu: z.number().int().min(1280).max(1420).default(1420),
   maxPeers: z.number().int().min(1).max(253).default(250),
-  agentUrl: z.string().url().refine(value => {
-    const u = new URL(value);
-    return ['http:', 'https:'].includes(u.protocol) && !u.username && !u.password && !u.search && !u.hash && (u.pathname === '/' || u.pathname === '');
-  }, 'Agent URL must be HTTP(S) origin without credentials'),
+  agentUrl: z.string().url().refine(managementOriginAllowed,
+    'Use HTTPS or a private/loopback management origin through an encrypted channel'),
   agentSecret: z.string().regex(/^env:[A-Z][A-Z0-9_]{2,95}$/, 'Use a backend environment credential reference, not a raw secret'), isPremiumOnly: z.boolean().default(false),
   isRecommended: z.boolean().default(false), active: z.boolean().default(true)
 }).strict();

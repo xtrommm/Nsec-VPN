@@ -5,7 +5,7 @@ export type NodeLatency = { nodeId: string; pingMs: number };
 
 /** Advisory latency only affects ranking. The transaction remains the capacity/auth authority. */
 export async function provisionLocationPeer(deviceId: string, serverId: string, publicKey: string,
-  latencies: NodeLatency[] = [], excludedNodeIds: string[] = []) {
+  latencies: NodeLatency[] = [], excludedNodeIds: string[] = [], versionCode?: number) {
   const device = await prisma.device.findUniqueOrThrow({ where: { id: deviceId } });
   if (device.isBlocked) throw new Error('DEVICE_BLOCKED');
   const tier = device.passExpiresAt && device.passExpiresAt < new Date() ? 'FREE' : device.tier;
@@ -36,7 +36,7 @@ export async function provisionLocationPeer(deviceId: string, serverId: string, 
   let full = 0;
   let networkFailures = 0;
   for (const node of available) {
-    try { return await provisionPeer(deviceId, node.id, publicKey, tier); }
+    try { return await provisionPeer(deviceId, node.id, publicKey, tier, versionCode); }
     catch (error) {
       const code = error instanceof Error ? error.message : '';
       if (code === 'SERVER_FULL') { full++; continue; }

@@ -140,6 +140,9 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
                 }, handshake = { tc -> waitForHandshakeOrTimeout(HANDSHAKE_TIMEOUT_MS, tc.serverPublicKey) })
                 _connectedNode.value = tc
                 activeServer = vpnRepository.servers.value.firstOrNull { it.id == tc.nodeId } ?: server
+                keyStoreManager.saveConnectionIntent(org.json.JSONObject()
+                    .put("nodeId", activeServer!!.id).put("countryCode", activeServer!!.countryCode)
+                    .put("city", activeServer!!.city).toString())
                 _vpnState.value = VpnState.Connected
                 updateNotification(tc.nodeName ?: server.name)
                 startStatsMonitoring(tc.serverPublicKey)
@@ -156,7 +159,7 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
                 }
                 if (error is VpnApiException) lastApiStatusCode = error.statusCode
                 teardown()
-                if (error is VpnApiException && error.errorCode in setOf("ALL_SERVERS_FULL", "DEVICE_BLOCKED", "TIER_UPGRADE_REQUIRED", "MAINTENANCE_MODE")) {
+                if (error is VpnApiException && error.errorCode in setOf("ALL_SERVERS_FULL", "DEVICE_BLOCKED", "TIER_UPGRADE_REQUIRED", "MAINTENANCE_MODE", "APP_UPDATE_REQUIRED")) {
                     _vpnState.value = VpnState.Error(lastError ?: "Connection Failed")
                     return
                 }
@@ -231,7 +234,12 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
             )
         } finally { stopping = false }
         val id = activePeerId; val key = activeClientPublicKey
-        if (id != null && key != null) vpnRepository.notifyDisconnect(id, key)
+        // The local TUN is confirmed DOWN. Remote lease cleanup must never delay the UI
+        // or hold the tunnel-operation lock. The backend retains uncertain leases and
+        // ignores stale handles if the user reconnects before this request completes.
+        if (id != null && key != null) RemotePeerCleanup.enqueue(scope) {
+            vpnRepository.notifyDisconnect(id, key)
+        }
         activePeerId = null; activeTunnelConfig = null; _connectedNode.value = null; _activeDns.value = emptyList()
         context.stopService(Intent(context, NsecVpnService::class.java))
     }
@@ -242,6 +250,7 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
         statsJob?.cancel()
         val job = connectJob; connectJob = null
         launchOperation(previous = job) {
+            keyStoreManager.saveConnectionIntent(null)
             teardown()
             activeClientPublicKey = null; activeServer = null
             _vpnStats.value = VpnStats(); _vpnState.value = VpnState.Disconnected
@@ -261,6 +270,66 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
             teardown()
             currentCoroutineContext().ensureActive()
             connectWithFailover(server, dns, lastExcludedApps)
+        }
+    }
+
+    @Synchronized
+    fun updateExcludedApps(excludedApps: Set<String>) {
+        if (excludedApps == lastExcludedApps) return
+        lastExcludedApps = excludedApps.toSet()
+        if (_vpnState.value !is VpnState.Connected && _vpnState.value !is VpnState.Connecting) return
+        val server = activeServer ?: return
+        val previous = connectJob
+        statsJob?.cancel()
+        _vpnState.value = VpnState.Connecting
+        connectJob = launchOperation(previous = previous) {
+            teardown()
+            currentCoroutineContext().ensureActive()
+            connectWithFailover(server, lastDns, lastExcludedApps)
+        }
+    }
+
+    /** Restart uses an encrypted intent and fresh backend negotiation, never a saved private config. */
+    @Synchronized
+    fun restoreConnection() {
+        if (_vpnState.value !is VpnState.Disconnected || VpnService.prepare(context) != null) return
+        // Reading/decrypting and network work stay off the main/always-on callback thread.
+        if (connectJob?.isActive == true) return
+        connectJob = scope.launch {
+            val json = keyStoreManager.getConnectionIntent() ?: return@launch
+            val target = try { org.json.JSONObject(json) } catch (_: Exception) {
+                keyStoreManager.saveConnectionIntent(null); return@launch
+            }
+            val nodeId = target.optString("nodeId")
+            val country = target.optString("countryCode")
+            val city = target.optString("city")
+            if (nodeId.isBlank() || country.length != 2 || city.isBlank()) {
+                keyStoreManager.saveConnectionIntent(null); return@launch
+            }
+            operations.exclusive {
+                if (_vpnState.value !is VpnState.Disconnected) return@exclusive
+                _vpnState.value = VpnState.Connecting
+                try {
+                    val configManager = ServiceLocator.getInstance(context).remoteConfigManager
+                    configManager.fetchRemoteConfig()
+                    val config = configManager.config.value
+                    ConnectionEligibility.blockedReason(configManager.loaded.value, config.maintenanceMode,
+                        config.forceUpdate, config.minAppVersionCode, BuildConfig.VERSION_CODE)?.let { error(it) }
+                    vpnRepository.refreshServers(refreshLatency = false)
+                    val server = vpnRepository.servers.value.firstOrNull { it.id == nodeId }
+                        ?: vpnRepository.servers.value.firstOrNull { it.countryCode.equals(country, ignoreCase = true) && it.city.trim().equals(city.trim(), ignoreCase = true) }
+                        ?: error("Previously Connected Location Is Unavailable.")
+                    lastDns = vpnRepository.dnsServersForConnection()
+                    lastExcludedApps = if (vpnRepository.splitTunnelingEnabled.value)
+                        vpnRepository.excludedPackages.value else emptySet()
+                    reconnectCount = 0
+                    connectWithFailover(server, lastDns, lastExcludedApps)
+                } catch (cancelled: CancellationException) {
+                    withContext(NonCancellable) { teardown() }; throw cancelled
+                } catch (error: Exception) {
+                    _vpnState.value = VpnState.Error(error.message ?: "Couldn't Restore The VPN Connection.")
+                }
+            }
         }
     }
 

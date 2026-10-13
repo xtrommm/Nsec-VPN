@@ -16,6 +16,15 @@ function response() {
   return res;
 }
 beforeEach(() => jest.clearAllMocks());
+it('persists the reported numeric build without deriving it from a version name',async()=>{
+  const device={id:'new-device',deviceId:'test-device-build',tier:'FREE',passExpiresAt:null,isBlocked:false,authEpoch:0};
+  const tx={$executeRaw:jest.fn(),device:{findUnique:jest.fn().mockResolvedValue(null),upsert:jest.fn().mockResolvedValue(device)}};
+  (prisma.$transaction as jest.Mock).mockImplementation(async work=>work(tx));
+  const res=response();
+  await routeHandler(auth,'/register-device-v2')({body:{deviceId:device.deviceId,appVersion:'1.0.1',appVersionCode:2,registrationSecret:crypto.randomBytes(32).toString('hex')}},res);
+  expect(tx.device.upsert).toHaveBeenCalledWith(expect.objectContaining({create:expect.objectContaining({appVersionCode:2}),update:expect.objectContaining({appVersionCode:2})}));
+  expect(res.payload.success).toBe(true);
+});
 it('knowing an existing UUID cannot replace its credential or obtain tokens', async () => {
   const oldHash = crypto.createHash('sha256').update(crypto.randomBytes(32).toString('hex')).digest('hex');
   const tx = { $executeRaw: jest.fn(), device: { findUnique: jest.fn().mockResolvedValue({ registrationSecretHash: oldHash }), upsert: jest.fn() } };

@@ -43,6 +43,7 @@ model Device {
   deviceModel   String?
   osVersion     String?
   appVersion    String?
+  appVersionCode Int?
   tier          SubscriptionTier @default(FREE)
   passExpiresAt DateTime?
   isBlocked     Boolean          @default(false)
@@ -184,6 +185,16 @@ model PurchaseClaim {
   tokenHash String @id
   deviceId String
   expiresAt DateTime
+  purchaseTokenCiphertext String?
+  productId String?
+  active Boolean @default(true)
+  adminRevoked Boolean @default(false)
+  verifiedAt DateTime?
+  protectedVipUntil DateTime?
+  protectedVipIndefinite Boolean @default(false)
+  provenanceInitialized Boolean @default(false)
+  @@index([deviceId])
+  @@index([active, verifiedAt])
 }
 
 model PromoCode {

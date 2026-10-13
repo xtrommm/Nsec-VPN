@@ -179,6 +179,13 @@ class KeyStoreManager(context: Context, private val vaultKeyProvider: (() -> jav
     }
     fun getPendingRewardTicket(): String? = prefs.getString("pending_reward_ticket", null)
 
+    fun saveConnectionIntent(json: String?) = synchronized(vaultLock) {
+        editVerified { if (json == null) remove("connection_intent_v1") else putString("connection_intent_v1", encryptString(json)) }
+    }
+    fun getConnectionIntent(): String? = synchronized(vaultLock) {
+        decryptString(prefs.getString("connection_intent_v1", null))
+    }
+
     companion object {
         private val vaultLock = Any()
         private const val KEY_VAULT_SEED = "nsec_vault_seed_v1"

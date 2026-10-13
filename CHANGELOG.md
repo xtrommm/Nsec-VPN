@@ -1,5 +1,28 @@
 # Changelog
 
+## Unreleased — Audit follow-up
+
+- Add an explicit, bounded Restore Google Play Purchases flow without purchase UI or client-only grants; document separate promo/paid coverage selected by the owner.
+
+- Cover consent-aware ad flow and match restored location names without case sensitivity.
+
+- Add encrypted Play receipts, authenticated RTDN and bounded authoritative subscription rechecks; preserve non-purchase VIP and legacy unattributed grants, reject receipt/product reuse and stale responses, expire premium peers when the last grant is revoked, and retain self-reported numeric build metadata.
+- Add guarded billing-key configuration and exact-image schema approval scripts; update privacy disclosure for encrypted receipts and 90-day retention.
+
+- Remove eight legacy admin modules unreachable from the current entry point; preserve the working console routes and license files.
+
+- Add bounded hourly 90-day retention cleanup with transaction-time eligibility checks and preserved entitlement/replay/recovery/peer protections.
+
+- Reject public cleartext agent management origins and default new node agents to loopback; retain private encrypted-channel compatibility.
+
+- Enforce existing forced-update settings during peer reservation and registration, retain backward compatibility while disabled, and stop failover on update-required responses.
+
+- Restore interrupted connections from an encrypted node intent with fresh negotiation, clear intent on manual disconnect, register the WireGuard always-on callback, and apply split-tunnel changes through a serialized reconnect.
+
+- Gate all ad placements on UMP authorization and SDK initialization, invalidate cached ads when choices change, and provide privacy options/retry controls in Settings.
+
+- Complete local disconnect without waiting for remote peer removal; bound asynchronous cleanup and disable repeated Connected-screen disconnect taps.
+
 ## Unreleased — Deep audit
 
 - Preserve main's recursive build-directory ignore update in the v2 repair package and document branch publication versus pull-request creation.
@@ -212,3 +235,9 @@ All notable changes to the Nsec VPN project are documented in this file followin
 - **Peer Persistence**: Configured `SaveConfig = true` and `wg-quick save` to preserve dynamic peers across server reboots.
 - **Server Load Calculation**: Implemented dynamic load percentage updates on peer connections and disconnections.
 update
+
+### Audit follow-up delivery
+- Document exact migration/image approval, provider configuration, compatibility and runtime verification limits.
+- Add an isolated Git publisher and complete Android Studio transport package for the audit follow-up branch.
+
+- Fix Android billing setup indentation reported by PR #17 lint.

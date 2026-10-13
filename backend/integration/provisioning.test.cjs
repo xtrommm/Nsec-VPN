@@ -8,6 +8,8 @@ const {prisma} = require('../dist/db');
 const {AgentClient} = require('../dist/services/agentClient');
 const health = require('../dist/services/nodeHealth');
 const {provisionPeer, disconnectPeer} = require('../dist/services/peerProvisioning');
+const {reconcilePurchase,purchaseHash,encryptPurchaseToken}=require('../dist/services/purchaseReconciliation');
+const {PlayBillingService}=require('../dist/services/billing');
 const tag = crypto.randomUUID();
 let node, devices;
 const key = byte => Buffer.alloc(32,byte).toString('base64');
@@ -40,8 +42,36 @@ test('an ambiguous timeout keeps its IP reserved until confirmed reconciliation'
   await disconnectPeer(devices[2].id,pending.peerId);
   assert.equal(await prisma.peerSession.count({where:{id:pending.id}}),0);
 });
+test('a real database refund preserves unrelated VIP, then revokes the last paid grant and premium lease',async()=>{
+  const previous=process.env.PLAY_TOKEN_ENCRYPTION_KEY;
+  process.env.PLAY_TOKEN_ENCRYPTION_KEY=crypto.randomBytes(32).toString('hex');
+  const verify=PlayBillingService.verifySubscription;
+  const token='integration-receipt-'+tag;
+  const protectedUntil=new Date(Date.now()+6*3600000);
+  try {
+    await prisma.device.update({where:{id:devices[0].id},data:{tier:'VIP',passExpiresAt:new Date(Date.now()+86400000)}});
+    await prisma.purchaseClaim.create({data:{tokenHash:purchaseHash(token),deviceId:devices[0].id,productId:'integration-premium',
+      purchaseTokenCiphertext:encryptPurchaseToken(token),expiresAt:new Date(Date.now()+86400000),active:true,
+      protectedVipUntil:protectedUntil,provenanceInitialized:true}});
+    PlayBillingService.verifySubscription=async()=>({isValid:false,tier:'FREE',state:'REFUNDED'});
+    await reconcilePurchase(purchaseHash(token));
+    const protectedDevice=await prisma.device.findUniqueOrThrow({where:{id:devices[0].id}});
+    assert.equal(protectedDevice.tier,'VIP');assert.equal(protectedDevice.passExpiresAt.getTime(),protectedUntil.getTime());
+    await prisma.purchaseClaim.update({where:{tokenHash:purchaseHash(token)},data:{protectedVipUntil:null}});
+    await prisma.serverNode.update({where:{id:node.id},data:{isPremiumOnly:true}});
+    await reconcilePurchase(purchaseHash(token));
+    assert.equal((await prisma.device.findUniqueOrThrow({where:{id:devices[0].id}})).tier,'FREE');
+    assert.ok((await prisma.peerSession.findFirstOrThrow({where:{deviceId:devices[0].id,serverId:node.id}})).expiresAt<=new Date());
+  } finally {
+    PlayBillingService.verifySubscription=verify;
+    if(previous===undefined)delete process.env.PLAY_TOKEN_ENCRYPTION_KEY;else process.env.PLAY_TOKEN_ENCRYPTION_KEY=previous;
+  }
+});
 after(async () => {
   if(node) await prisma.serverNode.delete({where:{id:node.id}});
-  if(devices) await prisma.device.deleteMany({where:{id:{in:devices.map(d=>d.id)}}});
+  if(devices) {
+    await prisma.purchaseClaim.deleteMany({where:{deviceId:{in:devices.map(d=>d.id)}}});
+    await prisma.device.deleteMany({where:{id:{in:devices.map(d=>d.id)}}});
+  }
   await prisma.$disconnect();
 });

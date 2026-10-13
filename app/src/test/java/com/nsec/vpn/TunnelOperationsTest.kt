@@ -2,12 +2,31 @@ package com.nsec.vpn
 
 import com.nsec.vpn.vpn.TunnelOperations
 import com.nsec.vpn.vpn.TunnelShutdown
+import com.nsec.vpn.vpn.RemotePeerCleanup
 import kotlinx.coroutines.*
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
 import org.junit.Test
 
 class TunnelOperationsTest {
+    @Test
+    fun remotePeerRemovalCannotDelayLocalDisconnectedState() = runTest {
+        val release = CompletableDeferred<Unit>()
+        var removed = false
+        val cleanup = RemotePeerCleanup.enqueue(this) { release.await(); removed = true }
+        TunnelShutdown.stop(setDown = {}, isDown = { true })
+        assertTrue(cleanup.isActive)
+        assertFalse(removed)
+        release.complete(Unit)
+        cleanup.join()
+        assertTrue(removed)
+    }
+    @Test
+    fun stalledRemoteRemovalHasABoundedLifetime() = runTest {
+        val cleanup = RemotePeerCleanup.enqueue(this) { awaitCancellation() }
+        cleanup.join()
+        assertEquals(RemotePeerCleanup.TIMEOUT_MS, testScheduler.currentTime)
+    }
     @Test
     fun failedShutdownCannotRunPeerDeletionOrPretendDown() {
         var removed = false

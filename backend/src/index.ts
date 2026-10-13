@@ -9,6 +9,8 @@ import { refreshNodeHealth } from './services/nodeHealth';
 import { expirePeers } from './services/peerProvisioning';
 import { prisma } from './db';
 import { trustedProxyCidrs } from './services/proxyTrust';
+import { retentionDays, runRetention } from './services/retention';
+import { reconcilePurchases } from './services/purchaseReconciliation';
 import { globalLimiter } from './middleware/rateLimit';
 
 // Import Route Handlers
@@ -35,13 +37,14 @@ const logger = pino({
 const app = express();
 app.set('trust proxy', trustedProxyCidrs(process.env.TRUSTED_PROXY_CIDRS));
 const PORT = process.env.PORT || 4000;
+retentionDays();
 
 // Security and Performance Middleware
 app.use(helmet());
 app.use(cors({
   origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-App-Version-Code']
 }));
 app.use(compression());
 app.use(express.json({ limit: '1mb' }));
@@ -123,6 +126,9 @@ const server = app.listen(PORT, async () => {
   void refreshNodeHealth().catch(() => logger.warn("Node health refresh failed"));
   setInterval(() => { void refreshNodeHealth().catch(() => logger.warn("Node health refresh failed")); }, 30000).unref();
   setInterval(() => { void expirePeers().catch(() => logger.warn("Lease cleanup failed")); }, 60000).unref();
+  // Retention failures never emit record contents or identifiers.
+  setInterval(() => { void runRetention().catch(() => logger.warn('Retention cleanup failed')); }, 3600000).unref();
+  setInterval(() => { void reconcilePurchases().catch(() => logger.warn('Purchase reconciliation failed')); }, 60000).unref();
 });
 
 // Graceful Process Teardown

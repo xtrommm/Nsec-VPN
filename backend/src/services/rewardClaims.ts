@@ -1,5 +1,6 @@
 import { prisma } from '../db';
 import { VerifiedReward } from './rewardVerification';
+import { preserveNonPurchaseGrant } from './purchaseReconciliation';
 
 export async function prepareReward(deviceId: string) {
   return prisma.$transaction(async tx => {
@@ -57,6 +58,7 @@ export async function grantVerifiedReward(reward: VerifiedReward) {
     if (!Number.isInteger(minutes) || minutes < 1 || minutes > 1440) throw new Error('REWARD_DURATION_INVALID');
     const until = new Date(reward.timestamp + minutes * 60000);
     if (ticket) await tx.rewardTicket.update({ where: { id: ticket.id }, data: { claimedAt: new Date(), grantExpiresAt: until } });
+    if (until > new Date()) await preserveNonPurchaseGrant(tx,device.id,until);
     // Delayed callbacks must not restart a pass or shorten a paid/promo/admin grant.
     if (until <= new Date() || (device.tier === 'VIP' && (!device.passExpiresAt || device.passExpiresAt >= until))) return;
     await tx.device.update({ where: { id: device.id }, data: { tier: 'VIP', passExpiresAt: until } });
