@@ -250,3 +250,5 @@ Home remains composed and measured while connection details are open, but is not
 See [Disconnect UI update](docs/audit/DISCONNECT-UI-FIX.md) for video findings, consent removal, regression tests and installation. `scripts/publish-disconnect-ui.py` imports its reviewed bundle into a separate checkout and opens or links a PR; no migration is required.
 
 - Align the EU flag with Made in Europe on the native splash; preserve logo size and theme colours.
+
+Reward-offer startup: validated real settings are restored off Main before the first Home frame, with a native splash wait capped at 250ms and never held for HTTP. Offer text uses authoritative config independently of SDK readiness; SDK requests still wait for initialization. A first install without verified cache shows a compact static skeleton instead of a temporary marketing/loading card; live errors are explicit. Existing local ad-free reward state is visible before SDK initialization.

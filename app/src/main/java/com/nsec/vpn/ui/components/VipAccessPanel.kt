@@ -14,6 +14,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -22,6 +24,10 @@ import androidx.compose.ui.unit.sp
 fun VipRewardCard(offer: RewardOffer, busy: Boolean, onWatchReward: () -> Unit,
                   onMoreOptions: () -> Unit, modifier: Modifier = Modifier,
                   compact: Boolean = false, showMoreOptions: Boolean = true) {
+    if (offer.loading) {
+        RewardOfferSkeleton(modifier)
+        return
+    }
     if (compact && showMoreOptions) {
         CompactVipOffer(offer, busy, onWatchReward, onMoreOptions, modifier)
         return
@@ -60,6 +66,30 @@ fun VipRewardCard(offer: RewardOffer, busy: Boolean, onWatchReward: () -> Unit,
             if (showMoreOptions) TextButton(onClick = onMoreOptions, modifier = Modifier.align(Alignment.CenterHorizontally)) {
                 Text("Explore VIP Options")
             }
+        }
+    }
+}
+
+/** Fixed compact space on first install; never invent a duration or flash another offer. */
+@Composable
+private fun RewardOfferSkeleton(modifier: Modifier) {
+    Card(
+        modifier = modifier.fillMaxWidth().height(64.dp).testTag("home_reward_loading")
+            .semantics { contentDescription = "Loading VIP Offer" },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+    ) {
+        Row(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Surface(Modifier.fillMaxWidth(0.7f).height(14.dp), shape = RoundedCornerShape(4.dp),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.12f)) {}
+                Surface(Modifier.fillMaxWidth(0.85f).height(10.dp), shape = RoundedCornerShape(4.dp),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.08f)) {}
+            }
+            Surface(Modifier.width(88.dp).height(48.dp), shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.1f)) {}
         }
     }
 }

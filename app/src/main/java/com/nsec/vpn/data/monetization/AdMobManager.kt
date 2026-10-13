@@ -132,10 +132,11 @@ class AdMobManager(private val context: Context, private val initializeSdk: ((()
             rewardPrefs.getInt("boot", -1), android.provider.Settings.Global.getInt(context.contentResolver,
                 android.provider.Settings.Global.BOOT_COUNT, -1), System.currentTimeMillis(),
             android.os.SystemClock.elapsedRealtime())
-        val config = if (!sdkInitialized) baseConfig.copy(bannerEnabled = false, nativeEnabled = false,
-            interstitialEnabled = false, rewardedEnabled = false, appOpenEnabled = false) else if (active) baseConfig.copy(bannerEnabled = false, nativeEnabled = false,
+        val entitlementConfig = if (active) baseConfig.copy(bannerEnabled = false, nativeEnabled = false,
             interstitialEnabled = false, appOpenEnabled = false,
             adFreeUntilEpochMillis = rewardPrefs.getLong("expiresWall", 0)) else baseConfig
+        val config = if (!sdkInitialized) entitlementConfig.copy(bannerEnabled = false, nativeEnabled = false,
+            interstitialEnabled = false, rewardedEnabled = false, appOpenEnabled = false) else entitlementConfig
         _config.value = config
         nativeAdManager.configure(config.nativeAdUnitId, config.nativeEnabled)
         if (active) {

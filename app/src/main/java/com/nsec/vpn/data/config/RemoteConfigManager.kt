@@ -28,7 +28,9 @@ data class RemoteAppConfig(
     val announcementTitle: String? = null,
     val announcementBody: String? = null,
     val supportEmail: String? = null,
-    val updatedAt: String? = null
+    val updatedAt: String? = null,
+    val rewardedPassMinutes: Int? = null,
+    val rewardedEnabled: Boolean = false
 )
 
 class RemoteConfigManager(
@@ -43,20 +45,32 @@ class RemoteConfigManager(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
     private val refreshMutex = Mutex()
-    private val prefs = context?.applicationContext?.getSharedPreferences("nsec_real_remote_config", Context.MODE_PRIVATE)
-    private val configJson = Moshi.Builder().addLast(KotlinJsonAdapterFactory()).build().adapter(AppRemoteConfigDto::class.java)
+    private val prefs by lazy { context?.applicationContext?.getSharedPreferences("nsec_real_remote_config", Context.MODE_PRIVATE) }
+    private val configJson by lazy { Moshi.Builder().addLast(KotlinJsonAdapterFactory()).build().adapter(AppRemoteConfigDto::class.java) }
     private var restored = false
+    private val _cacheRestored = MutableStateFlow(false)
+    val cacheRestored: StateFlow<Boolean> = _cacheRestored.asStateFlow()
+
+    /** Disk-only bootstrap. Never waits for a network request or SDK initialization. */
+    suspend fun restoreCachedConfig() = withContext(Dispatchers.IO) {
+        refreshMutex.withLock { restoreCacheLocked() }
+    }
+
+    private suspend fun restoreCacheLocked() {
+        if (restored) return
+        try {
+            prefs?.getString("validated_response", null)?.let { text ->
+                apply(requireNotNull(configJson.fromJson(text)) { "Invalid cached settings" })
+            }
+        } catch (e: CancellationException) { throw e }
+        catch (_: Exception) { runCatching { prefs?.edit { remove("validated_response") } } }
+        restored = true
+        _cacheRestored.value = true
+    }
 
     suspend fun fetchRemoteConfig() = withContext(Dispatchers.IO) {
         refreshMutex.withLock {
-            if (!restored) {
-                restored = true
-                prefs?.getString("validated_response", null)?.let { text ->
-                    try { apply(requireNotNull(configJson.fromJson(text)) { "Invalid cached settings" }) }
-                    catch (e: CancellationException) { throw e }
-                    catch (_: Exception) { prefs.edit { remove("validated_response") } }
-                }
-            }
+            restoreCacheLocked()
             try {
                 val response = withTimeout(10_000) { api.getConfig() }
                 val body = response.body()
@@ -82,9 +96,6 @@ class RemoteConfigManager(
         if (data.announcement.active) require(!data.announcement.title.isNullOrBlank() && !data.announcement.body.isNullOrBlank())
         val support = data.support?.email?.takeIf { it.isNotBlank() }
         require(support == null || android.util.Patterns.EMAIL_ADDRESS.matcher(support).matches())
-        _config.value = RemoteAppConfig(data.app.minAppVersionCode, data.app.latestAppVersionCode, data.app.forceUpdate,
-            data.app.maintenanceMode, data.announcement.active, data.announcement.title, data.announcement.body, support, data.updatedAt)
-        _loaded.value = true
         val current = adMobManager?.config?.value ?: AdMobConfig()
         val debug = com.nsec.vpn.BuildConfig.DEBUG
         val units = AdMobConfig()
@@ -105,5 +116,10 @@ class RemoteConfigManager(
             rewardedPassMinutes = data.ads.rewardedPassMinutes
         )
         if (adMobManager != null) withContext(Dispatchers.Main) { adMobManager.updateConfig(ads) }
+        // Offer data is authoritative config, not an effective SDK-ready placement toggle.
+        _config.value = RemoteAppConfig(data.app.minAppVersionCode, data.app.latestAppVersionCode, data.app.forceUpdate,
+            data.app.maintenanceMode, data.announcement.active, data.announcement.title, data.announcement.body,
+            support, data.updatedAt, data.ads.rewardedPassMinutes, ads.rewardedEnabled)
+        _loaded.value = true
     }
 }
