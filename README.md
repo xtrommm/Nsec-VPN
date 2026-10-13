@@ -228,3 +228,5 @@ When connector writes are unavailable, the downloadable bundle publisher (`scrip
 The admin console uses the routed `Control*` pages only. Eight obsolete, unreachable screens/sidebar/dialog components were removed after checking the entry-point import graph and test references.
 
 Public agent origins require HTTPS. HTTP is accepted only for literal private/loopback management origins carried by your encrypted management channel; the existing `172.18.0.1:51823` SSH forward is compatible. New installations bind the raw agent to loopback. Existing public HTTP records must migrate before deploying this policy.
+
+Owner-selected retention is 90 days (`RETENTION_DAYS`), cleaned hourly. Expired tokens, unclaimed expired tickets, completed/rejected requests and audit records age out. Inactive free identities are deleted only without recovery credentials, blocked status, purchase/promo/reward history or any peer reservation; these exceptions preserve entitlements and abuse protection. No client IP or traffic data is collected by this cleanup.

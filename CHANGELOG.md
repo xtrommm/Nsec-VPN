@@ -2,6 +2,8 @@
 
 ## Unreleased — Audit follow-up
 
+- Add bounded hourly 90-day retention cleanup with transaction-time eligibility checks and preserved entitlement/replay/recovery/peer protections.
+
 - Reject public cleartext agent management origins and default new node agents to loopback; retain private encrypted-channel compatibility.
 
 - Remove eight legacy admin modules unreachable from the current entry point; preserve the working console routes and license files.

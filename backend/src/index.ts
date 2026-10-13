@@ -9,6 +9,7 @@ import { refreshNodeHealth } from './services/nodeHealth';
 import { expirePeers } from './services/peerProvisioning';
 import { prisma } from './db';
 import { trustedProxyCidrs } from './services/proxyTrust';
+import { retentionDays, runRetention } from './services/retention';
 import { globalLimiter } from './middleware/rateLimit';
 
 // Import Route Handlers
@@ -35,6 +36,7 @@ const logger = pino({
 const app = express();
 app.set('trust proxy', trustedProxyCidrs(process.env.TRUSTED_PROXY_CIDRS));
 const PORT = process.env.PORT || 4000;
+retentionDays();
 
 // Security and Performance Middleware
 app.use(helmet());
@@ -123,6 +125,8 @@ const server = app.listen(PORT, async () => {
   void refreshNodeHealth().catch(() => logger.warn("Node health refresh failed"));
   setInterval(() => { void refreshNodeHealth().catch(() => logger.warn("Node health refresh failed")); }, 30000).unref();
   setInterval(() => { void expirePeers().catch(() => logger.warn("Lease cleanup failed")); }, 60000).unref();
+  // Retention failures never emit record contents or identifiers.
+  setInterval(() => { void runRetention().catch(() => logger.warn('Retention cleanup failed')); }, 3600000).unref();
 });
 
 // Graceful Process Teardown
