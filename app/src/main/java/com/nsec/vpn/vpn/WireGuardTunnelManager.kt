@@ -231,7 +231,12 @@ class WireGuardTunnelManager private constructor(private val context: android.ap
             )
         } finally { stopping = false }
         val id = activePeerId; val key = activeClientPublicKey
-        if (id != null && key != null) vpnRepository.notifyDisconnect(id, key)
+        // The local TUN is confirmed DOWN. Remote lease cleanup must never delay the UI
+        // or hold the tunnel-operation lock. The backend retains uncertain leases and
+        // ignores stale handles if the user reconnects before this request completes.
+        if (id != null && key != null) RemotePeerCleanup.enqueue(scope) {
+            vpnRepository.notifyDisconnect(id, key)
+        }
         activePeerId = null; activeTunnelConfig = null; _connectedNode.value = null; _activeDns.value = emptyList()
         context.stopService(Intent(context, NsecVpnService::class.java))
     }

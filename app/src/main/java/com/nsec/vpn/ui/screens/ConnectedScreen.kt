@@ -335,6 +335,7 @@ fun ConnectedScreen(
         // Disconnect Button
         Button(
             onClick = onDisconnect,
+            enabled = vpnState !is VpnState.Disconnecting,
             colors = ButtonDefaults.buttonColors(
                 containerColor = CrimsonError,
                 contentColor = Color.White
@@ -356,7 +357,7 @@ fun ConnectedScreen(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "DISCONNECT VPN",
+                    text = if (vpnState is VpnState.Disconnecting) "DISCONNECTING…" else "DISCONNECT VPN",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp

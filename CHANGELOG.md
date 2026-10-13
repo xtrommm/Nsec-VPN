@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — Audit follow-up
+
+- Complete local disconnect without waiting for remote peer removal; bound asynchronous cleanup and disable repeated Connected-screen disconnect taps.
+
 ## Unreleased — Deep audit
 
 - Preserve main's recursive build-directory ignore update in the v2 repair package and document branch publication versus pull-request creation.

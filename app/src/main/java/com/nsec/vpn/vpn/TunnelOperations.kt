@@ -2,6 +2,9 @@ package com.nsec.vpn.vpn
 
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /** Cancellation joins happen before entry; activation and cleanup cannot run concurrently. */
 class TunnelOperations {
@@ -15,5 +18,12 @@ object TunnelShutdown {
             if (!isDown()) throw IllegalStateException("Couldn't Stop The VPN. Please Retry Disconnecting.", failure)
         }
         check(isDown()) { "Couldn't Stop The VPN. Please Retry Disconnecting." }
+    }
+}
+
+object RemotePeerCleanup {
+    const val TIMEOUT_MS = 5_000L
+    fun enqueue(scope: CoroutineScope, cleanup: suspend () -> Unit) = scope.launch {
+        withTimeoutOrNull(TIMEOUT_MS) { cleanup() }
     }
 }
