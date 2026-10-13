@@ -52,7 +52,8 @@ fun HomeScreen(
     rewardOffer: RewardOffer = RewardOffer.from(false, false, 0, "FREE", false),
     rewardBusy: Boolean = false,
     onWatchReward: () -> Unit = onUpgradeClicked,
-    serverStatusNow: Long = System.currentTimeMillis()
+    serverStatusNow: Long = System.currentTimeMillis(),
+    isVisible: Boolean = true
 ) {
     val isConnected = vpnState is VpnState.Connected
     val connectedNode by tunnelManager.connectedNode.collectAsState()
@@ -178,15 +179,14 @@ fun HomeScreen(
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = if (isConnected) "SECURE TUNNEL (ACTIVE)" else "VPN NOT CONNECTED",
+                    text = com.nsec.vpn.ui.components.ConnectionPresentation.homeTitle(vpnState),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = if (isConnected) EmeraldGreen else CrimsonError,
                     letterSpacing = 0.8.sp
                 )
                 Text(
-                    text = if (isConnected) "${connectedNode?.locationName.orEmpty()} • WireGuard® Secured"
-                    else "Direct ISP Connection • UNENCRYPTED",
+                    text = com.nsec.vpn.ui.components.ConnectionPresentation.homeDetail(vpnState, connectedNode?.locationName.orEmpty()),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface
@@ -214,7 +214,8 @@ fun HomeScreen(
         ConnectButton(
             vpnState = vpnState,
             onToggle = onToggleVpn,
-            compact = true
+            compact = true,
+            animationsEnabled = isVisible
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -295,6 +296,7 @@ fun HomeScreen(
             adMobConfig = adMobConfig,
             userTier = userTier,
             vpnState = vpnState,
+            visible = isVisible,
             modifier = Modifier.fillMaxWidth()
         )
 

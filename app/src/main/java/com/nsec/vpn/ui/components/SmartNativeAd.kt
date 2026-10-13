@@ -61,10 +61,11 @@ fun SmartNativeAd(
     adMobConfig: AdMobConfig,
     userTier: String,
     vpnState: VpnState,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    visible: Boolean = true
 ) {
     val isFreeUser = userTier == "FREE"
-    val isAdAllowed = isFreeUser && adMobConfig.nativeEnabled && vpnState !is VpnState.Connecting
+    val isAdAllowed = visible && isFreeUser && adMobConfig.nativeEnabled && vpnState !is VpnState.Connecting && vpnState !is VpnState.Disconnecting
 
     val adLoadedEvent by nativeAdManager.adLoadedEvent.collectAsStateWithLifecycle()
     var currentAd by remember { mutableStateOf<NativeAd?>(null) }
@@ -74,6 +75,8 @@ fun SmartNativeAd(
         currentAd?.let { nativeAdManager.releaseAd(it) }
         currentAd = null
         if (isAdAllowed) {
+            // Give navigation its first rendered frame before entering ad SDK work.
+            withFrameNanos { }
             nativeAdManager.preloadNativeAds(adMobConfig.nativeAdUnitId, adMobConfig.nativeEnabled)
             currentAd = nativeAdManager.acquireAd()
         } else {

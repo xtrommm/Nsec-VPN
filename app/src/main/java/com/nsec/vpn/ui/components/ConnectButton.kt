@@ -1,6 +1,5 @@
 package com.nsec.vpn.ui.components
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -38,31 +37,27 @@ fun ConnectButton(
     vpnState: VpnState,
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
-    compact: Boolean = false
+    compact: Boolean = false,
+    animationsEnabled: Boolean = true
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "pulseTransition")
+    val pulseScale = if (animationsEnabled && (vpnState is VpnState.Connected || vpnState is VpnState.Connecting)) {
+        val transition = rememberInfiniteTransition(label = "pulseTransition")
+        val scale by transition.animateFloat(
+            initialValue = 1f,
+            targetValue = 1.15f,
+            animationSpec = infiniteRepeatable(tween(1400, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+            label = "pulseScale"
+        )
+        scale
+    } else 1f
 
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = if (vpnState is VpnState.Connected || vpnState is VpnState.Connecting) 1.15f else 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1400, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulseScale"
-    )
-
-    val buttonColor by animateColorAsState(
-        targetValue = when (vpnState) {
-            is VpnState.Connected -> EmeraldGreen
-            is VpnState.Connecting -> AmberWarning
-            is VpnState.Disconnecting -> CrimsonError
-            is VpnState.Error -> CrimsonError
-            is VpnState.Disconnected -> PrimaryBlue
-        },
-        animationSpec = tween(500),
-        label = "buttonColor"
-    )
+    // State feedback is immediate; a 500ms colour tween looked like delayed input.
+    val buttonColor = when (vpnState) {
+        is VpnState.Connected -> EmeraldGreen
+        is VpnState.Connecting -> AmberWarning
+        is VpnState.Disconnecting, is VpnState.Error -> CrimsonError
+        is VpnState.Disconnected -> PrimaryBlue
+    }
 
     val labelText = when (vpnState) {
         is VpnState.Connected -> "PROTECTED"
@@ -129,11 +124,12 @@ fun ConnectButton(
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
+                        enabled = ConnectionPresentation.canToggle(vpnState),
                         onClick = onToggle
                     )
                     .testTag("vpn_connect_button")
             ) {
-                if (vpnState is VpnState.Connecting) {
+                if (vpnState is VpnState.Connecting || vpnState is VpnState.Disconnecting) {
                     CircularProgressIndicator(
                         color = buttonColor,
                         strokeWidth = 3.dp,

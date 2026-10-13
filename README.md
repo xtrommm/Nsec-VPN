@@ -243,3 +243,6 @@ PR #17: billing setup indentation corrected; behaviour unchanged.
 
 ### Advertising UI update
 The owner-requested UMP consent form and ad privacy settings rows are removed. Ads wait for asynchronous SDK readiness and request non-personalized ads (`npa=1`); existing IDs, reward verification and admin toggles remain unchanged. This removal does not establish consent or satisfy every regional/provider privacy requirement: review AdMob publication requirements before release.
+
+### Disconnect screen transition
+Home remains composed and measured while connection details are open, but is not placed/drawn and its ad slot and pulse are disabled while hidden. Disconnect returns to that retained Home immediately with an honest Disconnecting state; reconnect stays disabled until confirmed local DOWN. State colours no longer animate over 500ms. Native SDK load work starts after the first navigation frame. No tunnel, API or schema changes are required.
