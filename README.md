@@ -305,3 +305,7 @@ The VIP options sheet is compact with a close action and balanced plan rows. Pen
 
 ### Server refresh feedback
 The server refresh icon rotates during the actual catalog refresh, disables duplicate taps and announces its loading state. Rotation stops in the background and when the request completes. Lazy latency probing retains its existing behavior. Reward request timeouts retain pending tickets and no longer cancel the foreground retry loop.
+
+
+### Alignment and reward regressions
+Tests cover inline server badges, balanced metrics, large fonts, recovery ID clipboard content, Settings ordering, duplicate refresh taps, verified/pending/expired reward responses and the retry-throttle regression. A manifest check keeps in-place theme handling limited to uiMode. Android runtime checks require CI/Android Studio.
