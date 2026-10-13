@@ -3,12 +3,13 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { prisma } from '../db';
+import { DeviceIdSchema } from '../types';
 import { JWT_SECRET } from '../secrets';
 
 export const RecoveryPinSchema = z.string().regex(/^[0-9]{8,12}$/)
   .refine(pin => !/^(\d)\1+$/.test(pin) && !['12345678', '87654321', '01234567', '1234567890', '123456789012'].includes(pin));
 export const SetRecoveryPinSchema = z.object({ pin: RecoveryPinSchema, currentPin: z.string().regex(/^[0-9]{8,12}$/).optional() }).strict();
-export const RecoverDeviceSchema = z.object({ deviceId: z.string().min(2).max(128), pin: RecoveryPinSchema,
+export const RecoverDeviceSchema = z.object({ deviceId: DeviceIdSchema, pin: RecoveryPinSchema,
   registrationSecret: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
 export function currentAuthEpoch(tokenEpoch: number | undefined, deviceEpoch: number | undefined): boolean {
   const epoch = tokenEpoch ?? 0;

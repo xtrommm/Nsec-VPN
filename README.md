@@ -329,3 +329,17 @@ CI correction: allow one physical pixel of Compose rounding in equal-width metri
 VIP access prompts now use a compact card with an X, a prominent rewarded-ad action, a separate purchase action and the actual reward availability reason. Centered Home announcements use the same surface, spacing and close treatment in both themes. Device VIP Recovery adds a pinned X, preserving the existing in-flight-operation dismissal guard. Servers checks live metadata every five seconds while visible, without toggling foreground loaders. No backend/API/schema changes or migrations. See [rollout notes](docs/audit/POPUPS-LIVE-SERVERS.md).
 
 Publication: `scripts/publish-popups-live.py` imports this review into an isolated `Nsec-VPN-popup-live-repair` checkout, preserving existing edits and publishing only its new branch after checking the main revision.
+
+## Backend security and administration audit (2026-10-14)
+
+Added password-reauthenticated, encrypted authenticator enrollment and one-use TOTP counters; MFA session version checks, serialized refresh rotation/replay epoch revocation, fail-closed bootstrap, bounded graceful shutdown, safe JSON/body errors and guarded concurrent config editing. Blocked devices now use tracked current/pending-key cleanup. One nullable AdminUser.totpLastStep migration and stable ADMIN_TOTP_ENCRYPTION_KEY are required before rollout. See docs/audit/BACKEND-ADMIN-ROLLOUT.md and BACKEND-API-CHANGES.md, including MFA rollback limitations. Android/agent source is unchanged.
+
+Promo deletion now frees the code for a new campaign while preserving historical redemptions and existing grants. Billing inputs/quota are bounded and temporary SSV provider/storage failures return retryable 503. Added route regressions and isolated PostgreSQL contention/replay tests for CI.
+
+Public server metadata uses a two-second, invalidated single-flight catalog without sharing per-device authorization. Config reads use generation-safe coalescing; health probes have a DNS deadline and independent bounded workers; expired-peer cleanup rotates its cursor and anonymous aggregates use serialized UTC dates. Production builds clean dist and omit test modules. Query-count and timing-deadline regressions added; live latency remains unmeasured.
+
+Reskinned the admin workspace with responsive grouped navigation and separate Ads & Rewards, App Controls, Announcements and Account Security tabs. Scoped validated config publishing detects stale saves. Added local-only authenticator QR generation (qrcode and @types/qrcode), theme/focus/empty/error states, and self-only CSP/no-framing headers. Existing role guards and management actions are retained.
+
+Audit delivery: 31 backend suites/181 unit tests, 5 panel tests and 23 deployment tests passed locally; backend/panel type checks and builds passed. Dependency audits report zero advisories. Current targeted secret scan found zero matches, with eight historical default-credential matches retained as metadata for rotation review. Added read-only latency benchmark, optional runtime-role SQL, endpoint mapping, rollout/rollback guide and explicit real-DB/browser/provider verification limits.
+
+CI fixture correction: generated audit promo codes respect the existing 32-character limit and validate before database setup. Production validation unchanged.

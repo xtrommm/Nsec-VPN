@@ -17,7 +17,7 @@ export const RegisterDeviceSchema = z.object({
 });
 
 export const RefreshTokenSchema = z.object({
-  refreshToken: z.string().min(20)
+  refreshToken: z.string().min(20).max(256)
 });
 
 export const ConnectVpnSchema = z.object({
@@ -36,7 +36,7 @@ export const DisconnectVpnSchema = z.object({
 export const AdminLoginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8).max(128),
-  totpCode: z.string().length(6).optional()
+  totpCode: z.string().regex(/^\d{6}$/).optional()
 });
 
 export function isPublicIpv4(host: string): boolean {
@@ -86,6 +86,7 @@ export const UpdateServerSchema = CreateServerSchema.partial();
 export const AdUnitSchema = z.string().regex(/^ca-app-pub-[0-9]{16}\/[0-9]{10}$/, "Enter a valid AdMob ad unit ID").refine(value => !value.startsWith("ca-app-pub-3940256099942544/"), "Use your production ad unit, not Google sample IDs").nullable();
 
 export const UpdateConfigSchema = z.object({
+  expectedUpdatedAt: z.string().datetime().optional(),
   minAppVersionCode: z.number().int().positive().optional(),
   latestAppVersionCode: z.number().int().positive().optional(),
   forceUpdate: z.boolean().optional(),
@@ -108,9 +109,9 @@ export const UpdateConfigSchema = z.object({
 }).strict();
 
 export const VerifySubscriptionSchema = z.object({
-  packageName: z.string().min(3),
-  productId: z.string().min(3),
-  purchaseToken: z.string().min(10)
+  packageName: z.string().min(3).max(255),
+  productId: z.string().min(3).max(128),
+  purchaseToken: z.string().min(10).max(16384)
 });
 
 // ==========================================
@@ -126,6 +127,7 @@ export interface JwtDevicePayload {
 }
 
 export interface JwtAdminPayload {
+  mfaVersion?: string;
   adminId: string;
   email: string;
   role: 'SUPER_ADMIN' | 'ADMIN';

@@ -1,5 +1,5 @@
 import { Router, Response } from 'express';
-import { prisma } from '../db';
+import { healthyServerCatalog } from '../services/serverCatalog';
 import { authenticateDevice, AuthenticatedDeviceRequest } from '../middleware/auth';
 
 const router = Router();
@@ -16,27 +16,8 @@ router.get('/', authenticateDevice, async (req: AuthenticatedDeviceRequest, res:
     (hidePremiumForFree && device.tier === 'FREE' && includePremiumParam !== 'true');
 
   try {
-    const whereClause: any = { active: true, healthy: true, healthCheckedAt: { gt: new Date(Date.now() - 120000) } };
-    if (shouldHidePremium) {
-      whereClause.isPremiumOnly = false;
-    }
-
-    const servers = await prisma.serverNode.findMany({
-      where: whereClause,
-      select: {
-        id: true,
-        name: true,
-        countryCode: true,
-        countryName: true,
-        city: true,
-        flagEmoji: true,
-        currentLoad: true,
-        isPremiumOnly: true,
-        isRecommended: true,
-        endpoint: true, publicIpv4: true, healthCheckedAt: true
-      },
-      orderBy: [{ sortOrder: 'asc' }, { isRecommended: 'desc' }, { currentLoad: 'asc' }]
-    });
+    // Cache only public node metadata; authorization/tier filtering is per request.
+    const servers = (await healthyServerCatalog()).filter(server => !shouldHidePremium || !server.isPremiumOnly);
 
     // If client requests servers grouped by geographic location
     if (groupByLocation) {

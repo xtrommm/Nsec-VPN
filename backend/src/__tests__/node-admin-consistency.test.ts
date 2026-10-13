@@ -42,3 +42,27 @@ it('CSV exports neutralize whitespace/control-prefixed formulas and quote conten
   for(const input of ['=1+1','  +1','\t=1','\r\n@SUM(1)','\uFEFF-1']) expect(csvCell(input).startsWith('"\'')).toBe(true);
   expect(csvCell('Valid "value"')).toBe('"Valid ""value"""');
 });
+it('VIP-only metadata edits retain health without waiting on a new agent probe', async () => {
+  const current={...node,healthy:true,healthCheckedAt:new Date(),isPremiumOnly:false};
+  const tx:any={$executeRaw:jest.fn(),serverNode:{findUniqueOrThrow:jest.fn().mockResolvedValue(current),
+    update:jest.fn().mockImplementation(({data})=>Promise.resolve({...current,...data}))},auditLog:{create:jest.fn()}};
+  (prisma.$transaction as jest.Mock).mockImplementation(work=>work(tx));
+  const res=response();await route('put','/servers/:id')({params:{id:node.id},body:{isPremiumOnly:true},admin:{adminId:'admin'}},res);
+  expect(res.body.server.isPremiumOnly).toBe(true);expect(res.body.server.healthy).toBe(true);
+  expect(AgentClient.getNodeHealth).not.toHaveBeenCalled();
+});
+it('config optimistic revision prevents an old full editor overwriting a newer change',async()=>{
+  const tx:any={$executeRaw:jest.fn(),appConfig:{findUnique:jest.fn().mockResolvedValue({updatedAt:new Date('2030-01-02T00:00:00Z')}),upsert:jest.fn()},auditLog:{create:jest.fn()}};
+  (prisma.$transaction as jest.Mock).mockImplementation(work=>work(tx));
+  const res=response();await route('put','/config')({body:{expectedUpdatedAt:'2030-01-01T00:00:00Z',adsEnabled:false},admin:{adminId:'admin'}},res);
+  expect(res.code).toBe(409);expect(res.body.error).toBe('CONFIG_CHANGED');expect(tx.appConfig.upsert).not.toHaveBeenCalled();
+});
+it('blocking delegates to locked cleanup instead of deleting a current-key-only record',async()=>{
+  const cleanup=jest.spyOn(require('../services/peerProvisioning'),'disconnectPeer').mockResolvedValue(undefined);
+  const current={id:'owned-device',deviceId:'fixture-installation'};
+  const tx:any={$executeRaw:jest.fn(),device:{findUniqueOrThrow:jest.fn().mockResolvedValue(current),update:jest.fn().mockResolvedValue({...current,isBlocked:true})},auditLog:{create:jest.fn()}};
+  (prisma.$transaction as jest.Mock).mockImplementation(work=>work(tx));
+  (prisma as any).peerSession={findMany:jest.fn().mockResolvedValue([{peerId:'owned-lease',clientPublicKey:'current-fixture',pendingPublicKey:'pending-fixture'}]),delete:jest.fn()};
+  const res=response();await route('put','/devices/:id/block')({params:{id:current.id},body:{isBlocked:true},admin:{adminId:'admin'}},res);
+  expect(res.code).toBe(200);expect(cleanup).toHaveBeenCalledWith(current.id,'owned-lease');expect((prisma as any).peerSession.delete).not.toHaveBeenCalled();cleanup.mockRestore();
+});

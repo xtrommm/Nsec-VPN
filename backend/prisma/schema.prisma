@@ -25,6 +25,7 @@ model AdminUser {
   role         UserRole  @default(ADMIN)
   totpSecret   String?
   totpEnabled  Boolean   @default(false)
+  totpLastStep Int?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   auditLogs    AuditLog[]

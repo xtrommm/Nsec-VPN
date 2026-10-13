@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { prisma } from '../db';
 import { authenticateAdmin, authenticateDevice, AuthenticatedAdminRequest, AuthenticatedDeviceRequest } from '../middleware/auth';
 import { validateBody } from '../middleware/validate';
-import { CreatePromo, UpdatePromo, BulkPromo, PromoText, promoHash, promoStatus, promoUpdate, redeemPromotion } from '../services/promotions';
+import { CreatePromo, UpdatePromo, BulkPromo, PromoText, archivedPromoHash, promoHash, promoStatus, promoUpdate, redeemPromotion } from '../services/promotions';
 import { encryptPromo, decryptPromo } from '../services/promoCipher';
 import { PageQuery, pagination, databaseError } from '../services/consoleQuery';
 
@@ -22,7 +22,7 @@ function safe(p: Prisma.PromoCodeGetPayload<{ select: typeof promoSelect }>) {
 }
 function fail(res: any, error: unknown, fallback: string) {
   const code = error instanceof Error ? error.message : '';
-  const statuses: Record<string, number> = { PROMO_ENCRYPTION_NOT_CONFIGURED: 503, PROMO_CODE_UNAVAILABLE: 409,
+  const statuses: Record<string, number> = { PROMO_CODE_EXISTS: 409, PROMO_ENCRYPTION_NOT_CONFIGURED: 503, PROMO_CODE_UNAVAILABLE: 409,
     PROMO_CODE_IMMUTABLE: 400, PROMO_LIMIT_BELOW_USAGE: 409, PROMO_DATE_RANGE_INVALID: 400, PROMO_DURATION_CONFLICT: 400 };
   if (databaseError(error) === 'P2002') return res.status(409).json({ success: false, error: 'PROMO_CODE_EXISTS' });
   if (databaseError(error) === 'P2025') return res.status(404).json({ success: false, error: 'PROMO_NOT_FOUND' });
@@ -66,6 +66,11 @@ async function create(req: AuthenticatedAdminRequest, res: any, bulk: boolean) {
     const created = await prisma.$transaction(async tx => {
       const records = [];
       for (const item of prepared) {
+        const hash = promoHash(item.code);
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`promo:${hash}`}))`;
+        const previous = await tx.promoCode.findUnique({ where: { codeHash: hash } });
+        if (previous && !previous.deletedAt) throw new Error('PROMO_CODE_EXISTS');
+        if (previous) await tx.promoCode.update({ where: { id: previous.id }, data: { codeHash: archivedPromoHash(previous.id) } });
         const p = await tx.promoCode.create({ data: { label: body.label, passMinutes: minutes, passDays: minutes / 1440, startsAt, expiresAt,
           maxRedemptions: body.maxRedemptions, active: body.active ?? true, codeHash: promoHash(item.code), codeCiphertext: item.cipher }, select: promoSelect });
         await tx.auditLog.create({ data: { adminId: req.admin!.adminId, action: 'CREATE_PROMO', targetResource: 'PROMO', targetId: p.id } });
@@ -122,7 +127,7 @@ adminPromos.delete('/:id', authenticateAdmin('SUPER_ADMIN'), async (req: Authent
     await prisma.$transaction(async tx => {
       const p = await tx.promoCode.findUniqueOrThrow({ where: { id: req.params.id } });
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`promo:${p.codeHash}`}))`;
-      await tx.promoCode.update({ where: { id: p.id }, data: { active: false, deletedAt: p.deletedAt || new Date(), codeCiphertext: null } });
+      await tx.promoCode.update({ where: { id: p.id }, data: { active: false, deletedAt: p.deletedAt || new Date(), codeCiphertext: null, codeHash: archivedPromoHash(p.id) } });
       await tx.auditLog.create({ data: { adminId: req.admin!.adminId, action: 'DELETE_PROMO', targetResource: 'PROMO', targetId: p.id } });
     });
     return res.json({ success: true });

@@ -38,3 +38,14 @@ it('an in-progress reservation is not removed by cleanup', async () => {
   tx.peerSession.findFirst.mockResolvedValue({...row,pendingPublicKey:Buffer.alloc(32,9).toString('base64'),expiresAt:new Date(Date.now()+60000)});
   await expirePeers();expect(AgentClient.removePeer).not.toHaveBeenCalled();expect(tx.peerSession.delete).not.toHaveBeenCalled();
 });
+it('advances beyond unreachable candidates so later leases are not starved', async () => {
+  (prisma.peerSession.findMany as jest.Mock).mockResolvedValue([{id:'z-cursor-fixture',deviceId:row.deviceId,serverId:row.serverId}]);
+  tx.peerSession.findFirst.mockResolvedValue({...row,id:'z-cursor-fixture',expiresAt:new Date(0)});
+  (AgentClient.removePeer as jest.Mock).mockRejectedValue(new Error('unreachable'));
+  await expirePeers();
+  (prisma.peerSession.findMany as jest.Mock).mockClear();
+  (prisma.peerSession.findMany as jest.Mock).mockResolvedValue([]);
+  await expirePeers();
+  expect(prisma.peerSession.findMany).toHaveBeenNthCalledWith(1, expect.objectContaining({where:expect.objectContaining({id:{gt:'z-cursor-fixture'}}),orderBy:{id:'asc'}}));
+  expect(prisma.peerSession.findMany).toHaveBeenCalledTimes(2);
+});

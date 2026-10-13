@@ -6,11 +6,15 @@ const router = Router();
 // In-memory cache for high-throughput config queries
 let cachedConfig: any = null;
 let cachedConfigExpiry = 0;
+let cacheGeneration = 0;
+let inFlight: { generation: number; promise: Promise<unknown> } | null = null;
 const CACHE_TTL_MS = 5 * 1000; // 5 seconds
 
 export function invalidateConfigCache() {
+  cacheGeneration++;
   cachedConfig = null;
   cachedConfigExpiry = 0;
+  inFlight = null;
 }
 
 router.get('/config', async (_req: Request, res: Response) => {
@@ -25,6 +29,10 @@ router.get('/config', async (_req: Request, res: Response) => {
   }
 
   try {
+    const generation = cacheGeneration;
+    let request = inFlight;
+    if (!request || request.generation !== generation) {
+      const promise = (async () => {
     const config = await prisma.appConfig.upsert({ where: { id: 'global_config' }, create: { id: 'global_config' }, update: {} });
 
     const formattedData = {
@@ -57,8 +65,18 @@ router.get('/config', async (_req: Request, res: Response) => {
       }
     };
 
-    cachedConfig = formattedData;
-    cachedConfigExpiry = now + CACHE_TTL_MS;
+    if (generation === cacheGeneration) {
+      cachedConfig = formattedData;
+      cachedConfigExpiry = Date.now() + CACHE_TTL_MS;
+    }
+    return formattedData;
+
+      })();
+      request = { generation, promise };
+      inFlight = request;
+      void promise.finally(() => { if (inFlight === request) inFlight = null; }).catch(() => undefined);
+    }
+    const formattedData = await request.promise;
 
     return res.json({
       success: true,
@@ -76,6 +94,7 @@ router.get('/config', async (_req: Request, res: Response) => {
 router.get('/legal/:type', (req: Request, res: Response) => {
   res.setHeader('Cache-Control', 'public, max-age=300'); // 5 minutes cache
   const type = req.params.type;
+  if (!['privacy', 'terms'].includes(type)) return res.status(404).json({ success: false, error: 'LEGAL_DOCUMENT_NOT_FOUND' });
 
   if (type === 'privacy') {
     return res.json({
