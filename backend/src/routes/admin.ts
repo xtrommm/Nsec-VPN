@@ -1,3 +1,4 @@
+import { csvCell } from '../services/csv';
 import { removeTrackedPeerKeys } from '../services/peerProvisioning';
 import { JWT_SECRET } from "../secrets";
 import { Router, Response } from 'express';
@@ -10,6 +11,7 @@ import { prisma } from '../db';
 import { authenticateAdmin, AuthenticatedAdminRequest } from '../middleware/auth';
 import { validateBody } from '../middleware/validate';
 import {
+  DeviceIdSchema,
   AdminLoginSchema,
   CreateServerSchema,
   UpdateServerSchema,
@@ -22,6 +24,18 @@ import { AgentClient } from '../services/agentClient';
 import { verifyConfiguredTotp } from '../services/totp';
 import { testNode } from '../services/nodeHealth';
 import { invalidateConfigCache } from './config';
+
+async function savedNodeHealth(node: import('@prisma/client').ServerNode) {
+  let healthCheckError: string | null = null;
+  let checked = node;
+  try {
+    const health = await testNode(node);
+    healthCheckError = health.online ? null : 'NODE_HEALTH_CHECK_FAILED';
+    checked = await prisma.serverNode.findUniqueOrThrow({ where: { id: node.id } });
+  } catch { healthCheckError = 'NODE_HEALTH_CHECK_UNAVAILABLE'; }
+  const { agentSecretHash: _credential, ...server } = checked;
+  return { server, healthCheckError };
+}
 
 const router = Router();
 
@@ -145,10 +159,8 @@ router.post(
         await tx.auditLog.create({ data: { adminId: req.admin!.adminId, action: 'CREATE_SERVER', targetResource: 'SERVER', targetId: result.id } });
         return result;
       });
-      await testNode(server);
-      const checked = await prisma.serverNode.findUniqueOrThrow({ where: { id: server.id } });
-      const { agentSecretHash, ...safeServer } = checked;
-      return res.status(201).json({ success: true, server: safeServer });
+      const checked = await savedNodeHealth(server);
+      return res.status(201).json({ success: true, ...checked });
     } catch (err: any) {
       return res.status(500).json({
         success: false,
@@ -168,7 +180,7 @@ router.put(
     const { agentSecret, ...updateData } = req.body;
 
     try {
-      const dataToUpdate: any = { ...updateData };
+      const dataToUpdate: any = { ...updateData, healthy: false, healthCheckedAt: null };
       if (agentSecret) {
         dataToUpdate.agentSecretHash = agentSecret;
       }
@@ -179,16 +191,11 @@ router.put(
         await tx.auditLog.create({ data: { adminId: req.admin!.adminId, action: 'UPDATE_SERVER', targetResource: 'SERVER', targetId: id, metadata: JSON.stringify({ fields: Object.keys(req.body).filter(k => k !== 'agentSecret') }) } });
         return result;
       });
-      await testNode(server);
-      const checked = await prisma.serverNode.findUniqueOrThrow({ where: { id: server.id } });
-      const { agentSecretHash, ...safeServer } = checked;
-      return res.json({ success: true, server: safeServer });
-    } catch (_err) {
-      return res.status(404).json({
-        success: false,
-        error: 'NOT_FOUND',
-        message: 'Server not found'
-      });
+      const checked = await savedNodeHealth(server);
+      return res.json({ success: true, ...checked });
+    } catch (error) {
+      const missing = databaseError(error) === 'P2025';
+      return res.status(missing ? 404 : 503).json({ success: false, error: missing ? 'NOT_FOUND' : 'NODE_UPDATE_FAILED', message: missing ? 'Server not found' : 'Node update unavailable' });
     }
   }
 );
@@ -285,7 +292,7 @@ router.get('/devices', authenticateAdmin(), async (req, res) => {
   } catch { return res.status(503).json({ success: false, error: 'DEVICES_UNAVAILABLE' }); }
 });
 router.get('/devices/:installationId/details', authenticateAdmin(), async (req, res) => {
-  if (!z.string().uuid().safeParse(req.params.installationId).success) return res.status(400).json({ success: false, error: 'INVALID_DEVICE_ID' });
+  if (!DeviceIdSchema.safeParse(req.params.installationId).success) return res.status(400).json({ success: false, error: 'INVALID_DEVICE_ID' });
   try {
     const device = await prisma.device.findUnique({ where: { deviceId: req.params.installationId }, select: deviceSelect });
     if (!device) return res.status(404).json({ success: false, error: 'DEVICE_NOT_FOUND' });
@@ -405,8 +412,7 @@ router.get('/audit-logs', authenticateAdmin('SUPER_ADMIN'), async (req, res) => 
 router.get('/export/stats', authenticateAdmin(), async (_req, res) => {
   try {
     const stats = await prisma.anonymousStat.findMany({ orderBy: { date: 'desc' }, take: 1000 });
-    const field = (value: string) => '"' + (/^[=+@-]/.test(value) ? "'" : '') + value.replace(/"/g, '""') + '"';
-    const csv = 'Date,Country,AppVersion,Tier,ConnectionsCount\n' + stats.map(s => [s.date.toISOString().split('T')[0], s.countryCode, s.appVersion, s.tier, String(s.connectionsCount)].map(field).join(',')).join('\n');
+    const csv = 'Date,Country,AppVersion,Tier,ConnectionsCount\n' + stats.map(s => [s.date.toISOString().split('T')[0], s.countryCode, s.appVersion, s.tier, String(s.connectionsCount)].map(csvCell).join(',')).join('\n');
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename=nsecvpn_anonymous_stats.csv');
     return res.send(csv);

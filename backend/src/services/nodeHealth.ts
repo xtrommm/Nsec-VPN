@@ -5,6 +5,12 @@ import { EndpointSchema, SubnetSchema, isPublicIpv4 } from '../types';
 import { AgentClient } from './agentClient';
 import { peerCapacityPercent } from './nodeLoad';
 
+const probeFields = (node: ServerNode) => ({
+  id: node.id, endpoint: node.endpoint, publicKey: node.publicKey, agentUrl: node.agentUrl,
+  agentSecretHash: node.agentSecretHash, subnetIpv4: node.subnetIpv4,
+  maxPeers: node.maxPeers, mtu: node.mtu, active: node.active, dnsServers: node.dnsServers
+});
+
 export async function testNode(node: ServerNode, syncKey = false, adminId?: string) {
   const health = await AgentClient.getNodeHealth(node.agentUrl, node.agentSecretHash);
   const endpoint = EndpointSchema.safeParse(node.endpoint);
@@ -30,13 +36,13 @@ export async function testNode(node: ServerNode, syncKey = false, adminId?: stri
     await prisma.$transaction(async tx => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${node.id}))`;
       const current = await tx.serverNode.findUniqueOrThrow({ where: { id: node.id } });
-      if (current.endpoint !== node.endpoint || current.agentUrl !== node.agentUrl || current.publicKey !== node.publicKey) throw new Error('NODE_CHANGED');
+      if (JSON.stringify(probeFields(current)) !== JSON.stringify(probeFields(node))) throw new Error('NODE_CHANGED');
       await tx.serverNode.update({ where: { id: node.id }, data });
       await tx.auditLog.create({ data: { adminId, action: 'SYNC_NODE_PUBLIC_KEY', targetResource: 'SERVER', targetId: node.id } });
     });
   } else {
     // A stale health probe must never mark a changed endpoint or key healthy.
-    const result = await prisma.serverNode.updateMany({ where: { id: node.id, endpoint: node.endpoint, publicKey: node.publicKey, agentUrl: node.agentUrl }, data });
+    const result = await prisma.serverNode.updateMany({ where: { ...probeFields(node), dnsServers: { equals: node.dnsServers } }, data });
     if (!result.count) return { ...health, online: false, agentOnline: health.online, keyMatches, portMatches, resolves, error: 'NODE_CHANGED' };
   }
   return { ...health, online: healthy, agentOnline: health.online, keyMatches, portMatches, resolves,

@@ -192,3 +192,5 @@ For reverse-proxy deployments set `TRUSTED_PROXY_CIDRS` to the actual trusted pr
 
 Android token renewal, registration and recovery now share a mutex. Parallel unauthorized requests reuse the newly issued access token instead of rotating the same refresh token twice. Cancellation and transient authentication failures no longer silently trigger registration.
 
+
+Node create/update responses preserve a successful database write even when the subsequent health probe fails: inspect optional `healthCheckError`, then use Test node. Edited nodes are excluded until a fresh health check validates their configuration. Admin device details and request filters accept the same safe installation-ID format as registration, including legacy non-UUID IDs. CSV exports neutralize control/whitespace-prefixed spreadsheet formulas.

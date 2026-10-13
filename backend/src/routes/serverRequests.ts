@@ -1,3 +1,4 @@
+import { DeviceIdSchema } from '../types';
 import { Router } from 'express';
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
@@ -11,7 +12,7 @@ export const adminRequests = Router();
 export const deviceRequests = Router();
 adminRequests.use(authenticateAdmin());
 adminRequests.use((_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
-const querySchema = PageQuery.extend({ status: RequestStatus.optional(), deviceId: z.string().uuid().optional() });
+const querySchema = PageQuery.extend({ status: RequestStatus.optional(), deviceId: DeviceIdSchema.optional() });
 adminRequests.get('/', async (req, res) => {
   const q = querySchema.safeParse(req.query);
   if (!q.success) return res.status(400).json({ success: false, error: 'INVALID_QUERY' });

@@ -37,8 +37,8 @@ export function ControlNodes({nodes, api, refresh, canWrite, notify}:{nodes:Serv
    const issues=validateNode({...form,dnsServers:dns.split(',').map(x=>x.trim()).filter(Boolean)});if(issues.length)throw new Error(issues.join(' '));
    const fields=Object.fromEntries(['name','countryCode','countryName','city','flagEmoji','endpoint','publicKey','subnetIpv4','mtu','maxPeers','isPremiumOnly','isRecommended','active','agentUrl'].map(k=>[k,form[k as keyof NodeForm]]));
    const data={...fields,dnsServers:dns.split(',').map(x=>x.trim()).filter(Boolean),...(agentSecret?{agentSecret}:{})};
-   await api(edit==='new'?'/servers':`/servers/${(edit as ServerNode).id}`,{method:edit==='new'?'POST':'PUT',body:JSON.stringify(data)});
-   setEdit(null);notify('Node saved');await refresh();
+   const result=await api(edit==='new'?'/servers':`/servers/${(edit as ServerNode).id}`,{method:edit==='new'?'POST':'PUT',body:JSON.stringify(data)});
+   setEdit(null);notify(result.healthCheckError?'Node saved; health check failed. Use Test node before enabling access.':'Node saved',result.healthCheckError?'error':'success');await refresh();
   }catch(e){setError(e instanceof Error?e.message:'Could not save node');}finally{setBusy(false);}
  }
  async function remove(node:ServerNode) {
