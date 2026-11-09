@@ -9,7 +9,7 @@
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"
         tools:ignore="ForegroundServicePermission" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <queries>
@@ -82,9 +82,9 @@
             android:permission="android.permission.BIND_VPN_SERVICE" android:exported="false">
             <intent-filter><action android:name="android.net.VpnService" /></intent-filter>
         </service>
-        <!-- Prepared VPN apps qualify without exact alarms: Android FGS service-types documentation.
+        <!-- Prepared VPN apps qualify with connectedDevice or specialUse FGS service-types.
              NsecVpnService rechecks VpnService.prepare before calling startForeground. -->
-        <service android:name=".vpn.NsecVpnService" android:foregroundServiceType="systemExempted"
+        <service android:name=".vpn.NsecVpnService" android:foregroundServiceType="connectedDevice"
             tools:ignore="ForegroundServicePermission" android:exported="false" />
 
         <!-- Quick Settings Tile Service -->

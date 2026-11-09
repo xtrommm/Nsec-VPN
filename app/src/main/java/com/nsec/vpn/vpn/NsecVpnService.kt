@@ -58,7 +58,7 @@ class NsecVpnService : Service() {
             .setContentTitle(if (connected) "Nsec VPN Connected" else if (WireGuardTunnelManager.getInstance(this).vpnState.value is VpnState.Error)
                 "Nsec VPN Connection Needs Attention" else "Nsec VPN Connecting")
             .setContentText(serverName).setContentIntent(open).setOngoing(true).addAction(0, "Disconnect", disconnect).build()
-        if (Build.VERSION.SDK_INT >= 34) ServiceCompat.startForeground(this, 1001, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED)
+        if (Build.VERSION.SDK_INT >= 34) ServiceCompat.startForeground(this, 1001, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
         else startForeground(1001, notification)
     }
     override fun onDestroy() { scope.cancel(); super.onDestroy() }

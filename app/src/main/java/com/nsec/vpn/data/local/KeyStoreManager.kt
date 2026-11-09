@@ -18,8 +18,20 @@ class KeyStoreManager(context: Context, private val vaultKeyProvider: (() -> jav
 
     private val secretKey: javax.crypto.SecretKey by lazy { synchronized(vaultLock) {
         if (vaultKeyProvider != null) return@synchronized vaultKeyProvider.invoke()
+        try {
+            getOrCreateSecretKeyFromAndroidKeyStore()
+        } catch (_: Exception) {
+            runCatching {
+                val store = java.security.KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+                store.deleteEntry("nsec_vault_v2")
+            }
+            getOrCreateSecretKeyFromAndroidKeyStore()
+        }
+    } }
+
+    private fun getOrCreateSecretKeyFromAndroidKeyStore(): javax.crypto.SecretKey {
         val store = java.security.KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
-        (store.getKey("nsec_vault_v2", null) as? javax.crypto.SecretKey) ?: run {
+        return (store.getKey("nsec_vault_v2", null) as? javax.crypto.SecretKey) ?: run {
             val generator = javax.crypto.KeyGenerator.getInstance("AES", "AndroidKeyStore")
             generator.init(android.security.keystore.KeyGenParameterSpec.Builder("nsec_vault_v2",
                 android.security.keystore.KeyProperties.PURPOSE_ENCRYPT or android.security.keystore.KeyProperties.PURPOSE_DECRYPT)
@@ -27,7 +39,8 @@ class KeyStoreManager(context: Context, private val vaultKeyProvider: (() -> jav
                 .setEncryptionPaddings(android.security.keystore.KeyProperties.ENCRYPTION_PADDING_NONE).build())
             generator.generateKey()
         }
-    } }
+    }
+
     // KTX edit returns Unit and discards commit failures; credentials require the Boolean result.
     @SuppressLint("UseKtx")
     private fun editVerified(block: SharedPreferences.Editor.() -> Unit) {
@@ -38,9 +51,11 @@ class KeyStoreManager(context: Context, private val vaultKeyProvider: (() -> jav
 
     private fun encryptString(plainText: String?): String? {
         if (plainText.isNullOrEmpty()) return null
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.ENCRYPT_MODE, secretKey)
-        return "v2:" + Base64.encodeToString(cipher.iv + cipher.doFinal(plainText.toByteArray(Charsets.UTF_8)), Base64.NO_WRAP)
+        return try {
+            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            cipher.init(Cipher.ENCRYPT_MODE, secretKey)
+            "v2:" + Base64.encodeToString(cipher.iv + cipher.doFinal(plainText.toByteArray(Charsets.UTF_8)), Base64.NO_WRAP)
+        } catch (_: Exception) { null }
     }
     private fun decryptString(stored: String?): String? {
         if (stored.isNullOrEmpty()) return null
