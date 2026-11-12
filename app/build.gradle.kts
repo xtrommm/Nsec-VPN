@@ -11,7 +11,7 @@ android {
     applicationId = "com.nsec.vpn"
     minSdk = 24
     targetSdk = 37
-    versionCode = 1
+    versionCode = 5
     versionName = "1.0.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

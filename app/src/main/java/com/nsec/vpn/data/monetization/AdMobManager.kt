@@ -87,8 +87,10 @@ class AdMobManager(private val context: Context, private val initializeSdk: ((()
             // Google recommends initialization off the UI thread. Ad requests remain on Main.
             kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default).launch {
                 try {
-                    MobileAds.setRequestConfiguration(RequestConfiguration.Builder()
-                        .setTestDeviceIds(listOf(AdRequest.DEVICE_ID_EMULATOR)).build())
+                    if (com.nsec.vpn.BuildConfig.DEBUG) {
+                        MobileAds.setRequestConfiguration(RequestConfiguration.Builder()
+                            .setTestDeviceIds(listOf(AdRequest.DEVICE_ID_EMULATOR)).build())
+                    }
                     MobileAds.initialize(context) { ready() }
                 } catch (_: Exception) {
                     rewardHandler.post { sdkInitializationStarted = false }
